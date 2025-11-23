@@ -25,6 +25,19 @@ body {
     color: var(--text-dark);
     line-height: 1.6;
     overflow-x: hidden;
+    position: relative;
+}
+
+#particleCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 1;
+    background: transparent;
 }
 
 .container {
@@ -122,6 +135,7 @@ body {
     background: linear-gradient(135deg, var(--background-light) 0%, var(--background-white) 100%);
     padding: 100px 20px 50px;
     position: relative;
+    z-index: 1;
 }
 
 .hero-content {
@@ -222,6 +236,7 @@ body {
 .section {
     padding: 80px 20px;
     position: relative;
+    z-index: 1;
 }
 
 .section-title {
@@ -525,6 +540,8 @@ body {
     color: white;
     text-align: center;
     padding: 2rem 20px;
+    position: relative;
+    z-index: 1;
 }
 
 /* Animations */
