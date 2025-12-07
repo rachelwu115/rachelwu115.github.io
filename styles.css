@@ -710,3 +710,58 @@ body {
   60% { opacity: 1; transform: translateY(2px) scale(1.002); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* IMAGE-FILL: childlike snow letters (uses /images/snow-child.jpg) */
+.snow-text span {
+  display: inline-block;
+  background-image: url('/images/snow-child.jpg');
+  background-size: 220% auto; /* zoom so texture shows across letters */
+  background-position: center center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.6px rgba(0,0,0,0.12);
+  filter: drop-shadow(0 6px 6px rgba(0,0,0,0.10));
+  position: relative;
+}
+
+/* childlike wobble: slightly distort letter block with small rotation on each word */
+.snow-text span { transform-origin: center; }
+.snow-text span.wobble { display: inline-block; animation: wobble 1500ms ease-in-out infinite; }
+@keyframes wobble {
+  0% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-1px) rotate(-0.3deg); }
+  50% { transform: translateY(1px) rotate(0.3deg); }
+  75% { transform: translateY(-0.5px) rotate(-0.15deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+/* imperfections: overlay slight hand scribble texture and offset shadow */
+.snow-text span::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  box-shadow: 0 6px 10px rgba(80,90,100,0.18);
+  border-radius: 6px;
+  filter: blur(5px);
+}
+
+/* subtle noise layer to the hero for tactile feel (very faint) */
+.snow-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/images/snow-child.jpg');
+  background-size: 1200px auto;
+  opacity: 0.03;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* small responsive tweak */
+@media (max-width: 480px) {
+  .snow-text span { background-size: 300% auto; }
+}
