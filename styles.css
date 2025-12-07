@@ -728,7 +728,7 @@ body {
 
 /* childlike wobble: slightly distort letter block with small rotation on each word */
 .snow-text span { transform-origin: center; }
-.snow-text span.wobble { display: inline-block; animation: wobble 1500ms ease-in-out infinite; }
+.snow-text span.wobble { animation: wobble 1500ms ease-in-out infinite; }
 @keyframes wobble {
   0% { transform: translateY(0) rotate(0deg); }
   25% { transform: translateY(-1px) rotate(-0.3deg); }
