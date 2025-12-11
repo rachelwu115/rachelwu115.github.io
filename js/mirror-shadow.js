@@ -5,23 +5,18 @@ export class MirrorShadow {
         this.input = document.getElementById('tearInput');
         this.particles = [];
 
+        // Coordinates
         this.eyeLeft = { x: 0, y: 0 };
         this.eyeRight = { x: 0, y: 0 };
         this.chinY = 0;
 
-        // Image Asset
-        this.shadowImg = new Image();
-        this.shadowImg.src = 'images/shadow-ref.jpg';
-        this.shadowImg.onload = () => {
-            this.init();
-        };
+        this.init();
     }
 
     init() {
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
-        // Input listener
         this.input.addEventListener('input', (e) => {
             const char = e.data || this.input.value.slice(-1);
             if (char) this.spawnTear(char);
@@ -34,29 +29,19 @@ export class MirrorShadow {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
 
-        // Image sizing to fit canvas
-        // Aspect ratio of image (Square-ish based on typically user uploads, but we'll contain it)
-        const scale = Math.min(
-            (this.canvas.width * 0.8) / this.shadowImg.width,
-            (this.canvas.height * 0.8) / this.shadowImg.height
-        );
+        const w = this.canvas.width;
+        const h = this.canvas.height;
 
-        this.imgW = this.shadowImg.width * scale;
-        this.imgH = this.shadowImg.height * scale;
-        this.imgX = (this.canvas.width - this.imgW) / 2;
-        this.imgY = (this.canvas.height - this.imgH) / 2;
+        // SAITAMA PROPORTIONS
+        // Perfect Oval Head
+        this.headCenter = { x: w * 0.5, y: h * 0.35 };
+        this.headRadius = w * 0.22; // Width radius
+        this.headH = this.headRadius * 1.3; // Height radius (Egg shape)
+        this.chinY = this.headCenter.y + this.headH * 0.9;
 
-        // Map Eyes relative to Image
-        // Based on reference: Eyes are roughly at 44% and 56% width, 28% height of the image
-        this.eyeLeft = {
-            x: this.imgX + this.imgW * 0.44,
-            y: this.imgY + this.imgH * 0.28
-        };
-        this.eyeRight = {
-            x: this.imgX + this.imgW * 0.56,
-            y: this.imgY + this.imgH * 0.28
-        };
-        this.chinY = this.imgY + this.imgH * 0.45; // Chin approx location
+        // Bored Eyes (Center of face)
+        this.eyeLeft = { x: w * 0.43, y: this.headCenter.y + 10 };
+        this.eyeRight = { x: w * 0.57, y: this.headCenter.y + 10 };
     }
 
     spawnTear(char) {
@@ -66,7 +51,7 @@ export class MirrorShadow {
         this.particles.push({
             char: char,
             x: eye.x,
-            y: eye.y,
+            y: eye.y + 5,
             initialX: eye.x,
             vx: 0,
             vy: 0.5,
@@ -78,56 +63,110 @@ export class MirrorShadow {
     }
 
     drawShadow() {
-        if (!this.shadowImg.complete) return;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const ctx = this.ctx;
 
-        this.ctx.save();
-        // Optional: Add a slight pulsate/breathe effect to the image
-        const breathe = Math.sin(Date.now() * 0.002) * 2;
-        this.ctx.drawImage(
-            this.shadowImg,
-            this.imgX - breathe,
-            this.imgY - breathe,
-            this.imgW + breathe * 2,
-            this.imgH + breathe * 2
-        );
-        this.ctx.restore();
+        // == SAITAMA SILHOUETTE ==
+        ctx.fillStyle = '#111';
+        ctx.save();
+
+        // No blur - Clean edges
+        ctx.shadowBlur = 0;
+
+        // 1. The Head (Perfect Egg)
+        ctx.beginPath();
+        ctx.ellipse(this.headCenter.x, this.headCenter.y, this.headRadius, this.headH, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. Ears (Simple bumps)
+        const earY = this.headCenter.y + 20;
+        const earSize = 15;
+        // Left Ear
+        ctx.beginPath();
+        ctx.arc(this.headCenter.x - this.headRadius, earY, earSize, 0, Math.PI * 2);
+        ctx.fill();
+        // Right Ear
+        ctx.beginPath();
+        ctx.arc(this.headCenter.x + this.headRadius, earY, earSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Body (Cape/Suit)
+        ctx.beginPath();
+        const neckW = this.headRadius * 0.7;
+        const shoulderY = this.headCenter.y + this.headH * 0.8;
+        // Neck
+        ctx.moveTo(this.headCenter.x - neckW / 2, shoulderY);
+        ctx.lineTo(this.headCenter.x - neckW / 2, shoulderY + 50);
+        // Shoulders
+        ctx.quadraticCurveTo(w * 0.2, h, 0, h);
+        ctx.lineTo(w, h);
+        ctx.quadraticCurveTo(w * 0.8, h, this.headCenter.x + neckW / 2, shoulderY + 50);
+        ctx.lineTo(this.headCenter.x + neckW / 2, shoulderY);
+        ctx.fill();
+
+        // 4. The "Bored" Eyes
+        ctx.fillStyle = '#fff';
+        const eyeW = 18;
+        const eyeH = 12;
+
+        // Left Eye (Oval)
+        ctx.beginPath();
+        ctx.ellipse(this.eyeLeft.x, this.eyeLeft.y, eyeW, eyeH, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Pupil (Dot)
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(this.eyeLeft.x, this.eyeLeft.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Right Eye (Oval)
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.ellipse(this.eyeRight.x, this.eyeRight.y, eyeW, eyeH, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Pupil (Dot)
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(this.eyeRight.x, this.eyeRight.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
     }
 
     animate() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.drawShadow();
 
-        this.ctx.font = '24px "Courier New"'; // Keeping text readable
+        this.ctx.font = '24px "Courier New"';
         this.ctx.fillStyle = '#FFFFFF';
 
         for (let i = this.particles.length - 1; i >= 0; i--) {
             let p = this.particles[i];
 
-            // PHYSICS ENGINE
+            // PHYSICS
             if (p.y < this.chinY && p.onFace) {
-                // Cheek Physics (Wobble)
+                // Cheek Physics
                 if (p.vy < 2) p.vy += 0.05;
-                const sideDir = p.initialX < (this.imgX + this.imgW / 2) ? -1 : 1;
+                const sideDir = p.initialX < this.headCenter.x ? -1 : 1;
                 const cheekContour = Math.sin((p.y - this.eyeLeft.y) * 0.03) * 3;
                 p.x += cheekContour * sideDir;
             } else {
                 // Free Fall
                 p.onFace = false;
                 p.vy += 0.5;
-                p.x += Math.sin(p.y * 0.02) * 0.5;
             }
 
             p.y += p.vy;
             p.opacity -= 0.003;
             p.rotation += 0.01;
 
-            // Render
             this.ctx.save();
             this.ctx.globalAlpha = p.opacity;
             this.ctx.translate(p.x, p.y);
             this.ctx.rotate(p.rotation);
-            this.ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
-            this.ctx.shadowBlur = 5;
+            // Saitama tears are simple
+            this.ctx.shadowBlur = 0;
             this.ctx.fillText(p.char, 0, 0);
             this.ctx.restore();
 
