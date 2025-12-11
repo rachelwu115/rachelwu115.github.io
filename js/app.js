@@ -41,12 +41,11 @@ const APP_CONFIG = {
     },
 
     EYES: {
-        // Adjusted Position & Size
-        LEFT: { x: 0.45, y: 0.23 },
-        RIGHT: { x: 0.55, y: 0.23 },
+        // Tighter spacing to center on face (User Feedback)
+        LEFT: { x: 0.48, y: 0.24 },
+        RIGHT: { x: 0.52, y: 0.24 },
 
         // Size Multipliers (Relative to Image Size)
-        // Reduced from 0.07/0.04 to fit inside the head properly.
         WIDTH: 0.045,
         HEIGHT: 0.025,
     }
