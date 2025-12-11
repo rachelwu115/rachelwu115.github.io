@@ -4,10 +4,10 @@
  * Architecture:
  * - Single-file module for guaranteed loading reliability.
  * - Separation of Concerns: Config / Components / Main Loop.
- * - "Flood Fill" Keying: Advanced background removal that preserves internal details.
+ * - "Flood Fill" Keying: Advanced background removal.
  * 
  * @author Antigravity (Principal Engineer Mode)
- * @version 8.0 (Flood Fill & Final Eyes)
+ * @version 9.0 (Centered Silhouette)
  */
 
 const APP_CONFIG = {
@@ -19,16 +19,19 @@ const APP_CONFIG = {
     // -------------------------------------------------------------------------
     // VISUAL TUNING
     // -------------------------------------------------------------------------
-    // Tolerance for background color matching (0-255).
     CHROMA_TOLERANCE: 40,
 
     // -------------------------------------------------------------------------
     // LAYOUT & FRAMING
     // -------------------------------------------------------------------------
     VIEWPORT: {
-        // Zoom Level: 3.5x (Preserved from last approved state)
         ZOOM: 3.5,
         TOP_OFFSET: 0.0,
+
+        // Manual Horizontal Adjustment to center the visual mass.
+        // Positive = Move Right. Negative = Move Left.
+        // 0.03 = Shift right by 3% of screen width to Correct "Slight Left" bias.
+        OFFSET_X: 0.03,
     },
 
     // -------------------------------------------------------------------------
@@ -41,11 +44,12 @@ const APP_CONFIG = {
     },
 
     EYES: {
-        // Balanced spacing (Widened per "Red Circle" reference)
-        LEFT: { x: 0.44, y: 0.24 },
-        RIGHT: { x: 0.56, y: 0.24 },
+        // Re-adjusting to be slightly tighter than the "Red Circle" wide version
+        // but wider than the original narrow version.
+        // Eyes move WITH the head (relative positioning).
+        LEFT: { x: 0.46, y: 0.24 },
+        RIGHT: { x: 0.54, y: 0.24 },
 
-        // Size Multipliers (Relative to Image Size)
         WIDTH: 0.045,
         HEIGHT: 0.025,
     }
@@ -127,10 +131,6 @@ class Mirror {
 
     /**
      * FLOOD FILL PROCESSOR
-     * - Identifies the continuous background starting from (0,0).
-     * - Sets background to Transparent.
-     * - Sets EVERYTHING ELSE (the body) to Solid Black.
-     * - Solves the "Green Dots" / "Holes" issue.
      */
     processImage(source) {
         return new Promise(resolve => {
@@ -145,15 +145,9 @@ class Mirror {
 
             const idata = ctx.getImageData(0, 0, w, h);
             const data = idata.data;
-
-            // 1. Identify Background Color (Top-Left)
             const bg = { r: data[0], g: data[1], b: data[2] };
-
-            // 2. Create Visited Map
-            const visited = new Uint8Array(w * h); // 0 = unvisited, 1 = background
-
-            // 3. Flood Fill Queue
-            const stack = [0]; // Start at index 0 (0,0)
+            const visited = new Uint8Array(w * h);
+            const stack = [0];
             visited[0] = 1;
 
             const match = (idx) => {
@@ -163,17 +157,14 @@ class Mirror {
             };
 
             while (stack.length > 0) {
-                const idx4 = stack.pop(); // Byte index
-                const idx = idx4 / 4;     // Pixel index
+                const idx4 = stack.pop();
+                const idx = idx4 / 4;
                 const x = idx % w;
                 const y = Math.floor(idx / w);
 
-                // Check Neighbors (Up, Down, Left, Right)
                 const neighbors = [
-                    { nx: x, ny: y - 1 },
-                    { nx: x, ny: y + 1 },
-                    { nx: x - 1, ny: y },
-                    { nx: x + 1, ny: y }
+                    { nx: x, ny: y - 1 }, { nx: x, ny: y + 1 },
+                    { nx: x - 1, ny: y }, { nx: x + 1, ny: y }
                 ];
 
                 for (const { nx, ny } of neighbors) {
@@ -190,18 +181,12 @@ class Mirror {
                 }
             }
 
-            // 4. Apply Changes
             for (let i = 0; i < w * h; i++) {
                 const idx = i * 4;
                 if (visited[i] === 1) {
-                    // It's Background -> Make Transparent
                     data[idx + 3] = 0;
                 } else {
-                    // It's Body (Not reachable from outside) -> Make PURE BLACK
-                    data[idx] = 0;
-                    data[idx + 1] = 0;
-                    data[idx + 2] = 0;
-                    data[idx + 3] = 255;
+                    data[idx] = 0; data[idx + 1] = 0; data[idx + 2] = 0; data[idx + 3] = 255;
                 }
             }
 
@@ -233,7 +218,8 @@ class Mirror {
             s: scale,
             w: this.img.width * scale,
             h: this.img.height * scale,
-            x: (this.canvas.width - (this.img.width * scale)) / 2,
+            // Center Layout + Manual X Offset
+            x: ((this.canvas.width - (this.img.width * scale)) / 2) + (this.canvas.width * APP_CONFIG.VIEWPORT.OFFSET_X),
             y: this.canvas.height * APP_CONFIG.VIEWPORT.TOP_OFFSET
         };
     }
@@ -318,8 +304,6 @@ class Mirror {
     drawEye(rx, ry) {
         const x = this.layout.x + (rx * this.layout.w);
         const y = this.layout.y + (ry * this.layout.h);
-
-        // Revised Smaller Sizes
         const w = this.layout.w * APP_CONFIG.EYES.WIDTH;
         const h = this.layout.h * APP_CONFIG.EYES.HEIGHT;
 
