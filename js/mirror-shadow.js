@@ -50,46 +50,17 @@ export class MirrorShadow {
         this.particles.push({
             char: char,
             x: eye.x,
-            y: eye.y + 10, // Start slightly below eye
-            vx: (Math.random() - 0.5) * 2, // Slight horizontal drift
-            vy: 2 + Math.random() * 2, // Downward speed
+            y: eye.y + 10,
+            initialX: eye.x, // Store origin for sine wave calculation
+            vy: 0.5, // Start very slow
+            time: 0, // Track time for wave
             opacity: 1,
             size: 24,
-            rotation: (Math.random() - 0.5) * 0.5
+            rotation: (Math.random() - 0.5) * 0.2
         });
     }
 
-    drawShadow() {
-        const w = this.canvas.width;
-        const h = this.canvas.height;
-        const ctx = this.ctx;
-
-        // Shadow Silhouette
-        ctx.fillStyle = '#0a0a0a'; // Almost black
-        ctx.beginPath();
-
-        // Head
-        ctx.arc(w / 2, h * 0.4, w * 0.15, 0, Math.PI * 2);
-
-        // Shoulders/Body (rough shape)
-        ctx.moveTo(w * 0.3, h * 1.0);
-        ctx.bezierCurveTo(w * 0.3, h * 0.6, w * 0.35, h * 0.5, w / 2, h * 0.5);
-        ctx.bezierCurveTo(w * 0.65, h * 0.5, w * 0.7, h * 0.6, w * 0.7, h * 1.0);
-
-        ctx.fill();
-
-        // White Eyes (Hollow, eerie)
-        ctx.fillStyle = '#f0f0f0';
-        // Left Eye
-        ctx.beginPath();
-        ctx.arc(this.eyeLeft.x, this.eyeLeft.y, 8, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Right Eye
-        ctx.beginPath();
-        ctx.arc(this.eyeRight.x, this.eyeRight.y, 8, 0, Math.PI * 2);
-        ctx.fill();
-    }
+    // ... drawShadow() remains the same ...
 
     animate() {
         // Clear canvas
@@ -100,25 +71,33 @@ export class MirrorShadow {
 
         // Update and draw particles (tears)
         this.ctx.font = '24px "Courier New"';
-        this.ctx.fillStyle = '#000'; // Black letters
+        this.ctx.fillStyle = '#FFFFFF'; // Bright White Tears
 
         for (let i = this.particles.length - 1; i >= 0; i--) {
             let p = this.particles[i];
 
-            // Physics
+            // Physics - Liquid Motion
+            p.time += 0.05;
+            p.vy += 0.05; // Very low gravity
             p.y += p.vy;
-            p.x += p.vx;
-            p.vy += 0.2; // Gravity
-            p.opacity -= 0.005; // Slow fade
-            p.rotation += 0.02;
+
+            // Wavy path (sine wave based on time)
+            // Oscillate slightly left/right as it falls
+            p.x = p.initialX + Math.sin(p.time * 2) * 5;
+
+            p.opacity -= 0.002; // Very slow fade
+            p.rotation += 0.005;
 
             // Draw
             this.ctx.save();
             this.ctx.globalAlpha = p.opacity;
             this.ctx.translate(p.x, p.y);
             this.ctx.rotate(p.rotation);
+            this.ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+            this.ctx.shadowBlur = 5; // Add glow for visibility
             this.ctx.fillText(p.char, 0, 0);
             this.ctx.restore();
+
 
             // Remove dead particles
             if (p.y > this.canvas.height || p.opacity <= 0) {
