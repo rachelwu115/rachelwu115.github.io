@@ -60,7 +60,37 @@ export class MirrorShadow {
         });
     }
 
-    // ... drawShadow() remains the same ...
+    drawShadow() {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const ctx = this.ctx;
+
+        // Shadow Silhouette
+        ctx.fillStyle = '#0a0a0a'; // Almost black
+        ctx.beginPath();
+
+        // Head
+        ctx.arc(w / 2, h * 0.4, w * 0.15, 0, Math.PI * 2);
+
+        // Shoulders/Body (rough shape)
+        ctx.moveTo(w * 0.3, h * 1.0);
+        ctx.bezierCurveTo(w * 0.3, h * 0.6, w * 0.35, h * 0.5, w / 2, h * 0.5);
+        ctx.bezierCurveTo(w * 0.65, h * 0.5, w * 0.7, h * 0.6, w * 0.7, h * 1.0);
+
+        ctx.fill();
+
+        // White Eyes (Hollow, eerie)
+        ctx.fillStyle = '#f0f0f0';
+        // Left Eye
+        ctx.beginPath();
+        ctx.arc(this.eyeLeft.x, this.eyeLeft.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Right Eye
+        ctx.beginPath();
+        ctx.arc(this.eyeRight.x, this.eyeRight.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+    }
 
     animate() {
         // Clear canvas
