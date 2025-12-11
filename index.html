@@ -19,8 +19,241 @@
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script type="module" src="js/main.js"></script>
+    <!-- INLINED SCRIPTS TO FORCE EXECUTION -->
+    <script>
+        console.log("DEBUG: INLINE SCRIPT STARTING");
+
+        // 1. MAGNETIC BUTTONS MODULE
+        const initMagneticButtons = () => {
+            const mArea = document.querySelector('.magnetic-area');
+            const btn = document.querySelector('.magnetic-content');
+            if (!mArea || !btn) return;
+
+            mArea.addEventListener('mousemove', (e) => {
+                const rect = mArea.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                btn.style.transform = `translate(${x * 0.5}px, ${y * 0.5}px)`; // Move button
+                mArea.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`; // Move area slightly
+            });
+
+            mArea.addEventListener('mouseleave', () => {
+                btn.style.transform = 'translate(0px, 0px)';
+                mArea.style.transform = 'translate(0px, 0px)';
+            });
+        };
+
+        // 2. MIRROR SHADOW MODULE (Full Code)
+        const CONFIG = {
+            ASSETS: { URL: 'images/saitama-upper.png', CHROMA_TOLERANCE: 30 },
+            DEBUG: true, // RED LINES ON
+            VIEWPORT: { ZOOM_LEVEL: 1.8, TOP_OFFSET: 0.05 },
+            EYES: {
+                LEFT: { x: 0.45, y: 0.23 }, RIGHT: { x: 0.55, y: 0.23 },
+                WIDTH_PERCENT: 0.07, HEIGHT_PERCENT: 0.04,
+                COLOR: '#FFFFFF', PUPIL_COLOR: '#000000',
+                GLOW_BLUR: 8, GLOW_COLOR: 'rgba(255, 255, 255, 0.6)',
+            },
+            PHYSICS: {
+                GRAVITY_FACE: 0.05, GRAVITY_AIR: 0.5, TERMINAL_VEL_FACE: 2.0,
+                FRICTION_BOUNDARY: 0.35, WOBBLE_SPEED: 0.03, WOBBLE_AMP: 3,
+            },
+            PARTICLES: { FONT: '24px "Courier New"', COLOR: '#FFFFFF', FADE_RATE: 0.003 }
+        };
+
+        class MirrorShadow {
+            constructor() {
+                this.canvas = document.getElementById('shadowCanvas');
+                this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+                this.input = document.getElementById('tearInput');
+                this.image = null;
+                this.particles = [];
+                this.layout = { x: 0, y: 0, width: 0, height: 0, scale: 1 };
+                this.init();
+            }
+
+            async init() {
+                try {
+                    const raw = await this.loadImage(CONFIG.ASSETS.URL);
+                    this.image = await this.processSilhouette(raw);
+                    this.bindEvents();
+                    this.resize();
+                    this.loop();
+                    // DEBUG SUCCESS MSG
+                    if (this.input) this.input.value = "SYSTEM: ONLINE";
+                } catch (e) {
+                    if (this.input) this.input.value = "ERR: " + e.message;
+                    // Force loop to show debug grid
+                    this.loop();
+                }
+            }
+
+            loadImage(url) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = url;
+                });
+            }
+
+            processSilhouette(sourceImg) {
+                return new Promise((resolve) => {
+                    const temp = document.createElement('canvas');
+                    temp.width = sourceImg.width;
+                    temp.height = sourceImg.height;
+                    const tCtx = temp.getContext('2d');
+                    tCtx.drawImage(sourceImg, 0, 0);
+                    const d = tCtx.getImageData(0, 0, temp.width, temp.height);
+                    const data = d.data;
+                    const bg = { r: data[0], g: data[1], b: data[2] };
+                    for (let i = 0; i < data.length; i += 4) {
+                        const diff = Math.abs(data[i] - bg.r) + Math.abs(data[i + 1] - bg.g) + Math.abs(data[i + 2] - bg.b);
+                        if (diff < CONFIG.ASSETS.CHROMA_TOLERANCE) data[i + 3] = 0;
+                        else { data[i] = 20; data[i + 1] = 20; data[i + 2] = 20; data[i + 3] = 255; }
+                    }
+                    tCtx.putImageData(d, 0, 0);
+                    const fin = new Image();
+                    fin.onload = () => resolve(fin);
+                    fin.src = temp.toDataURL();
+                });
+            }
+
+            bindEvents() {
+                window.addEventListener('resize', () => this.resize());
+                this.input.addEventListener('input', (e) => {
+                    const c = e.data || this.input.value.slice(-1);
+                    if (c && c.trim()) this.spawnTear(c);
+                });
+            }
+
+            resize() {
+                this.canvas.width = this.canvas.clientWidth;
+                this.canvas.height = this.canvas.clientHeight;
+                if (this.image) {
+                    const s = (this.canvas.width / this.image.width) * CONFIG.VIEWPORT.ZOOM_LEVEL;
+                    this.layout = {
+                        scale: s, width: this.image.width * s, height: this.image.height * s,
+                        x: (this.canvas.width - (this.image.width * s)) / 2,
+                        y: this.canvas.height * CONFIG.VIEWPORT.TOP_OFFSET
+                    };
+                }
+            }
+
+            spawnTear(char) {
+                const isLeft = Math.random() > 0.5;
+                const eye = isLeft ? CONFIG.EYES.LEFT : CONFIG.EYES.RIGHT;
+                const sx = this.layout.x + (eye.x * this.layout.width);
+                const sy = this.layout.y + (eye.y * this.layout.height);
+                this.particles.push({
+                    char: char, x: sx, y: sy + 10, originX: sx, vx: 0, vy: 0, life: 1.0,
+                    angle: (Math.random() - 0.5) * 0.2, onFace: true
+                });
+            }
+
+            update() {
+                const chinY = this.layout.y + (CONFIG.PHYSICS.FRICTION_BOUNDARY * this.layout.height);
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    if (p.onFace) {
+                        if (p.y > chinY) p.onFace = false;
+                        else if (p.vy < CONFIG.PHYSICS.TERMINAL_VEL_FACE) p.vy += CONFIG.PHYSICS.GRAVITY_FACE;
+                        const w = Math.sin((p.y - this.layout.y) * CONFIG.PHYSICS.WOBBLE_SPEED) * CONFIG.PHYSICS.WOBBLE_AMP;
+                        const dir = p.originX < (this.layout.x + this.layout.width / 2) ? -1 : 1;
+                        p.x = p.originX + (w * dir);
+                    } else {
+                        p.vy += CONFIG.PHYSICS.GRAVITY_AIR;
+                        p.x += Math.sin(p.y * 0.02) * 0.5;
+                    }
+                    p.y += p.vy;
+                    p.life -= CONFIG.PARTICLES.FADE_RATE;
+                    p.angle += 0.01;
+                    if (p.life <= 0 || p.y > this.canvas.height) this.particles.splice(i, 1);
+                }
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                if (this.image) {
+                    this.ctx.save();
+                    this.ctx.drawImage(this.image, this.layout.x, this.layout.y, this.layout.width, this.layout.height);
+
+                    if (CONFIG.DEBUG) {
+                        this.ctx.globalCompositeOperation = 'source-over';
+                        this.ctx.strokeStyle = 'red';
+                        this.ctx.lineWidth = 4;
+                        this.trimCape(true);
+                    } else {
+                        this.ctx.globalCompositeOperation = 'destination-out';
+                        this.trimCape(false);
+                    }
+                    this.ctx.restore();
+                    this.drawEye(CONFIG.EYES.LEFT);
+                    this.drawEye(CONFIG.EYES.RIGHT);
+                }
+                this.ctx.font = CONFIG.PARTICLES.FONT;
+                this.ctx.fillStyle = CONFIG.PARTICLES.COLOR;
+                this.particles.forEach(p => {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = p.life;
+                    this.ctx.translate(p.x, p.y);
+                    this.ctx.rotate(p.angle);
+                    this.ctx.fillText(p.char, 0, 0);
+                    this.ctx.restore();
+                });
+            }
+
+            trimCape(isDebug) {
+                const l = this.layout;
+                const cx = l.x + l.width / 2;
+                const neckY = l.y + (l.height * 0.22);
+                const shoulderW = l.width * 0.16;
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(l.x, l.y);
+                this.ctx.lineTo(l.x, neckY);
+                this.ctx.bezierCurveTo(l.x + l.width * 0.1, neckY + l.height * 0.05, cx - shoulderW, neckY + l.height * 0.05, cx - shoulderW * 0.9, l.height);
+                this.ctx.lineTo(l.x, l.height);
+                this.ctx.lineTo(l.x, l.y);
+
+                this.ctx.moveTo(l.x + l.width, l.y);
+                this.ctx.lineTo(l.x + l.width, neckY);
+                this.ctx.bezierCurveTo(l.x + l.width * 0.9, neckY + l.height * 0.05, cx + shoulderW, neckY + l.height * 0.05, cx + shoulderW * 0.9, l.height);
+                this.ctx.lineTo(l.x + l.width, l.height);
+                this.ctx.lineTo(l.x + l.width, l.y);
+
+                isDebug ? this.ctx.stroke() : this.ctx.fill();
+            }
+
+            drawEye(eye) {
+                const x = this.layout.x + (eye.x * this.layout.width);
+                const y = this.layout.y + (eye.y * this.layout.height);
+                const w = this.layout.width * CONFIG.EYES.WIDTH_PERCENT;
+                const h = this.layout.height * CONFIG.EYES.HEIGHT_PERCENT;
+                this.ctx.save();
+                this.ctx.fillStyle = CONFIG.EYES.COLOR;
+                this.ctx.shadowBlur = CONFIG.EYES.GLOW_BLUR; this.ctx.shadowColor = CONFIG.EYES.GLOW_COLOR;
+                this.ctx.beginPath(); this.ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2); this.ctx.fill();
+                this.ctx.fillStyle = CONFIG.EYES.PUPIL_COLOR; this.ctx.shadowBlur = 0;
+                this.ctx.beginPath(); this.ctx.arc(x, y, 2, 0, Math.PI * 2); this.ctx.fill();
+                this.ctx.restore();
+            }
+
+            loop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+
+        // 3. MAIN INIT
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM LOADED, STARTING APP");
+            initMagneticButtons();
+            new MirrorShadow();
+        });
+    </script>
 </body>
 
 </html>
