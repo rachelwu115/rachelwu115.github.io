@@ -334,40 +334,42 @@ export class MirrorShadow {
 
         this.ctx.beginPath();
 
-        // We want to cut out the "Triangle" of the cape on both sides.
-        // Neck/Shoulder Junction (approximate based on image)
-        const neckY = ly + (h * 0.45);
-        const shoulderW = w * 0.25; // Distance from center to shoulder tip
+        // SAITAMA PROPORTIONS (Full Body Image)
+        // Head is roughly top 20%. Shoulders are around 20-25%.
+        // Previous 0.45 was way too low (waist level).
+        const neckY = ly + (h * 0.22);
+
+        // We want narrow, human shoulders, not the wide cape width.
+        const shoulderW = w * 0.16; // Distance from center to "bone" shoulder tip
 
         const cx = lx + w / 2; // Center X
 
-        // -- LEFT SIDE CUT --
-        // Start at top-left corner of bounding box
+        // -- LEFT SIDE CUT (Masking the Cape) --
+        // Start top-left
         this.ctx.moveTo(lx, ly);
-        // Go down to where the shoulder should start
+        // Go down to Neck level
         this.ctx.lineTo(lx, neckY);
-        // Curve *inward* to cut the cape, creating the top of the shoulder
-        // Control point pulls the cut inward
+        // Curve inward to cut the cape off
         this.ctx.bezierCurveTo(
-            lx + w * 0.1, neckY + h * 0.1, // Control 1
-            cx - shoulderW, neckY + h * 0.15, // Control 2 (Shoulder Tip)
-            cx - shoulderW * 0.8, h // Bottom Point (Armpit area)
+            lx + w * 0.1, neckY + h * 0.05, // Control 1: Push in
+            cx - shoulderW, neckY + h * 0.05, // Control 2: Shoulder Tip
+            cx - shoulderW * 0.9, h * 0.8 // Bottom: Taper to body
         );
-        // Close the loop to the bottom-left
-        this.ctx.lineTo(lx, h);
-        this.ctx.lineTo(lx, ly);
+        // Close Left Loop
+        this.ctx.lineTo(lx, h); // Bottom Left
+        this.ctx.lineTo(lx, ly); // Back to Top
 
         // -- RIGHT SIDE CUT --
-        // Start at top-right
+        // Start top-right
         this.ctx.moveTo(lx + w, ly);
         this.ctx.lineTo(lx + w, neckY);
         // Curve inward
         this.ctx.bezierCurveTo(
-            lx + w * 0.9, neckY + h * 0.1,
-            cx + shoulderW, neckY + h * 0.15,
-            cx + shoulderW * 0.8, h
+            lx + w * 0.9, neckY + h * 0.05,
+            cx + shoulderW, neckY + h * 0.05,
+            cx + shoulderW * 0.9, h * 0.8
         );
-        // Close loop
+        // Close Right Loop
         this.ctx.lineTo(lx + w, h);
         this.ctx.lineTo(lx + w, ly);
 
