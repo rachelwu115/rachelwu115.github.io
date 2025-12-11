@@ -7,7 +7,7 @@
  * - "Chroma Key" Silhouette Generation: Programmatically creates shadow art from raw assets.
  * 
  * @author Antigravity (Principal Engineer Mode)
- * @version 5.0 (Prosthetic Body Replacement)
+ * @version 6.0 (Anatomical Prosthetic)
  */
 
 const APP_CONFIG = {
@@ -27,26 +27,29 @@ const APP_CONFIG = {
     // -------------------------------------------------------------------------
     VIEWPORT: {
         // Zoom Level: 
-        // 3.1 = Close-Up (Fit). User requested "Zoom out just a little" from 3.8.
-        ZOOM: 3.1,
+        // 2.9 = Slightly zoomed out from 3.1 per user request.
+        ZOOM: 2.9,
 
         // Vertical Offset:
-        // 0.0 = Keep head high in frame.
-        TOP_OFFSET: 0.0,
+        // 0.05 = Push down slightly to frame the new shoulders nicely.
+        TOP_OFFSET: 0.05,
     },
 
     // -------------------------------------------------------------------------
     // BODY REPLACEMENT (PROSTHETIC)
     // -------------------------------------------------------------------------
     BODY: {
-        // Where to sever the original body (Relative to Image Height).
-        // 0.23 = Chin Level. Everything below this is DELETED.
+        // Cut line (Chin Level).
         AMPUTATION_Y: 0.23,
 
-        // Procedural Body Parameters
-        NECK_WIDTH: 0.11,      // Slender neck
-        SHOULDER_WIDTH: 0.26,  // Human shoulders (not broad)
-        SHOULDER_DROP: 0.15,   // Slope of the shoulders
+        // Anatomy Constants (Relative to Image Width)
+        NECK_WIDTH: 0.095,      // Slender human neck
+        TRAPS_WIDTH: 0.16,      // Width where traps meet shoulders
+        SHOULDER_WIDTH: 0.24,   // Deltoid width
+
+        // Vertical Drop-offs (Relative to Image Height)
+        TRAPS_DROP: 0.06,       // Gentle slope of the neck muscles
+        SHOULDER_DROP: 0.14,    // Where the shoulder rounds off
     },
 
     // -------------------------------------------------------------------------
@@ -149,7 +152,6 @@ class Mirror {
             const data = idata.data;
             const bg = { r: data[0], g: data[1], b: data[2] };
 
-            // Silhouette Color: #141414 (Matched to Prosthetic)
             for (let i = 0; i < data.length; i += 4) {
                 const diff = Math.abs(data[i] - bg.r) + Math.abs(data[i + 1] - bg.g) + Math.abs(data[i + 2] - bg.b);
                 if (diff < APP_CONFIG.CHROMA_TOLERANCE) {
@@ -251,19 +253,15 @@ class Mirror {
             // 1. Draw Base Silhouette
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
 
-            // 2. THE AMPUTATION: Delete everything below the chin
-            // This removes the cape, the bad shoulders, everything.
-            // Using logic: clearRect(x, y, w, h)
+            // 2. AMPUTATION
             const ampY = this.layout.y + (this.layout.h * APP_CONFIG.BODY.AMPUTATION_Y);
             const ampHeight = this.canvas.height - ampY;
-
-            // Use 'destination-out' to carve a clean rect
             this.ctx.globalCompositeOperation = 'destination-out';
             this.ctx.fillRect(0, ampY, this.canvas.width, ampHeight);
 
-            // 3. THE PROSTHETIC: Draw new body
+            // 3. ANATOMICAL PROSTHETIC
             this.ctx.globalCompositeOperation = 'source-over';
-            this.ctx.fillStyle = '#141414'; // Matches processed silhouette color (20,20,20)
+            this.ctx.fillStyle = '#141414';
             this.drawProstheticBody(ampY);
 
             this.ctx.restore();
@@ -274,7 +272,7 @@ class Mirror {
             this.drawEye(RIGHT.x, RIGHT.y);
         }
 
-        // 5. Draw Tears (Overlay)
+        // 5. Draw Tears
         this.ctx.font = '24px "Courier New"';
         this.ctx.fillStyle = '#FFFFFF';
         this.particles.forEach(p => {
@@ -288,52 +286,69 @@ class Mirror {
     }
 
     /**
-     * PROCEDURAL BODY GENERATOR
-     * Draws a mathematically perfect simple body, replacing the cropped one.
+     * PROCEDURAL BODY GENERATOR v2
+     * Creates a natural, anatomical shoulder line.
      */
     drawProstheticBody(startY) {
-        const { x, w, h } = this.layout;
+        const { x, w } = this.layout;
         const cx = x + w / 2;
 
-        // Geometry
-        const neckRx = w * APP_CONFIG.BODY.NECK_WIDTH;
-        const shoulderRx = w * APP_CONFIG.BODY.SHOULDER_WIDTH;
-        const dropY = h * APP_CONFIG.BODY.SHOULDER_DROP; // How far down shoulders go
+        // Unpack Anatomy
+        const { NECK_WIDTH, TRAPS_WIDTH, SHOULDER_WIDTH, TRAPS_DROP, SHOULDER_DROP } = APP_CONFIG.BODY;
 
-        // Overlap slightly with the cut line to prevent gaps
-        const overlap = 2;
-        const y = startY - overlap;
+        // 1. Calculate Key Points
+        const overlap = 4; // Overlap with image to prevent gaps
+        const yTop = startY - overlap;
+
+        const neckX = w * NECK_WIDTH;
+        const trapsX = w * TRAPS_WIDTH;
+        const shoulderX = w * SHOULDER_WIDTH;
+
+        const yTraps = yTop + (this.layout.h * TRAPS_DROP);
+        const yShoulder = yTop + (this.layout.h * SHOULDER_DROP);
 
         this.ctx.beginPath();
 
-        // Start Top-Left of Neck
-        this.ctx.moveTo(cx - neckRx, y);
+        // --- LEFT SIDE ---
+        // 1. Start at Neck (Top Left)
+        this.ctx.moveTo(cx - neckX, yTop);
 
-        // Left Shoulder Curve
-        // Curve OUT towards the shoulder tip, and DOWN.
-        this.ctx.bezierCurveTo(
-            cx - neckRx * 1.2, y + dropY * 0.5, // Control 1: Neck flare
-            cx - shoulderRx * 0.8, y + dropY * 0.2, // Control 2: Shoulder top
-            cx - shoulderRx, y + dropY // Shoulder Tip
+        // 2. Trapezius Slope (Neck muscle to Shoulder joint)
+        // Concave curve creates the "Traps" feel
+        this.ctx.quadraticCurveTo(
+            cx - neckX * 1.2, yTraps * 0.9, // Control Point
+            cx - trapsX, yTraps             // End Point (Start of Shoulder)
         );
 
-        // Left Arm (Straight down)
-        this.ctx.lineTo(cx - shoulderRx, this.canvas.height);
-
-        // Bottom Line (across screen)
-        this.ctx.lineTo(cx + shoulderRx, this.canvas.height);
-
-        // Right Arm (Up to shoulder tip)
-        this.ctx.lineTo(cx + shoulderRx, y + dropY);
-
-        // Right Shoulder Curve (Mirror)
-        this.ctx.bezierCurveTo(
-            cx + shoulderRx * 0.8, y + dropY * 0.2,
-            cx + neckRx * 1.2, y + dropY * 0.5,
-            cx + neckRx, y
+        // 3. Deltoid Rounding (Shoulder Cap)
+        // Convex curve for the shoulder bone
+        this.ctx.quadraticCurveTo(
+            cx - shoulderX * 0.9, yTraps,  // Control Point (Outward)
+            cx - shoulderX, yShoulder      // End Point (Shoulder Tip)
         );
 
-        // Close shape
+        // 4. Arm Down
+        this.ctx.lineTo(cx - shoulderX, this.canvas.height);
+
+        // --- BOTTOM ---
+        this.ctx.lineTo(cx + shoulderX, this.canvas.height);
+
+        // --- RIGHT SIDE (Mirror) ---
+        // 5. Arm Up
+        this.ctx.lineTo(cx + shoulderX, yShoulder);
+
+        // 6. Right Deltoid
+        this.ctx.quadraticCurveTo(
+            cx + shoulderX * 0.9, yTraps,
+            cx + trapsX, yTraps
+        );
+
+        // 7. Right Trapezius
+        this.ctx.quadraticCurveTo(
+            cx + neckX * 1.2, yTraps * 0.9,
+            cx + neckX, yTop
+        );
+
         this.ctx.fill();
     }
 
