@@ -62,7 +62,10 @@ export class MirrorShadow {
 
     async init() {
         try {
-            await this.loadImage(CONFIG.ASSETS.SHADOW_URL);
+            const rawImage = await this.loadImage(CONFIG.ASSETS.SHADOW_URL);
+            // Process the image to remove background and create silhouette
+            this.image = await this.processSilhouette(rawImage);
+
             this.bindEvents();
             this.resize();
             this.loop();
@@ -71,12 +74,69 @@ export class MirrorShadow {
         }
     }
 
+    /**
+     * Creates a processed version of the image:
+     * 1. Detects background color (from top-left pixel)
+     * 2. Key out background -> Transparent
+     * 3. Turn foreground -> Black
+     */
+    processSilhouette(img) {
+        return new Promise((resolve) => {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = img.width;
+            tempCanvas.height = img.height;
+            const tCtx = tempCanvas.getContext('2d');
+
+            tCtx.drawImage(img, 0, 0);
+
+            const imageData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const data = imageData.data;
+
+            // Sample background color from top-left
+            const bgR = data[0];
+            const bgG = data[1];
+            const bgB = data[2];
+
+            // Threshold for background matching
+            const threshold = 30;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                // const a = data[i + 3];
+
+                // Distance from background color
+                const dist = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
+
+                if (dist < threshold) {
+                    // Start of 'Background' -> Make Transparent
+                    data[i + 3] = 0;
+                } else {
+                    // 'Foreground' -> Make Silhouette (Black)
+                    data[i] = 17;     // R (Dark Gray/Black)
+                    data[i + 1] = 17;   // G
+                    data[i + 2] = 17;   // B
+                    data[i + 3] = 255;  // Alpha Full
+                }
+            }
+
+            tCtx.putImageData(imageData, 0, 0);
+
+            // Create a new Image from this processed canvas
+            const processedImg = new Image();
+            processedImg.src = tempCanvas.toDataURL();
+            processedImg.onload = () => resolve(processedImg);
+        });
+    }
+
     loadImage(src) {
         return new Promise((resolve, reject) => {
-            this.image = new Image();
-            this.image.src = src;
-            this.image.onload = () => resolve(this.image);
-            this.image.onerror = reject;
+            const img = new Image();
+            img.crossOrigin = "Anonymous"; // Allow pixel manipulation
+            img.src = src;
+            img.onload = () => resolve(img);
+            img.onerror = reject;
         });
     }
 
@@ -200,13 +260,8 @@ export class MirrorShadow {
             this.ctx.translate(this.metrics.tX, this.metrics.tY);
             this.ctx.scale(this.metrics.scale, this.metrics.scale);
 
-            // Draw original image
+            // Draw result (which is already processed to be a black silhouette with transparency)
             this.ctx.drawImage(this.image, 0, 0);
-
-            // Composite operation to turn non-transparent pixels black
-            this.ctx.globalCompositeOperation = 'source-in';
-            this.ctx.fillStyle = '#111';
-            this.ctx.fillRect(0, 0, this.image.width, this.image.height);
 
             this.ctx.restore();
 
