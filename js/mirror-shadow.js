@@ -37,7 +37,7 @@ const CONFIG = {
         SHADOW_COLOR: "rgba(255, 255, 255, 0.5)",
     },
     VIEWPORT: {
-        MAX_WIDTH_PERCENT: 0.85, // Image should take up 85% of screen width
+        MAX_WIDTH_PERCENT: 1.6, // Zoom in: 160% width to focus on head/shoulders
         OFFSET_Y_PERCENT: 0.05,  // Top margin
     }
 };
