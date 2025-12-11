@@ -67,65 +67,91 @@ export class MirrorShadow {
         const h = this.canvas.height;
         const ctx = this.ctx;
 
-        // == SAITAMA SILHOUETTE ==
+        const cx = this.headCenter.x;
+        const cy = this.headCenter.y;
+        const r = this.headRadius;
+
+        // == SAITAMA SILHOUETTE (Organic) ==
         ctx.fillStyle = '#111';
         ctx.save();
-
-        // No blur - Clean edges
         ctx.shadowBlur = 0;
 
-        // 1. The Head (Perfect Egg)
         ctx.beginPath();
-        ctx.ellipse(this.headCenter.x, this.headCenter.y, this.headRadius, this.headH, 0, 0, Math.PI * 2);
+
+        // 1. The Jawline (Sharp & Defined)
+        // Start at left temple
+        ctx.moveTo(cx - r, cy);
+        // Curve down to left jaw corner
+        ctx.bezierCurveTo(cx - r, cy + r * 0.8, cx - r * 0.8, cy + r * 1.2, cx - r * 0.5, cy + r * 1.4);
+        // Line to Chin (Sharp point)
+        ctx.lineTo(cx, cy + r * 1.6);
+        // Line up to right jaw corner
+        ctx.lineTo(cx + r * 0.5, cy + r * 1.4);
+        // Curve up to right temple
+        ctx.bezierCurveTo(cx + r * 0.8, cy + r * 1.2, cx + r, cy + r * 0.8, cx + r, cy);
+
+        // 2. The Cranium (Smooth but not circle)
+        // Top of head - slightly flatter than a circle
+        ctx.bezierCurveTo(cx + r, cy - r * 1.2, cx - r, cy - r * 1.2, cx - r, cy);
+
         ctx.fill();
 
-        // 2. Ears (Simple bumps)
-        const earY = this.headCenter.y + 20;
-        const earSize = 15;
+        // 3. Ears (Detailed Silhouette)
+        const earY = cy + 10;
+        const earW = 20;
+        const earH = 30;
+
         // Left Ear
         ctx.beginPath();
-        ctx.arc(this.headCenter.x - this.headRadius, earY, earSize, 0, Math.PI * 2);
+        ctx.moveTo(cx - r, earY - 10);
+        ctx.bezierCurveTo(cx - r - earW, earY - 20, cx - r - earW, earY + earH, cx - r * 0.9, earY + earH);
         ctx.fill();
+
         // Right Ear
         ctx.beginPath();
-        ctx.arc(this.headCenter.x + this.headRadius, earY, earSize, 0, Math.PI * 2);
+        ctx.moveTo(cx + r, earY - 10);
+        ctx.bezierCurveTo(cx + r + earW, earY - 20, cx + r + earW, earY + earH, cx + r * 0.9, earY + earH);
         ctx.fill();
 
-        // 3. Body (Cape/Suit)
+        // 4. Hoodie / Cape Collar (Organic cloth folds)
         ctx.beginPath();
-        const neckW = this.headRadius * 0.7;
-        const shoulderY = this.headCenter.y + this.headH * 0.8;
-        // Neck
-        ctx.moveTo(this.headCenter.x - neckW / 2, shoulderY);
-        ctx.lineTo(this.headCenter.x - neckW / 2, shoulderY + 50);
-        // Shoulders
-        ctx.quadraticCurveTo(w * 0.2, h, 0, h);
-        ctx.lineTo(w, h);
-        ctx.quadraticCurveTo(w * 0.8, h, this.headCenter.x + neckW / 2, shoulderY + 50);
-        ctx.lineTo(this.headCenter.x + neckW / 2, shoulderY);
+        const neckW = r * 0.8;
+        const neckStart = cy + r * 1.5;
+
+        // Neck base
+        ctx.moveTo(cx - neckW / 2, neckStart);
+
+        // Left Collar/Shoulder
+        ctx.bezierCurveTo(cx - r * 1.5, neckStart + 20, cx - r * 2, h * 0.8, cx - r * 3, h);
+        ctx.lineTo(w, h); // Bottom
+
+        // Right Collar/Shoulder
+        ctx.lineTo(cx + r * 3, h);
+        ctx.bezierCurveTo(cx + r * 2, h * 0.8, cx + r * 1.5, neckStart + 20, cx + neckW / 2, neckStart);
+
         ctx.fill();
 
-        // 4. The "Bored" Eyes
+        // 5. The "Bored" Eyes (Adjusted for new head)
         ctx.fillStyle = '#fff';
         const eyeW = 18;
         const eyeH = 12;
 
-        // Left Eye (Oval)
+        // Left Eye
         ctx.beginPath();
         ctx.ellipse(this.eyeLeft.x, this.eyeLeft.y, eyeW, eyeH, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Pupil (Dot)
+        // Pupil
         ctx.fillStyle = '#000';
         ctx.beginPath();
         ctx.arc(this.eyeLeft.x, this.eyeLeft.y, 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Right Eye (Oval)
+        // Right Eye
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.ellipse(this.eyeRight.x, this.eyeRight.y, eyeW, eyeH, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Pupil (Dot)
+        // Pupil
         ctx.fillStyle = '#000';
         ctx.beginPath();
         ctx.arc(this.eyeRight.x, this.eyeRight.y, 2, 0, Math.PI * 2);
