@@ -105,15 +105,32 @@ body {
 }
 
 .ghost-char {
-    position: absolute;
-    /* We will compute Left offset in JS, or just center? */
-    /* Actually, cleaner to center them if input is centered. */
-    /* Let's make them relative to center for now, or just absolute center */
+    position: relative;
+    /* Changed from absolute to allow Flow */
+    display: inline-block;
     color: #3e2723;
     font-family: 'Courier Prime', monospace;
     font-size: 24px;
-    animation: vanish 1.5s forwards;
+    animation: vanish 0.8s forwards;
+    /* Faster (0.5s -> 0.2s visible) */
     white-space: pre;
+}
+
+#ghostPlaceholder {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-family: 'Courier Prime', monospace;
+    font-size: 24px;
+    color: #3e2723;
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.2s;
+}
+
+.placeholder-hidden {
+    opacity: 0 !important;
 }
 
 @keyframes vanish {
@@ -122,14 +139,15 @@ body {
         transform: translateY(0);
     }
 
-    50% {
+    20% {
         opacity: 1;
         transform: translateY(0);
     }
 
+    /* Short hold (0.16s) */
     100% {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-5px);
     }
 }
 

@@ -8,7 +8,7 @@
  * - "Ghost Text": Vanishing UI for input.
  * 
  * @author Antigravity (Principal Engineer Mode)
- * @version 10.0 (Vanishing Text)
+ * @version 11.0 (Refined Ghost Text)
  */
 
 const APP_CONFIG = {
@@ -42,7 +42,7 @@ const APP_CONFIG = {
 
     EYES: {
         LEFT: { x: 0.46, y: 0.24 },
-        RIGHT: { x: 0.53, y: 0.24 }, // Asymmetrical balance
+        RIGHT: { x: 0.53, y: 0.24 },
         WIDTH: 0.045,
         HEIGHT: 0.025,
     }
@@ -87,6 +87,7 @@ class Mirror {
         this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
         this.input = document.getElementById('tearInput');
         this.ghostContainer = document.getElementById('ghostContainer');
+        this.placeholder = document.getElementById('ghostPlaceholder');
 
         this.img = null;
         this.particles = [];
@@ -105,8 +106,6 @@ class Mirror {
             this.startLoop();
 
             if (this.input) this.input.value = "";
-            // Placeholder managed by CSS style mostly, but ensuring JS doesn't overwrite it wrongly
-            this.input.placeholder = "Tell me your secrets";
 
         } catch (err) {
             console.error("Mirror Init Failed:", err);
@@ -196,14 +195,17 @@ class Mirror {
         this.input.addEventListener('input', (e) => {
             const char = e.data || this.input.value.slice(-1);
 
-            // 1. Spawning the Tear (Physics)
-            if (char && char.trim()) {
+            if (char) {
                 this.spawnTear(char);
-                this.spawnGhost(char); // 2. Spawn Visual Ghost
+                this.spawnGhost(char);
+
+                // Hide placeholder immediately
+                if (this.placeholder) {
+                    this.placeholder.classList.add('placeholder-hidden');
+                }
             }
 
-            // 3. Keep Input Empty (Invisible Logic)
-            // We use setTimeout to ensure the char is processed before clearing
+            // Clear input
             setTimeout(() => {
                 this.input.value = "";
             }, 0);
@@ -212,7 +214,6 @@ class Mirror {
 
     /**
      * SPAWN GHOST
-     * Creates a temporary span that fades out.
      */
     spawnGhost(char) {
         if (!this.ghostContainer) return;
@@ -221,22 +222,18 @@ class Mirror {
         span.textContent = char;
         span.className = 'ghost-char';
 
-        // Random slight offset to make it feel organic/creepy? 
-        // Or centered? User asked for "as I'm typing".
-        // Since input is centered, we just append to container.
-        // Wait, if we append multiple, they will stack or flow.
-        // We want them to overlap at the center, or flow?
-        // "Stays there for half second". If I type "HELLO", do I see "HELLO" fading?
-        // Or just "H", then "E" on top?
-        // Given the "Mirror" vibe, seeing them overlap in a ghostly pile is cooler.
-        // CSS centers them absolutely.
-
+        // Append to container (CSS handles flow and animation)
         this.ghostContainer.appendChild(span);
 
-        // Remove after animation (1.5s total)
+        // Remove after animation (0.8s)
         setTimeout(() => {
             if (span.parentNode) span.parentNode.removeChild(span);
-        }, 1500);
+
+            // Check if empty to restore placeholder
+            if (this.ghostContainer.children.length === 0 && this.placeholder) {
+                this.placeholder.classList.remove('placeholder-hidden');
+            }
+        }, 850); // slight buffer to ensure it's gone
     }
 
     resize() {
