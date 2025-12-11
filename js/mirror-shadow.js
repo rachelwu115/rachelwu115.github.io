@@ -18,10 +18,12 @@ export class MirrorShadow {
         window.addEventListener('resize', () => this.resize());
 
         // Input listener
+        // Input listener - Changed to keydown/input combo or just smarter input handling
         this.input.addEventListener('input', (e) => {
-            if (e.data) {
-                // Spawn tear for last typed character
-                this.spawnTear(e.data);
+            // Get the last character of the value if e.data is missing (e.g. mobile/autocomplete)
+            const char = e.data || this.input.value.slice(-1);
+            if (char) {
+                this.spawnTear(char);
             }
         });
 
