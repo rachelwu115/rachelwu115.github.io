@@ -36,7 +36,7 @@ const CONFIG = {
         // Vertical Alignment:
         // 0.0 = Top aligned.
         // 0.1 = Start rendering 10% down from viewport top (Head room).
-        TOP_OFFSET: 0.1,
+        TOP_OFFSET: 0.05, // Almost top aligned
     },
 
     EYES: {
@@ -300,11 +300,9 @@ export class MirrorShadow {
                 this.layout.width, this.layout.height
             );
 
-            // TRIM THE CAPE (Sculpt shoulders)
-            // We use 'destination-out' to erase parts of the image (the cape)
-            // to reveal a human shoulder shape underneath.
-            this.ctx.globalCompositeOperation = 'destination-out';
-            this.trimCape();
+            // TRIM THE CAPE (Temporarily Disabled to restore visibility)
+            // this.ctx.globalCompositeOperation = 'destination-out';
+            // this.trimCape();
 
             this.ctx.restore();
 
