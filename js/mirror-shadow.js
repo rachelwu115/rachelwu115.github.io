@@ -295,6 +295,13 @@ export class MirrorShadow {
                 this.layout.x, this.layout.y,
                 this.layout.width, this.layout.height
             );
+
+            // TRIM THE CAPE (Sculpt shoulders)
+            // We use 'destination-out' to erase parts of the image (the cape)
+            // to reveal a human shoulder shape underneath.
+            this.ctx.globalCompositeOperation = 'destination-out';
+            this.trimCape();
+
             this.ctx.restore();
 
             // Draw Eyes (Overlays)
@@ -314,6 +321,57 @@ export class MirrorShadow {
             this.ctx.fillText(p.char, 0, 0);
             this.ctx.restore();
         });
+    }
+
+    /**
+     * Draws negative space to "cut" the cape away and leave shoulders.
+     */
+    trimCape() {
+        const lx = this.layout.x;
+        const ly = this.layout.y;
+        const w = this.layout.width;
+        const h = this.layout.height;
+
+        this.ctx.beginPath();
+
+        // We want to cut out the "Triangle" of the cape on both sides.
+        // Neck/Shoulder Junction (approximate based on image)
+        const neckY = ly + (h * 0.45);
+        const shoulderW = w * 0.25; // Distance from center to shoulder tip
+
+        const cx = lx + w / 2; // Center X
+
+        // -- LEFT SIDE CUT --
+        // Start at top-left corner of bounding box
+        this.ctx.moveTo(lx, ly);
+        // Go down to where the shoulder should start
+        this.ctx.lineTo(lx, neckY);
+        // Curve *inward* to cut the cape, creating the top of the shoulder
+        // Control point pulls the cut inward
+        this.ctx.bezierCurveTo(
+            lx + w * 0.1, neckY + h * 0.1, // Control 1
+            cx - shoulderW, neckY + h * 0.15, // Control 2 (Shoulder Tip)
+            cx - shoulderW * 0.8, h // Bottom Point (Armpit area)
+        );
+        // Close the loop to the bottom-left
+        this.ctx.lineTo(lx, h);
+        this.ctx.lineTo(lx, ly);
+
+        // -- RIGHT SIDE CUT --
+        // Start at top-right
+        this.ctx.moveTo(lx + w, ly);
+        this.ctx.lineTo(lx + w, neckY);
+        // Curve inward
+        this.ctx.bezierCurveTo(
+            lx + w * 0.9, neckY + h * 0.1,
+            cx + shoulderW, neckY + h * 0.15,
+            cx + shoulderW * 0.8, h
+        );
+        // Close loop
+        this.ctx.lineTo(lx + w, h);
+        this.ctx.lineTo(lx + w, ly);
+
+        this.ctx.fill();
     }
 
     drawEye(eyeDef) {
