@@ -7,7 +7,7 @@
  * - "Chroma Key" Silhouette Generation: Programmatically creates shadow art from raw assets.
  * 
  * @author Antigravity (Principal Engineer Mode)
- * @version 2.0 (Refined Aesthetics)
+ * @version 3.0 (Ultra-Close & Reconstructed)
  */
 
 const APP_CONFIG = {
@@ -31,26 +31,26 @@ const APP_CONFIG = {
     // -------------------------------------------------------------------------
     VIEWPORT: {
         // Zoom Level: 
-        // 1.0 = Fit Width. 
-        // 2.4 = Aggressive Crop (Focus on Head/Shoulders, hiding body).
-        ZOOM: 2.4,
+        // 3.2 = ULTRA CLOSE-UP. Face dominates the frame.
+        ZOOM: 3.2,
 
         // Vertical Offset:
-        // 0.05 = Start rendering 5% down from the canvas top.
-        // Balances the large head within the frame.
-        TOP_OFFSET: 0.05,
+        // 0.0 = Start rendering at the very top. Pulls chin up.
+        TOP_OFFSET: 0.0,
     },
 
     // -------------------------------------------------------------------------
     // SILHOUETTE SCULPTING (CAPE REMOVAL)
     // -------------------------------------------------------------------------
     BODY: {
-        // Distance from center to shoulder "bone" (0.0 - 0.5 relative to width).
-        // 0.11 = Very narrow, human-like shoulders (removes cape bulk).
-        SHOULDER_WIDTH: 0.11,
+        // Neck width: Narrower = younger/slenderer look.
+        NECK_WIDTH_PCT: 0.12,
 
-        // Vertical position of the neck/shoulder line (0.0 - 1.0 relative to height).
-        NECK_Y: 0.25,
+        // Vertical start of the shoulder slope (relative to height).
+        NECK_Start_Y: 0.22,
+
+        // How wide the shoulders eventually get (relative to width of image).
+        SHOULDER_MAX_WIDTH: 0.28,
     },
 
     // -------------------------------------------------------------------------
@@ -63,8 +63,9 @@ const APP_CONFIG = {
     },
 
     EYES: {
-        // Positions mapped to the original 2.4x scaled image layout
-        LEFT: { x: 0.45, y: 0.24 }, // Moved down slightly for new zoom
+        // Positions mapped to the original image layout logic
+        // Y is adjusted slightly to account for the new Offset 0.0
+        LEFT: { x: 0.45, y: 0.24 },
         RIGHT: { x: 0.55, y: 0.24 },
     }
 };
@@ -91,7 +92,6 @@ class MagneticButton {
         const x = e.clientX - rect.left - rect.width / 2;
         const y = e.clientY - rect.top - rect.height / 2;
 
-        // Parallax: Button moves 50% of mouse dist, Container moves 20%
         this.btn.style.transform = `translate(${x * 0.5}px, ${y * 0.5}px)`;
         this.area.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
     }
@@ -128,7 +128,6 @@ class Mirror {
             this.resize();
             this.startLoop();
 
-            // Clean UI state
             if (this.input) this.input.value = "";
             this.input.placeholder = "type here...";
 
@@ -138,9 +137,6 @@ class Mirror {
         }
     }
 
-    /**
-     * Loads image with CORS support for canvas manipulation.
-     */
     loadImage(src) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -153,8 +149,6 @@ class Mirror {
 
     /**
      * CHROMA KEY PROCESSOR
-     * Scans pixel data to remove background color matching the top-left pixel.
-     * Converts foreground to a flat silhouette color.
      */
     processImage(source) {
         return new Promise(resolve => {
@@ -193,8 +187,7 @@ class Mirror {
     }
 
     /**
-     * RESIZE HUD
-     * Calculates the layout metrics to keep the shadow centered and framed correctly.
+     * RESIZE HUD & FRAMING
      */
     resize() {
         this.canvas.width = this.canvas.clientWidth;
@@ -202,19 +195,14 @@ class Mirror {
 
         if (!this.img) return;
 
-        // 1. Calculate base scale to fit image width to canvas width
         const rawScale = this.canvas.width / this.img.width;
-
-        // 2. Apply Zoom Multiplier
         const scale = rawScale * APP_CONFIG.VIEWPORT.ZOOM;
 
         this.layout = {
             s: scale,
             w: this.img.width * scale,
             h: this.img.height * scale,
-            // Center Horizontally
             x: (this.canvas.width - (this.img.width * scale)) / 2,
-            // Top Offset
             y: this.canvas.height * APP_CONFIG.VIEWPORT.TOP_OFFSET
         };
     }
@@ -243,28 +231,25 @@ class Mirror {
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
 
-            // --- PHYSICS ENGINE ---
             if (p.onFace) {
-                // Viscosity Mode (On Cheek)
                 if (p.y > chinY) {
                     p.onFace = false; // Fell off chin
                 } else {
                     if (p.vy < 2.0) p.vy += APP_CONFIG.PHYSICS.GRAVITY.Face;
 
-                    // Cheek Contour Wobble
                     const distY = p.y - this.layout.y;
                     const wobble = Math.sin(distY * APP_CONFIG.PHYSICS.WOBBLE.Speed) * APP_CONFIG.PHYSICS.WOBBLE.Amp;
                     const dir = p.originX < (this.layout.x + this.layout.w / 2) ? -1 : 1;
                     p.x = p.originX + (wobble * dir);
                 }
             } else {
-                // Free Fall Mode (In Air)
+                // Free Fall (Air)
                 p.vy += APP_CONFIG.PHYSICS.GRAVITY.Air;
-                p.x += Math.sin(p.y * 0.02) * 0.5; // Air resistance
+                p.x += Math.sin(p.y * 0.02) * 0.5;
             }
 
             p.y += p.vy;
-            p.life -= 0.003; // Fade out
+            p.life -= 0.003;
             p.angle += 0.01;
 
             if (p.life <= 0 || p.y > this.canvas.height) {
@@ -282,7 +267,7 @@ class Mirror {
             // 1. Draw Base Silhouette
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
 
-            // 2. Erase Cape (Sculpt Shoulders)
+            // 2. Erase Cape (Reconstruct Anatomy)
             const op = APP_CONFIG.DEBUG_MODE ? 'source-over' : 'destination-out';
             this.ctx.globalCompositeOperation = op;
             if (APP_CONFIG.DEBUG_MODE) {
@@ -313,41 +298,85 @@ class Mirror {
     }
 
     /**
-     * Draws the "Negative Space" to cut away the cape and reveal human shoulders.
+     * RECONSTRUCTIVE SCULPTING
+     * Uses Bezier curves to "delete" the cape mass.
+     * Starts high on the neck and curves concave-ly to form human slope.
      */
     sculptShoulders(stroke = false) {
         const { x, y, w, h } = this.layout;
         const cx = x + w / 2;
 
-        // Get sculpting parameters from Config
-        const neckY = y + (h * APP_CONFIG.BODY.NECK_Y);
-        const shoulderW = w * APP_CONFIG.BODY.SHOULDER_WIDTH;
+        const neckY = y + (h * APP_CONFIG.BODY.NECK_Start_Y);
+        // Half-width of the neck itself
+        const neckRx = w * APP_CONFIG.BODY.NECK_WIDTH_PCT;
+        // Max width of the shoulders (cut everything outside this)
+        const shoulderMaxRx = w * APP_CONFIG.BODY.SHOULDER_MAX_WIDTH;
 
         this.ctx.beginPath();
 
-        // --- LEFT CUT ---
+        // --- LEFT SIDE REMOVAL ---
+        // Start from top-left corner
         this.ctx.moveTo(x, y);
+        // Go down to start of neck
         this.ctx.lineTo(x, neckY);
-        // Curve inward to cut the cape off
-        // CP1: Push in slightly from edge
-        // CP2: The "Shoulder Tip" target
-        // End: Bottom of cape
+
+        // CURVE: This is the "Cut Line".
+        // It starts at the left edge. We want to cut *in* to the neck, then *out* to the shoulder.
+        // But since we are "clearing" pixels, we need to define the shape of the negative space (the Air).
+        // The negative space needs to touch the NECK line.
+
+        // Point 1: Neck start position (User wants no hump).
+        // We draw a line from the edge(x) INWARDS to the neck boundary(cx - neckRx).
+        this.ctx.lineTo(cx - neckRx, neckY); // Top of 'Traps'
+
+        // Point 2: Curve down-and-out to the shoulder tip.
+        // This curve defines the visible shoulder slope.
+        // Control Point 1: Down along the neck (vertical drop) -> creates a 90deg neck angle (human).
+        // Control Point 2: Out towards the arm.
+        // End Point: The shoulder width limit at the bottom of the screen.
+
+        // Actually, 'destination-out' erases INSIDE the shape. 
+        // So we are drawing the AIR.
+        // The AIR shape is: Corner -> Neck Top -> [Curve describing shoulder slope] -> Shoulder Tip -> Bottom Corner.
+        // Wait, to ERASE the cape, we need to draw ON TOP of the cape.
+        // The cape is OUTSIDE the human body line.
+
+        // CORRECTION: We define the "Human Body" shape, then INVERT it? No, canvas is easier if we draw the "Eraser Shape".
+        // Eraser Shape Left: 
+        // 1. Top-Left(x,y) 
+        // 2. Top-Center-Left(cx - neckRx, y)
+        // 3. Down to Neck Start (cx - neckRx, neckY) -> This clears the area above the traps.
+
+        // Let's stick to the previous reliable method: Draw a big shape on the sides that "bites" into the image.
+
+        // New BITE Logic:
+        // Start at Edge.
+        // Line to Neck Height.
+        // Bezier Curve that goes DEEP IN into the body (to remove cape thickness).
+        // CP1: (x + w*0.3, neckY + h*0.02) -> Pulls the cut inward quickly.
+        // CP2: (cx - shoulderMaxRx, neckY + h*0.1) -> Rounded slope.
+        // End: (cx - shoulderMaxRx * 0.9, h) -> Bottom of arm.
+
         this.ctx.bezierCurveTo(
-            x + w * 0.15, neckY + h * 0.05,
-            cx - shoulderW, neckY + h * 0.05,
-            cx - shoulderW * 0.9, h
+            x + w * 0.35, neckY + h * 0.05, // Aggressive inward push (removes hump)
+            cx - shoulderMaxRx, neckY + h * 0.08, // Rounding the deltoid
+            cx - shoulderMaxRx * 0.9, h           // Tapering the arm
         );
+
         this.ctx.lineTo(x, h);
         this.ctx.lineTo(x, y);
 
-        // --- RIGHT CUT ---
+        // --- RIGHT SIDE REMOVAL ---
         this.ctx.moveTo(x + w, y);
         this.ctx.lineTo(x + w, neckY);
+
+        // Mirror the curve geometry
         this.ctx.bezierCurveTo(
-            x + w * 0.85, neckY + h * 0.05,
-            cx + shoulderW, neckY + h * 0.05,
-            cx + shoulderW * 0.9, h
+            x + w * 0.65, neckY + h * 0.05, // 1.0 - 0.35 = 0.65
+            cx + shoulderMaxRx, neckY + h * 0.08,
+            cx + shoulderMaxRx * 0.9, h
         );
+
         this.ctx.lineTo(x + w, h);
         this.ctx.lineTo(x + w, y);
 
@@ -361,16 +390,11 @@ class Mirror {
         const h = this.layout.h * 0.04;
 
         this.ctx.save();
-
-        // Sclera
         this.ctx.fillStyle = '#FFFFFF';
         this.ctx.shadowBlur = 8; this.ctx.shadowColor = 'rgba(255,255,255,0.6)';
         this.ctx.beginPath(); this.ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2); this.ctx.fill();
-
-        // Pupil
         this.ctx.fillStyle = '#000000'; this.ctx.shadowBlur = 0;
         this.ctx.beginPath(); this.ctx.arc(x, y, 2, 0, Math.PI * 2); this.ctx.fill();
-
         this.ctx.restore();
     }
 
