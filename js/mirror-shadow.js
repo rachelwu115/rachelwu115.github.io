@@ -66,71 +66,98 @@ export class MirrorShadow {
         const h = this.canvas.height;
         const ctx = this.ctx;
 
-        // Shadow Silhouette
-        ctx.fillStyle = '#111';
+        ctx.save();
+
+        // Fuzzy Edge Effect
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#000';
+        ctx.fillStyle = '#0a0a0a';
+
+        // Realistic Head Silhouette
         ctx.beginPath();
 
-        // Big Head
-        ctx.arc(this.headCenter.x, this.headCenter.y, this.headRadius, 0, Math.PI * 2);
+        // Cranium (Top)
+        ctx.arc(this.headCenter.x, this.headCenter.y - 20, this.headRadius, Math.PI, 0);
 
-        // Minimal Neck/Shoulders
-        const neckWidth = this.headRadius * 0.4;
-        ctx.rect(this.headCenter.x - neckWidth / 2, this.headCenter.y + this.headRadius * 0.8, neckWidth, this.headRadius);
+        // Right Cheek/Jaw
+        ctx.bezierCurveTo(
+            this.headCenter.x + this.headRadius, this.headCenter.y + 60, // Control point 1 (Cheekbone)
+            this.headCenter.x + this.headRadius * 0.8, this.headCenter.y + 120, // Control point 2 (Jaw)
+            this.headCenter.x, this.headCenter.y + 160 // Chin
+        );
 
-        // Shoulders sloping out
-        ctx.moveTo(this.headCenter.x - neckWidth / 2, this.headCenter.y + this.headRadius);
-        ctx.quadraticCurveTo(w * 0.2, h * 0.8, w * 0.1, h); // Left shoulder
-        ctx.lineTo(w * 0.9, h); // Bottom
-        ctx.lineTo(w * 0.8, h * 0.8); // Right shoulder start
-        ctx.quadraticCurveTo(w * 0.8, h * 0.8, this.headCenter.x + neckWidth / 2, this.headCenter.y + this.headRadius);
+        // Left Cheek/Jaw
+        ctx.bezierCurveTo(
+            this.headCenter.x - this.headRadius * 0.8, this.headCenter.y + 120, // Jaw
+            this.headCenter.x - this.headRadius, this.headCenter.y + 60, // Cheekbone
+            this.headCenter.x - this.headRadius, this.headCenter.y - 20 // Back to start
+        );
+
+        // Neck
+        const neckW = this.headRadius * 0.6;
+        const neckY = this.headCenter.y + 140;
+        ctx.moveTo(this.headCenter.x - neckW / 2, neckY);
+        ctx.quadraticCurveTo(this.headCenter.x - neckW, h, 0, h); // Left shoulder slope
+        ctx.lineTo(w, h);
+        ctx.quadraticCurveTo(this.headCenter.x + neckW, h, this.headCenter.x + neckW / 2, neckY); // Right shoulder slope
 
         ctx.fill();
+        ctx.restore(); // Reset shadow blur for effectiveness
 
-        // White Eyes (Larger, more expression)
+        // Eyes (Soft Glow)
+        ctx.save();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#fff';
         ctx.fillStyle = '#f0f0f0';
-        const eyeSize = this.headRadius * 0.15;
 
+        const eyeSize = 12; // Smaller, more realistic size
+
+        // Left Eye
         ctx.beginPath();
-        ctx.arc(this.eyeLeft.x, this.eyeLeft.y, eyeSize, 0, Math.PI * 2);
+        ctx.ellipse(this.eyeLeft.x, this.eyeLeft.y, eyeSize * 1.2, eyeSize, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        // Right Eye
         ctx.beginPath();
-        ctx.arc(this.eyeRight.x, this.eyeRight.y, eyeSize, 0, Math.PI * 2);
+        ctx.ellipse(this.eyeRight.x, this.eyeRight.y, eyeSize * 1.2, eyeSize, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
     }
 
     animate() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.drawShadow();
 
-        this.ctx.font = '24px "Courier New"';
+        this.ctx.font = '20px "Courier New"'; // Smaller text for scale
         this.ctx.fillStyle = '#FFFFFF';
 
         for (let i = this.particles.length - 1; i >= 0; i--) {
             let p = this.particles[i];
 
             // PHYSICS ENGINE
-            if (p.y < this.chinY) {
-                // == ON FACE (Viscous Fluid) ==
-                // Friction keeps it slow
-                if (p.vy < 2) p.vy += 0.05;
+            if (p.y < this.chinY && p.onFace) {
+                // == ON FACE (Cheek Volume) ==
 
-                // Follow Contour (Wobble)
-                // Sine wave based on Y depth to "hug" the cheek
-                const cheekContour = Math.sin((p.y - this.eyeLeft.y) * 0.05) * 5;
-                p.x = p.initialX + cheekContour;
+                // 1. Friction (Viscous flow)
+                if (p.vy < 1.5) p.vy += 0.05;
+
+                // 2. Cheek Curve (Volume)
+                // If on left side, drift left. If right, drift right. 
+                // Simulates flowing over the roundness of a cheek.
+                const sideDir = p.initialX < this.headCenter.x ? -1 : 1;
+                const cheekBulge = Math.sin((p.y - this.eyeLeft.y) * 0.015) * 0.5;
+                p.x += cheekBulge * sideDir;
 
             } else {
-                // == AIR (Free Fall) ==
-                // Gravity kicks in hard
-                p.vy += 0.5;
-
-                // Drift slightly in air
-                p.x += Math.sin(p.y * 0.02) * 0.5;
+                // == OFF CHIN (Free Fall) ==
+                p.onFace = false;
+                p.vy += 0.4; // Gravity accelerates
+                // Minimal air resistance/drift
+                p.x += Math.sin(p.y * 0.05) * 0.2;
             }
 
             p.y += p.vy;
-            p.opacity -= 0.003;
+            p.opacity -= 0.002;
             p.rotation += 0.01;
 
             // Render
@@ -138,8 +165,8 @@ export class MirrorShadow {
             this.ctx.globalAlpha = p.opacity;
             this.ctx.translate(p.x, p.y);
             this.ctx.rotate(p.rotation);
-            this.ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
-            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = "rgba(255, 255, 255, 0.4)";
+            this.ctx.shadowBlur = 4;
             this.ctx.fillText(p.char, 0, 0);
             this.ctx.restore();
 
