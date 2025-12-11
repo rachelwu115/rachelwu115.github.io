@@ -4,35 +4,30 @@
  * Architecture:
  * - Single-file module for guaranteed loading reliability.
  * - Separation of Concerns: Config / Components / Main Loop.
- * - "Chroma Key" Silhouette Generation: Programmatically creates shadow art from raw assets.
+ * - "Flood Fill" Keying: Advanced background removal that preserves internal details.
  * 
  * @author Antigravity (Principal Engineer Mode)
- * @version 7.0 (Clean Asset Replacement)
+ * @version 8.0 (Flood Fill & Final Eyes)
  */
 
 const APP_CONFIG = {
     // -------------------------------------------------------------------------
     // ASSETS
     // -------------------------------------------------------------------------
-    // User provided clean "No Cape" asset.
     IMAGE_URL: 'images/saitama-no-cape.png',
 
     // -------------------------------------------------------------------------
     // VISUAL TUNING
     // -------------------------------------------------------------------------
-    CHROMA_TOLERANCE: 30,
-    DEBUG_MODE: false,
+    // Tolerance for background color matching (0-255).
+    CHROMA_TOLERANCE: 40,
 
     // -------------------------------------------------------------------------
     // LAYOUT & FRAMING
     // -------------------------------------------------------------------------
     VIEWPORT: {
-        // Zoom Level: 
-        // 3.5 = Tight crop on Head & Shoulders (hiding the body/legs of the new full-body asset).
+        // Zoom Level: 3.5x (Preserved from last approved state)
         ZOOM: 3.5,
-
-        // Vertical Offset:
-        // 0.0 = Top align. Pulls the head up to fill the frame.
         TOP_OFFSET: 0.0,
     },
 
@@ -46,9 +41,14 @@ const APP_CONFIG = {
     },
 
     EYES: {
-        // Tuned for the new 3.5x Zoom framing
+        // Adjusted Position & Size
         LEFT: { x: 0.45, y: 0.23 },
         RIGHT: { x: 0.55, y: 0.23 },
+
+        // Size Multipliers (Relative to Image Size)
+        // Reduced from 0.07/0.04 to fit inside the head properly.
+        WIDTH: 0.045,
+        HEIGHT: 0.025,
     }
 };
 
@@ -126,23 +126,83 @@ class Mirror {
         });
     }
 
+    /**
+     * FLOOD FILL PROCESSOR
+     * - Identifies the continuous background starting from (0,0).
+     * - Sets background to Transparent.
+     * - Sets EVERYTHING ELSE (the body) to Solid Black.
+     * - Solves the "Green Dots" / "Holes" issue.
+     */
     processImage(source) {
         return new Promise(resolve => {
             const buffer = document.createElement('canvas');
-            [buffer.width, buffer.height] = [source.width, source.height];
-            const ctx = buffer.getContext('2d');
+            const w = source.width;
+            const h = source.height;
+            buffer.width = w;
+            buffer.height = h;
 
+            const ctx = buffer.getContext('2d');
             ctx.drawImage(source, 0, 0);
-            const idata = ctx.getImageData(0, 0, buffer.width, buffer.height);
+
+            const idata = ctx.getImageData(0, 0, w, h);
             const data = idata.data;
+
+            // 1. Identify Background Color (Top-Left)
             const bg = { r: data[0], g: data[1], b: data[2] };
 
-            for (let i = 0; i < data.length; i += 4) {
-                const diff = Math.abs(data[i] - bg.r) + Math.abs(data[i + 1] - bg.g) + Math.abs(data[i + 2] - bg.b);
-                if (diff < APP_CONFIG.CHROMA_TOLERANCE) {
-                    data[i + 3] = 0;
+            // 2. Create Visited Map
+            const visited = new Uint8Array(w * h); // 0 = unvisited, 1 = background
+
+            // 3. Flood Fill Queue
+            const stack = [0]; // Start at index 0 (0,0)
+            visited[0] = 1;
+
+            const match = (idx) => {
+                const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+                const diff = Math.abs(r - bg.r) + Math.abs(g - bg.g) + Math.abs(b - bg.b);
+                return diff < APP_CONFIG.CHROMA_TOLERANCE;
+            };
+
+            while (stack.length > 0) {
+                const idx4 = stack.pop(); // Byte index
+                const idx = idx4 / 4;     // Pixel index
+                const x = idx % w;
+                const y = Math.floor(idx / w);
+
+                // Check Neighbors (Up, Down, Left, Right)
+                const neighbors = [
+                    { nx: x, ny: y - 1 },
+                    { nx: x, ny: y + 1 },
+                    { nx: x - 1, ny: y },
+                    { nx: x + 1, ny: y }
+                ];
+
+                for (const { nx, ny } of neighbors) {
+                    if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                        const nIdx = ny * w + nx;
+                        if (visited[nIdx] === 0) {
+                            const nIdx4 = nIdx * 4;
+                            if (match(nIdx4)) {
+                                visited[nIdx] = 1;
+                                stack.push(nIdx4);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Apply Changes
+            for (let i = 0; i < w * h; i++) {
+                const idx = i * 4;
+                if (visited[i] === 1) {
+                    // It's Background -> Make Transparent
+                    data[idx + 3] = 0;
                 } else {
-                    data[i] = 20; data[i + 1] = 20; data[i + 2] = 20; data[i + 3] = 255;
+                    // It's Body (Not reachable from outside) -> Make PURE BLACK
+                    data[idx] = 0;
+                    data[idx + 1] = 0;
+                    data[idx + 2] = 0;
+                    data[idx + 3] = 255;
                 }
             }
 
@@ -234,19 +294,16 @@ class Mirror {
 
         if (this.img) {
             this.ctx.save();
-
-            // 1. Draw Silhouette (No Prosthetics needed!)
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
-
             this.ctx.restore();
 
-            // 2. Draw Eyes (Overlay)
+            // Draw Eyes (Overlay)
             const { LEFT, RIGHT } = APP_CONFIG.EYES;
             this.drawEye(LEFT.x, LEFT.y);
             this.drawEye(RIGHT.x, RIGHT.y);
         }
 
-        // 3. Draw Tears
+        // Draw Tears
         this.ctx.font = '24px "Courier New"';
         this.ctx.fillStyle = '#FFFFFF';
         this.particles.forEach(p => {
@@ -262,8 +319,10 @@ class Mirror {
     drawEye(rx, ry) {
         const x = this.layout.x + (rx * this.layout.w);
         const y = this.layout.y + (ry * this.layout.h);
-        const w = this.layout.w * 0.07;
-        const h = this.layout.h * 0.04;
+
+        // Revised Smaller Sizes
+        const w = this.layout.w * APP_CONFIG.EYES.WIDTH;
+        const h = this.layout.h * APP_CONFIG.EYES.HEIGHT;
 
         this.ctx.save();
         this.ctx.fillStyle = '#FFFFFF';
