@@ -22,6 +22,10 @@ const CONFIG = {
         CHROMA_TOLERANCE: 30,
     },
 
+    // VISUAL DEBUGGING
+    // Set to true to see the "Cut Lines" in RED instead of erasing the cape.
+    DEBUG: true,
+
     VIEWPORT: {
         // Zoom Level: 
         // 1.0 = Fit Width. 
