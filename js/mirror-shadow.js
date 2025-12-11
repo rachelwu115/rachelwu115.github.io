@@ -13,19 +13,19 @@ const CONFIG = {
         INPUT_ID: 'tearInput',
     },
     ASSETS: {
-        SHADOW_URL: 'images/saitama-ref.png', // One Punch Man Reference
+        SHADOW_URL: 'images/saitama-upper.png',
     },
-    // Approximate eye positions on the source image (0.0 - 1.0)
-    // Adjusted for the provided Saitama reference image
+    // Eye positions relative to the source image dimensions (0.0 - 1.0)
+    // Adjusted for the new full-body image (Head is near top)
     EYES: {
-        LEFT: { x: 0.43, y: 0.45 },
-        RIGHT: { x: 0.59, y: 0.45 },
+        LEFT: { x: 0.45, y: 0.23 },
+        RIGHT: { x: 0.55, y: 0.23 },
     },
     PHYSICS: {
         GRAVITY_AIR: 0.5,
         GRAVITY_FACE: 0.05,
         TERMINAL_VELOCITY_FACE: 2.0,
-        FACE_FRICTION_BOUNDARY: 0.65, // % of image height where face ends (chin)
+        FACE_FRICTION_BOUNDARY: 0.35, // Chin is much higher on full body image
         WOBBLE_SPEED: 0.03,
         WOBBLE_AMP: 3,
     },
@@ -35,6 +35,11 @@ const CONFIG = {
         FADE_RATE: 0.003,
         SHADOW_BLUR: 4,
         SHADOW_COLOR: "rgba(255, 255, 255, 0.5)",
+    },
+    VIEWPORT: {
+        // Zoom/Crop settings
+        SCALE_FACTOR: 2.2, // Zoom in to see upper body
+        OFFSET_Y: 0.1,     // Shift image up to center head
     }
 };
 
@@ -47,11 +52,10 @@ export class MirrorShadow {
         this.particles = [];
         this.image = null;
 
-        // Calculated layout metrics
         this.metrics = {
-            tX: 0, tY: 0, // Translation (centering)
-            scale: 1,     // Scale factor
-            w: 0, h: 0    // Rendered size
+            tX: 0, tY: 0,
+            scale: 1,
+            w: 0, h: 0
         };
 
         this.init();
@@ -103,18 +107,19 @@ export class MirrorShadow {
 
         if (!this.image) return;
 
-        // Contain image within 80% of canvas
-        const scale = Math.min(
-            (this.canvas.width * 0.8) / this.image.width,
-            (this.canvas.height * 0.8) / this.image.height
-        );
+        // Calculate scale to fill width, then apply zoom factor
+        const baseScale = this.canvas.width / (this.image.width * 0.6); // Base fit
+        const zoom = CONFIG.VIEWPORT.SCALE_FACTOR;
+        const finalScale = Math.min(baseScale, (this.canvas.height / this.image.height) * 3); // Constrain
 
         this.metrics = {
-            scale: scale,
-            w: this.image.width * scale,
-            h: this.image.height * scale,
-            tX: (this.canvas.width - this.image.width * scale) / 2,
-            tY: (this.canvas.height - this.image.height * scale) / 2
+            scale: finalScale,
+            w: this.image.width * finalScale,
+            h: this.image.height * finalScale,
+            // Center X
+            tX: (this.canvas.width - this.image.width * finalScale) / 2,
+            // Align Top (with offset to show neck/shoulders)
+            tY: (this.canvas.height * 0.1) - (this.image.height * finalScale * CONFIG.VIEWPORT.OFFSET_Y)
         };
     }
 
@@ -124,21 +129,20 @@ export class MirrorShadow {
         const isLeft = Math.random() > 0.5;
         const eyeConfig = isLeft ? CONFIG.EYES.LEFT : CONFIG.EYES.RIGHT;
 
-        // Calculate absolute spawn position based on metrics
         const startX = this.metrics.tX + (eyeConfig.x * this.metrics.w);
         const startY = this.metrics.tY + (eyeConfig.y * this.metrics.h);
 
         this.particles.push({
             char: char,
             x: startX,
-            y: startY,
-            initialX: startX, // Origin for sine wave calculations
+            y: startY + 10,
+            initialX: startX,
             vx: 0,
             vy: 0.5,
             opacity: 1,
             size: 24,
             rotation: (Math.random() - 0.5) * 0.2,
-            onFace: true, // State flag for physics
+            onFace: true,
         });
     }
 
@@ -202,20 +206,61 @@ export class MirrorShadow {
 
         if (this.image) {
             this.ctx.save();
-            // Optional: Subtle breathe effect (Can be toggled or removed)
-            // const breathe = Math.sin(Date.now() * 0.002) * 2;
 
-            this.ctx.drawImage(
-                this.image,
-                this.metrics.tX,
-                this.metrics.tY,
-                this.metrics.w,
-                this.metrics.h
-            );
+            // 1. Draw The Silhouette (The Image as Black)
+            // We use the image's alpha channel but fill it with black
+            this.ctx.translate(this.metrics.tX, this.metrics.tY);
+            this.ctx.scale(this.metrics.scale, this.metrics.scale);
+
+            // Draw original image
+            this.ctx.drawImage(this.image, 0, 0);
+
+            // Composite operation to turn non-transparent pixels black
+            this.ctx.globalCompositeOperation = 'source-in';
+            this.ctx.fillStyle = '#111';
+            this.ctx.fillRect(0, 0, this.image.width, this.image.height);
+
+            this.ctx.restore();
+
+            // 2. Draw The Eyes (Overlaid on top)
+            // Since we blackened the image, we must redraw the eyes manually
+            // using the coordinates relative to the rendered image
+            this.ctx.save();
+            this.ctx.fillStyle = '#FFFFFF';
+
+            const eyeW = this.metrics.w * 0.06; // Relative eye size
+            const eyeH = this.metrics.h * 0.035;
+
+            const lx = this.metrics.tX + (CONFIG.EYES.LEFT.x * this.metrics.w);
+            const ly = this.metrics.tY + (CONFIG.EYES.LEFT.y * this.metrics.h);
+            const rx = this.metrics.tX + (CONFIG.EYES.RIGHT.x * this.metrics.w);
+            const ry = this.metrics.tY + (CONFIG.EYES.RIGHT.y * this.metrics.h);
+
+            // Left Eye
+            this.ctx.beginPath();
+            this.ctx.ellipse(lx, ly, eyeW / 2, eyeH / 2, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+            // Left Pupil
+            this.ctx.fillStyle = '#000';
+            this.ctx.beginPath();
+            this.ctx.arc(lx, ly, 2, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Right Eye
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.beginPath();
+            this.ctx.ellipse(rx, ry, eyeW / 2, eyeH / 2, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+            // Right Pupil
+            this.ctx.fillStyle = '#000';
+            this.ctx.beginPath();
+            this.ctx.arc(rx, ry, 2, 0, Math.PI * 2);
+            this.ctx.fill();
+
             this.ctx.restore();
         }
 
-        // Draw Particles
+        // 3. Draw Particles (Tears)
         this.ctx.font = CONFIG.PARTICLES.FONT;
         this.ctx.fillStyle = CONFIG.PARTICLES.COLOR;
 
@@ -224,10 +269,8 @@ export class MirrorShadow {
             this.ctx.globalAlpha = p.opacity;
             this.ctx.translate(p.x, p.y);
             this.ctx.rotate(p.rotation);
-
             this.ctx.shadowColor = CONFIG.PARTICLES.SHADOW_COLOR;
             this.ctx.shadowBlur = CONFIG.PARTICLES.SHADOW_BLUR;
-
             this.ctx.fillText(p.char, 0, 0);
             this.ctx.restore();
         });
