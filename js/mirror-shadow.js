@@ -15,8 +15,8 @@ const CONFIG = {
     ASSETS: {
         SHADOW_URL: 'images/saitama-upper.png',
     },
-    // Eye positions relative to the source image dimensions (0.0 - 1.0)
-    // Adjusted for the new full-body image (Head is near top)
+    // Adjusted for the new full-body image
+    // Target: Head is near top.
     EYES: {
         LEFT: { x: 0.45, y: 0.23 },
         RIGHT: { x: 0.55, y: 0.23 },
@@ -25,7 +25,7 @@ const CONFIG = {
         GRAVITY_AIR: 0.5,
         GRAVITY_FACE: 0.05,
         TERMINAL_VELOCITY_FACE: 2.0,
-        FACE_FRICTION_BOUNDARY: 0.35, // Chin is much higher on full body image
+        FACE_FRICTION_BOUNDARY: 0.35,
         WOBBLE_SPEED: 0.03,
         WOBBLE_AMP: 3,
     },
@@ -37,9 +37,8 @@ const CONFIG = {
         SHADOW_COLOR: "rgba(255, 255, 255, 0.5)",
     },
     VIEWPORT: {
-        // Zoom/Crop settings
-        SCALE_FACTOR: 2.2, // Zoom in to see upper body
-        OFFSET_Y: 0.1,     // Shift image up to center head
+        MAX_WIDTH_PERCENT: 0.85, // Image should take up 85% of screen width
+        OFFSET_Y_PERCENT: 0.05,  // Top margin
     }
 };
 
@@ -61,23 +60,17 @@ export class MirrorShadow {
         this.init();
     }
 
-    /**
-     * Initialize the module: Load assets -> Bind Events -> Start Loop
-     */
     async init() {
         try {
             await this.loadImage(CONFIG.ASSETS.SHADOW_URL);
             this.bindEvents();
-            this.resize(); // Initial layout calculation
+            this.resize();
             this.loop();
         } catch (err) {
             console.error('Failed to load shadow asset:', err);
         }
     }
 
-    /**
-     * Promisified image loader
-     */
     loadImage(src) {
         return new Promise((resolve, reject) => {
             this.image = new Image();
@@ -89,37 +82,32 @@ export class MirrorShadow {
 
     bindEvents() {
         window.addEventListener('resize', () => this.resize());
-
-        // Detect typing to spawn tears
         this.input.addEventListener('input', (e) => {
             const char = e.data || this.input.value.slice(-1);
             if (char) this.spawnTear(char);
         });
     }
 
-    /**
-     * Responsive Layout Calculation
-     * Centers and correlates the image to the canvas size
-     */
     resize() {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
 
         if (!this.image) return;
 
-        // Calculate scale to fill width, then apply zoom factor
-        const baseScale = this.canvas.width / (this.image.width * 0.6); // Base fit
-        const zoom = CONFIG.VIEWPORT.SCALE_FACTOR;
-        const finalScale = Math.min(baseScale, (this.canvas.height / this.image.height) * 3); // Constrain
+        // SCALE LOGIC:
+        // We want the image width to be 85% of canvas width.
+        // This ensures margins on the side, so we see the silhouette shape.
+        const targetWidth = this.canvas.width * CONFIG.VIEWPORT.MAX_WIDTH_PERCENT;
+        const scale = targetWidth / this.image.width;
 
         this.metrics = {
-            scale: finalScale,
-            w: this.image.width * finalScale,
-            h: this.image.height * finalScale,
-            // Center X
-            tX: (this.canvas.width - this.image.width * finalScale) / 2,
-            // Align Top (with offset to show neck/shoulders)
-            tY: (this.canvas.height * 0.1) - (this.image.height * finalScale * CONFIG.VIEWPORT.OFFSET_Y)
+            scale: scale,
+            w: this.image.width * scale,
+            h: this.image.height * scale,
+            // Center Horizontally
+            tX: (this.canvas.width - (this.image.width * scale)) / 2,
+            // Align Top with small margin
+            tY: this.canvas.height * CONFIG.VIEWPORT.OFFSET_Y_PERCENT
         };
     }
 
@@ -222,14 +210,15 @@ export class MirrorShadow {
 
             this.ctx.restore();
 
-            // 2. Draw The Eyes (Overlaid on top)
-            // Since we blackened the image, we must redraw the eyes manually
-            // using the coordinates relative to the rendered image
+            // 2. Draw The Eyes (Overlaid on top - Manual Calculation for Visibility)
+            // We can't rely on the image's original eyes because they were turned black
             this.ctx.save();
             this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = 'rgba(255,255,255,0.6)';
 
-            const eyeW = this.metrics.w * 0.06; // Relative eye size
-            const eyeH = this.metrics.h * 0.035;
+            const eyeW = this.metrics.w * 0.07;
+            const eyeH = this.metrics.h * 0.04;
 
             const lx = this.metrics.tX + (CONFIG.EYES.LEFT.x * this.metrics.w);
             const ly = this.metrics.tY + (CONFIG.EYES.LEFT.y * this.metrics.h);
@@ -242,17 +231,20 @@ export class MirrorShadow {
             this.ctx.fill();
             // Left Pupil
             this.ctx.fillStyle = '#000';
+            this.ctx.shadowBlur = 0;
             this.ctx.beginPath();
             this.ctx.arc(lx, ly, 2, 0, Math.PI * 2);
             this.ctx.fill();
 
             // Right Eye
             this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.shadowBlur = 8;
             this.ctx.beginPath();
             this.ctx.ellipse(rx, ry, eyeW / 2, eyeH / 2, 0, 0, Math.PI * 2);
             this.ctx.fill();
             // Right Pupil
             this.ctx.fillStyle = '#000';
+            this.ctx.shadowBlur = 0;
             this.ctx.beginPath();
             this.ctx.arc(rx, ry, 2, 0, Math.PI * 2);
             this.ctx.fill();
