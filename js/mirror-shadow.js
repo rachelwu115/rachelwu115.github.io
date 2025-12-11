@@ -101,10 +101,11 @@ export class MirrorShadow {
         try {
             console.log('Mirror: Initializing...');
             const rawImage = await this.loadImage(CONFIG.ASSETS.URL);
-            console.log('Mirror: Image loaded. Processing silhouette...');
+            console.log('Mirror: Image loaded.');
 
-            this.image = await this.processSilhouette(rawImage);
-            console.log('Mirror: Silhouette ready.');
+            // DEBUG: Bypass Silhouette processing to see if the image works
+            // this.image = await this.processSilhouette(rawImage);
+            this.image = rawImage;
 
             this.bindEvents();
             this.resize();
