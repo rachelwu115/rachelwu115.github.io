@@ -2,19 +2,20 @@
  * MIRROR SYSTEM APPLICATION
  * 
  * Architecture:
- * - Single-file module for guaranteed loading reliability on GitHub Pages.
+ * - Single-file module for guaranteed loading reliability.
  * - Separation of Concerns: Config / Components / Main Loop.
  * - "Chroma Key" Silhouette Generation: Programmatically creates shadow art from raw assets.
  * 
  * @author Antigravity (Principal Engineer Mode)
- * @version 6.0 (Anatomical Prosthetic)
+ * @version 7.0 (Clean Asset Replacement)
  */
 
 const APP_CONFIG = {
     // -------------------------------------------------------------------------
     // ASSETS
     // -------------------------------------------------------------------------
-    IMAGE_URL: 'images/saitama-upper.png',
+    // User provided clean "No Cape" asset.
+    IMAGE_URL: 'images/saitama-no-cape.png',
 
     // -------------------------------------------------------------------------
     // VISUAL TUNING
@@ -27,29 +28,12 @@ const APP_CONFIG = {
     // -------------------------------------------------------------------------
     VIEWPORT: {
         // Zoom Level: 
-        // 2.9 = Slightly zoomed out from 3.1 per user request.
-        ZOOM: 2.9,
+        // 3.5 = Tight crop on Head & Shoulders (hiding the body/legs of the new full-body asset).
+        ZOOM: 3.5,
 
         // Vertical Offset:
-        // 0.05 = Push down slightly to frame the new shoulders nicely.
-        TOP_OFFSET: 0.05,
-    },
-
-    // -------------------------------------------------------------------------
-    // BODY REPLACEMENT (PROSTHETIC)
-    // -------------------------------------------------------------------------
-    BODY: {
-        // Cut line (Chin Level).
-        AMPUTATION_Y: 0.23,
-
-        // Anatomy Constants (Relative to Image Width)
-        NECK_WIDTH: 0.095,      // Slender human neck
-        TRAPS_WIDTH: 0.16,      // Width where traps meet shoulders
-        SHOULDER_WIDTH: 0.24,   // Deltoid width
-
-        // Vertical Drop-offs (Relative to Image Height)
-        TRAPS_DROP: 0.06,       // Gentle slope of the neck muscles
-        SHOULDER_DROP: 0.14,    // Where the shoulder rounds off
+        // 0.0 = Top align. Pulls the head up to fill the frame.
+        TOP_OFFSET: 0.0,
     },
 
     // -------------------------------------------------------------------------
@@ -62,6 +46,7 @@ const APP_CONFIG = {
     },
 
     EYES: {
+        // Tuned for the new 3.5x Zoom framing
         LEFT: { x: 0.45, y: 0.23 },
         RIGHT: { x: 0.55, y: 0.23 },
     }
@@ -250,29 +235,18 @@ class Mirror {
         if (this.img) {
             this.ctx.save();
 
-            // 1. Draw Base Silhouette
+            // 1. Draw Silhouette (No Prosthetics needed!)
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
-
-            // 2. AMPUTATION
-            const ampY = this.layout.y + (this.layout.h * APP_CONFIG.BODY.AMPUTATION_Y);
-            const ampHeight = this.canvas.height - ampY;
-            this.ctx.globalCompositeOperation = 'destination-out';
-            this.ctx.fillRect(0, ampY, this.canvas.width, ampHeight);
-
-            // 3. ANATOMICAL PROSTHETIC
-            this.ctx.globalCompositeOperation = 'source-over';
-            this.ctx.fillStyle = '#141414';
-            this.drawProstheticBody(ampY);
 
             this.ctx.restore();
 
-            // 4. Draw Eyes
+            // 2. Draw Eyes (Overlay)
             const { LEFT, RIGHT } = APP_CONFIG.EYES;
             this.drawEye(LEFT.x, LEFT.y);
             this.drawEye(RIGHT.x, RIGHT.y);
         }
 
-        // 5. Draw Tears
+        // 3. Draw Tears
         this.ctx.font = '24px "Courier New"';
         this.ctx.fillStyle = '#FFFFFF';
         this.particles.forEach(p => {
@@ -283,73 +257,6 @@ class Mirror {
             this.ctx.fillText(p.char, 0, 0);
             this.ctx.restore();
         });
-    }
-
-    /**
-     * PROCEDURAL BODY GENERATOR v2
-     * Creates a natural, anatomical shoulder line.
-     */
-    drawProstheticBody(startY) {
-        const { x, w } = this.layout;
-        const cx = x + w / 2;
-
-        // Unpack Anatomy
-        const { NECK_WIDTH, TRAPS_WIDTH, SHOULDER_WIDTH, TRAPS_DROP, SHOULDER_DROP } = APP_CONFIG.BODY;
-
-        // 1. Calculate Key Points
-        const overlap = 4; // Overlap with image to prevent gaps
-        const yTop = startY - overlap;
-
-        const neckX = w * NECK_WIDTH;
-        const trapsX = w * TRAPS_WIDTH;
-        const shoulderX = w * SHOULDER_WIDTH;
-
-        const yTraps = yTop + (this.layout.h * TRAPS_DROP);
-        const yShoulder = yTop + (this.layout.h * SHOULDER_DROP);
-
-        this.ctx.beginPath();
-
-        // --- LEFT SIDE ---
-        // 1. Start at Neck (Top Left)
-        this.ctx.moveTo(cx - neckX, yTop);
-
-        // 2. Trapezius Slope (Neck muscle to Shoulder joint)
-        // Concave curve creates the "Traps" feel
-        this.ctx.quadraticCurveTo(
-            cx - neckX * 1.2, yTraps * 0.9, // Control Point
-            cx - trapsX, yTraps             // End Point (Start of Shoulder)
-        );
-
-        // 3. Deltoid Rounding (Shoulder Cap)
-        // Convex curve for the shoulder bone
-        this.ctx.quadraticCurveTo(
-            cx - shoulderX * 0.9, yTraps,  // Control Point (Outward)
-            cx - shoulderX, yShoulder      // End Point (Shoulder Tip)
-        );
-
-        // 4. Arm Down
-        this.ctx.lineTo(cx - shoulderX, this.canvas.height);
-
-        // --- BOTTOM ---
-        this.ctx.lineTo(cx + shoulderX, this.canvas.height);
-
-        // --- RIGHT SIDE (Mirror) ---
-        // 5. Arm Up
-        this.ctx.lineTo(cx + shoulderX, yShoulder);
-
-        // 6. Right Deltoid
-        this.ctx.quadraticCurveTo(
-            cx + shoulderX * 0.9, yTraps,
-            cx + trapsX, yTraps
-        );
-
-        // 7. Right Trapezius
-        this.ctx.quadraticCurveTo(
-            cx + neckX * 1.2, yTraps * 0.9,
-            cx + neckX, yTop
-        );
-
-        this.ctx.fill();
     }
 
     drawEye(rx, ry) {
