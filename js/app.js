@@ -8,7 +8,7 @@
  * - "Ghost Text": Vanishing UI for input.
  * 
  * @author Antigravity (Principal Engineer Mode)
- * @version 11.0 (Refined Ghost Text)
+ * @version 12.0 (Custom Cursor)
  */
 
 const APP_CONFIG = {
@@ -90,6 +90,7 @@ class Mirror {
         this.placeholder = document.getElementById('ghostPlaceholder');
 
         this.img = null;
+        this.cursor = null; // Custom Cursor EL
         this.particles = [];
         this.layout = { x: 0, y: 0, w: 0, h: 0, s: 1 };
 
@@ -100,6 +101,13 @@ class Mirror {
         try {
             const raw = await this.loadImage(APP_CONFIG.IMAGE_URL);
             this.img = await this.processImage(raw);
+
+            // Init Custom Cursor
+            if (this.ghostContainer) {
+                this.cursor = document.createElement('span');
+                this.cursor.className = 'ghost-cursor';
+                this.ghostContainer.appendChild(this.cursor);
+            }
 
             this.bind();
             this.resize();
@@ -210,6 +218,9 @@ class Mirror {
                 this.input.value = "";
             }, 0);
         });
+
+        // Restore placeholder if blurred and empty?
+        // Actually, since ghost content fades, we rely on ghost count.
     }
 
     /**
@@ -222,18 +233,22 @@ class Mirror {
         span.textContent = char;
         span.className = 'ghost-char';
 
-        // Append to container (CSS handles flow and animation)
-        this.ghostContainer.appendChild(span);
+        // Insert BEFORE the cursor (so cursor is always last)
+        if (this.cursor && this.cursor.parentNode === this.ghostContainer) {
+            this.ghostContainer.insertBefore(span, this.cursor);
+        } else {
+            this.ghostContainer.appendChild(span);
+        }
 
         // Remove after animation (0.8s)
         setTimeout(() => {
             if (span.parentNode) span.parentNode.removeChild(span);
 
-            // Check if empty to restore placeholder
-            if (this.ghostContainer.children.length === 0 && this.placeholder) {
+            // Check if (children.length === 1) -> Only Cursor remains
+            if (this.ghostContainer.children.length <= 1 && this.placeholder) {
                 this.placeholder.classList.remove('placeholder-hidden');
             }
-        }, 850); // slight buffer to ensure it's gone
+        }, 850);
     }
 
     resize() {

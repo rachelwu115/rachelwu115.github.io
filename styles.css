@@ -85,10 +85,33 @@ body {
     font-size: 24px;
     color: transparent;
     /* HIDE actual text */
-    caret-color: #3e2723;
-    /* KEEP cursor visible */
+    caret-color: transparent;
+    /* Hide Native Caret */
     position: relative;
     z-index: 2;
+}
+
+/* Custom Cursor */
+.ghost-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 24px;
+    background-color: #3e2723;
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
 }
 
 #ghostContainer {
