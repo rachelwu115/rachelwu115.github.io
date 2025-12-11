@@ -5,9 +5,10 @@
  * - Single-file module for guaranteed loading reliability.
  * - Separation of Concerns: Config / Components / Main Loop.
  * - "Flood Fill" Keying: Advanced background removal.
+ * - "Ghost Text": Vanishing UI for input.
  * 
  * @author Antigravity (Principal Engineer Mode)
- * @version 9.0 (Centered Silhouette)
+ * @version 10.0 (Vanishing Text)
  */
 
 const APP_CONFIG = {
@@ -27,11 +28,7 @@ const APP_CONFIG = {
     VIEWPORT: {
         ZOOM: 3.5,
         TOP_OFFSET: 0.0,
-
-        // Manual Horizontal Adjustment to center the visual mass.
-        // Positive = Move Right. Negative = Move Left.
-        // 0.03 = Shift right by 3% of screen width to Correct "Slight Left" bias.
-        OFFSET_X: 0.03,
+        OFFSET_X: 0.03, // Centering correction
     },
 
     // -------------------------------------------------------------------------
@@ -44,11 +41,8 @@ const APP_CONFIG = {
     },
 
     EYES: {
-        // Left Eye stays at 0.46
-        // Right Eye moved slightly left (0.54 -> 0.53) to avoid edge and improve symmetry.
         LEFT: { x: 0.46, y: 0.24 },
-        RIGHT: { x: 0.53, y: 0.24 },
-
+        RIGHT: { x: 0.53, y: 0.24 }, // Asymmetrical balance
         WIDTH: 0.045,
         HEIGHT: 0.025,
     }
@@ -92,6 +86,7 @@ class Mirror {
         this.canvas = document.getElementById('shadowCanvas');
         this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
         this.input = document.getElementById('tearInput');
+        this.ghostContainer = document.getElementById('ghostContainer');
 
         this.img = null;
         this.particles = [];
@@ -110,6 +105,7 @@ class Mirror {
             this.startLoop();
 
             if (this.input) this.input.value = "";
+            // Placeholder managed by CSS style mostly, but ensuring JS doesn't overwrite it wrongly
             this.input.placeholder = "Tell me your secrets";
 
         } catch (err) {
@@ -128,9 +124,6 @@ class Mirror {
         });
     }
 
-    /**
-     * FLOOD FILL PROCESSOR
-     */
     processImage(source) {
         return new Promise(resolve => {
             const buffer = document.createElement('canvas');
@@ -198,10 +191,52 @@ class Mirror {
 
     bind() {
         window.addEventListener('resize', () => this.resize());
+
+        // --- TEXT INPUT HANDLING ---
         this.input.addEventListener('input', (e) => {
             const char = e.data || this.input.value.slice(-1);
-            if (char && char.trim()) this.spawnTear(char);
+
+            // 1. Spawning the Tear (Physics)
+            if (char && char.trim()) {
+                this.spawnTear(char);
+                this.spawnGhost(char); // 2. Spawn Visual Ghost
+            }
+
+            // 3. Keep Input Empty (Invisible Logic)
+            // We use setTimeout to ensure the char is processed before clearing
+            setTimeout(() => {
+                this.input.value = "";
+            }, 0);
         });
+    }
+
+    /**
+     * SPAWN GHOST
+     * Creates a temporary span that fades out.
+     */
+    spawnGhost(char) {
+        if (!this.ghostContainer) return;
+
+        const span = document.createElement('span');
+        span.textContent = char;
+        span.className = 'ghost-char';
+
+        // Random slight offset to make it feel organic/creepy? 
+        // Or centered? User asked for "as I'm typing".
+        // Since input is centered, we just append to container.
+        // Wait, if we append multiple, they will stack or flow.
+        // We want them to overlap at the center, or flow?
+        // "Stays there for half second". If I type "HELLO", do I see "HELLO" fading?
+        // Or just "H", then "E" on top?
+        // Given the "Mirror" vibe, seeing them overlap in a ghostly pile is cooler.
+        // CSS centers them absolutely.
+
+        this.ghostContainer.appendChild(span);
+
+        // Remove after animation (1.5s total)
+        setTimeout(() => {
+            if (span.parentNode) span.parentNode.removeChild(span);
+        }, 1500);
     }
 
     resize() {
@@ -217,7 +252,6 @@ class Mirror {
             s: scale,
             w: this.img.width * scale,
             h: this.img.height * scale,
-            // Center Layout + Manual X Offset
             x: ((this.canvas.width - (this.img.width * scale)) / 2) + (this.canvas.width * APP_CONFIG.VIEWPORT.OFFSET_X),
             y: this.canvas.height * APP_CONFIG.VIEWPORT.TOP_OFFSET
         };
