@@ -61,6 +61,57 @@ export class MirrorShadow {
         });
     }
 
+    // Helper: Draws a circle with spiky, noisy edges
+    drawSpikyHead(ctx, x, y, radius) {
+        ctx.beginPath();
+        const segments = 60; // How many spikes
+        for (let i = 0; i <= segments; i++) {
+            const theta = (i / segments) * Math.PI * 2;
+            // Random variation for "spike" effect
+            const noise = (Math.random() - 0.5) * 10;
+            const r = radius + noise;
+            const px = x + Math.cos(theta) * r;
+            const py = y + Math.sin(theta) * r;
+
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Helper: Draws melting drips at the bottom
+    drawDrips(ctx, x, y, width) {
+        const dripCount = 10;
+        const spacing = width / dripCount;
+
+        ctx.beginPath();
+        ctx.moveTo(x - width / 2, y);
+
+        for (let i = 0; i <= dripCount; i++) {
+            const px = (x - width / 2) + i * spacing;
+            // Should this drip be long or short?
+            const dripLen = Math.random() * 80 + 20;
+
+            // Curve down to drip tip
+            ctx.bezierCurveTo(px, y + dripLen / 2, px + spacing / 2, y + dripLen, px + spacing / 2, y + dripLen);
+            // Curve up to next start
+            ctx.bezierCurveTo(px + spacing / 2, y + dripLen / 2, px + spacing, y + 20, px + spacing, y);
+        }
+        ctx.lineTo(x + width / 2, y);
+        ctx.fill();
+
+        // Add some detached drops
+        for (let j = 0; j < 5; j++) {
+            const dropX = (x - width / 2) + Math.random() * width;
+            const dropY = y + Math.random() * 120 + 20;
+            const size = Math.random() * 4 + 2;
+            ctx.beginPath();
+            ctx.arc(dropX, dropY, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
     drawShadow() {
         const w = this.canvas.width;
         const h = this.canvas.height;
@@ -68,58 +119,55 @@ export class MirrorShadow {
 
         ctx.save();
 
-        // Fuzzy Edge Effect
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#000';
-        ctx.fillStyle = '#0a0a0a';
+        // 1. Spiky Silhouette
+        ctx.fillStyle = '#1a1a1a';
+        // Add a slight "shake" to the whole body position
+        const shakeX = (Math.random() - 0.5) * 2;
 
-        // Realistic Head Silhouette
+        // Draw Head (Spiky)
+        this.drawSpikyHead(ctx, this.headCenter.x + shakeX, this.headCenter.y, this.headRadius);
+
+        // Draw Body (Rough Block)
         ctx.beginPath();
+        const bodyW = this.headRadius * 1.8;
+        const bodyTop = this.headCenter.y + this.headRadius * 0.5;
+        const bodyBot = h * 0.85; // Where drips start
 
-        // Cranium (Top)
-        ctx.arc(this.headCenter.x, this.headCenter.y - 20, this.headRadius, Math.PI, 0);
+        // Shoulders (Spiky/Rough)
+        const leftS = this.headCenter.x - bodyW / 2 + shakeX;
+        const rightS = this.headCenter.x + bodyW / 2 + shakeX;
 
-        // Right Cheek/Jaw
-        ctx.bezierCurveTo(
-            this.headCenter.x + this.headRadius, this.headCenter.y + 60, // Control point 1 (Cheekbone)
-            this.headCenter.x + this.headRadius * 0.8, this.headCenter.y + 120, // Control point 2 (Jaw)
-            this.headCenter.x, this.headCenter.y + 160 // Chin
-        );
-
-        // Left Cheek/Jaw
-        ctx.bezierCurveTo(
-            this.headCenter.x - this.headRadius * 0.8, this.headCenter.y + 120, // Jaw
-            this.headCenter.x - this.headRadius, this.headCenter.y + 60, // Cheekbone
-            this.headCenter.x - this.headRadius, this.headCenter.y - 20 // Back to start
-        );
-
-        // Neck
-        const neckW = this.headRadius * 0.6;
-        const neckY = this.headCenter.y + 140;
-        ctx.moveTo(this.headCenter.x - neckW / 2, neckY);
-        ctx.quadraticCurveTo(this.headCenter.x - neckW, h, 0, h); // Left shoulder slope
-        ctx.lineTo(w, h);
-        ctx.quadraticCurveTo(this.headCenter.x + neckW, h, this.headCenter.x + neckW / 2, neckY); // Right shoulder slope
-
+        ctx.moveTo(leftS, bodyBot);
+        ctx.lineTo(leftS, bodyTop + 20); // Left side
+        // Neck/Shoulder connection
+        ctx.quadraticCurveTo(this.headCenter.x, bodyTop - 20, rightS, bodyTop + 20);
+        ctx.lineTo(rightS, bodyBot); // Right side
         ctx.fill();
-        ctx.restore(); // Reset shadow blur for effectiveness
 
-        // Eyes (Soft Glow)
+        // 2. Melting Drips
+        this.drawDrips(ctx, this.headCenter.x + shakeX, bodyBot, bodyW);
+
+        ctx.restore();
+
+        // 3. Glowing Eyes (Intense)
         ctx.save();
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 25; // High glow
         ctx.shadowColor = '#fff';
-        ctx.fillStyle = '#f0f0f0';
+        ctx.fillStyle = '#fff';
 
-        const eyeSize = 12; // Smaller, more realistic size
+        const eyeSize = 14;
 
         // Left Eye
         ctx.beginPath();
-        ctx.ellipse(this.eyeLeft.x, this.eyeLeft.y, eyeSize * 1.2, eyeSize, 0, 0, Math.PI * 2);
+        // Slightly jagged eyes (jitter)
+        const ey1 = this.eyeLeft.y + (Math.random() - 0.5) * 2;
+        ctx.arc(this.eyeLeft.x, ey1, eyeSize, 0, Math.PI * 2);
         ctx.fill();
 
         // Right Eye
+        const ey2 = this.eyeRight.y + (Math.random() - 0.5) * 2;
         ctx.beginPath();
-        ctx.ellipse(this.eyeRight.x, this.eyeRight.y, eyeSize * 1.2, eyeSize, 0, 0, Math.PI * 2);
+        ctx.arc(this.eyeRight.x, ey2, eyeSize, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }
