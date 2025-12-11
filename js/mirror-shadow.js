@@ -109,9 +109,12 @@ export class MirrorShadow {
 
             this.bindEvents();
             this.resize();
-            this.loop();
         } catch (error) {
             console.error('Mirror: Fatal initialization error.', error);
+        } finally {
+            // ALWAYS start the loop, even if image failed, so debug text shows
+            console.log('Mirror: Starting Render Loop (Forced)');
+            this.loop();
         }
     }
 
@@ -292,19 +295,23 @@ export class MirrorShadow {
         // Clear Frame
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // DEBUG GRID
+        this.ctx.strokeStyle = '#00FF00'; // Green Border
+        this.ctx.lineWidth = 5;
+        this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // DEBUG TEXT
+        this.ctx.font = '30px Arial';
+        this.ctx.fillStyle = 'red';
+        this.ctx.fillText("DEBUG V5: RAW IMAGE", 50, 50);
+
         if (this.image) {
             this.ctx.save();
-            // Draw Silhouette
             this.ctx.drawImage(
                 this.image,
                 this.layout.x, this.layout.y,
                 this.layout.width, this.layout.height
             );
-
-            // TRIM THE CAPE (Temporarily Disabled to restore visibility)
-            // this.ctx.globalCompositeOperation = 'destination-out';
-            // this.trimCape();
-
             this.ctx.restore();
 
             // Draw Eyes (Overlays)
