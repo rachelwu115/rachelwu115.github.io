@@ -195,23 +195,24 @@ export class MirrorShadow {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
 
+        // DEBUG: Output size to input box to verify if it's 0
+        if (this.input) {
+            this.input.value = `SIZE: ${this.canvas.width}x${this.canvas.height} | IMG: ${this.image ? 'OK' : 'NULL'}`;
+        }
+
         if (!this.image) return;
 
-        // "Objective: Cover Upper Body"
-        // Calculate Base Scale: How much to scale image width to equals canvas width?
+        // Force a safe, known scale to ensure visibility
+        // Fit width exactly (Scale = 1.0 relative to canvas width)
         const fitWidthScale = this.canvas.width / this.image.width;
-
-        // Apply Zoom Multiplier
-        const finalScale = fitWidthScale * CONFIG.VIEWPORT.ZOOM_LEVEL;
+        const finalScale = fitWidthScale * 1.5; // Moderate Zoom
 
         this.layout = {
             scale: finalScale,
             width: this.image.width * finalScale,
             height: this.image.height * finalScale,
-            // Center Horizontally
             x: (this.canvas.width - (this.image.width * finalScale)) / 2,
-            // Align Top with Offset
-            y: this.canvas.height * CONFIG.VIEWPORT.TOP_OFFSET
+            y: 50 // Force it 50px from top. Impossible to miss.
         };
     }
 
