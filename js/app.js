@@ -7,7 +7,7 @@
  * - "Chroma Key" Silhouette Generation: Programmatically creates shadow art from raw assets.
  * 
  * @author Antigravity (Principal Engineer Mode)
- * @version 3.0 (Ultra-Close & Reconstructed)
+ * @version 4.0 (Tracing User Sketch)
  */
 
 const APP_CONFIG = {
@@ -19,11 +19,10 @@ const APP_CONFIG = {
     // -------------------------------------------------------------------------
     // VISUAL TUNING
     // -------------------------------------------------------------------------
-    // Threshold (0-255) for background removal. High = aggressive removal.
+    // Threshold for background removal.
     CHROMA_TOLERANCE: 30,
 
     // Set FALSE for production (erases cape). 
-    // Set TRUE to see the "Cut Lines" in red for debugging geometry.
     DEBUG_MODE: false,
 
     // -------------------------------------------------------------------------
@@ -31,26 +30,28 @@ const APP_CONFIG = {
     // -------------------------------------------------------------------------
     VIEWPORT: {
         // Zoom Level: 
-        // 3.2 = ULTRA CLOSE-UP. Face dominates the frame.
-        ZOOM: 3.2,
+        // 3.8 = EXTREME CLOSE-UP.
+        ZOOM: 3.8,
 
         // Vertical Offset:
-        // 0.0 = Start rendering at the very top. Pulls chin up.
-        TOP_OFFSET: 0.0,
+        // 0.1 = Start rendering 10% down. Pushes the head down, hiding body.
+        TOP_OFFSET: 0.1,
     },
 
     // -------------------------------------------------------------------------
     // SILHOUETTE SCULPTING (CAPE REMOVAL)
     // -------------------------------------------------------------------------
     BODY: {
-        // Neck width: Narrower = younger/slenderer look.
-        NECK_WIDTH_PCT: 0.12,
+        // Neck width: 0.08 = Very narrow (User requested "trace red lines")
+        NECK_WIDTH_PCT: 0.08,
 
         // Vertical start of the shoulder slope (relative to height).
-        NECK_Start_Y: 0.22,
+        // 0.20 = High up on the neck/chin area.
+        NECK_Start_Y: 0.20,
 
-        // How wide the shoulders eventually get (relative to width of image).
-        SHOULDER_MAX_WIDTH: 0.28,
+        // Max width of the shoulders. 
+        // 0.22 = Narrow shoulders (cutting away all cape/traps).
+        SHOULDER_MAX_WIDTH: 0.22,
     },
 
     // -------------------------------------------------------------------------
@@ -58,13 +59,11 @@ const APP_CONFIG = {
     // -------------------------------------------------------------------------
     PHYSICS: {
         GRAVITY: { Face: 0.05, Air: 0.5 },
-        WOBBLE: { Speed: 0.03, Amp: 3 }, // Cheek contour simulation
-        BOUNDARY_Y: 0.35, // Normalized Y-pos where face ends
+        WOBBLE: { Speed: 0.03, Amp: 3 },
+        BOUNDARY_Y: 0.35,
     },
 
     EYES: {
-        // Positions mapped to the original image layout logic
-        // Y is adjusted slightly to account for the new Offset 0.0
         LEFT: { x: 0.45, y: 0.24 },
         RIGHT: { x: 0.55, y: 0.24 },
     }
@@ -72,7 +71,6 @@ const APP_CONFIG = {
 
 /**
  * COMPONENT: Magnetic Interaction
- * Adds a premium "weighted" feel to UI elements by tracking mouse movement.
  */
 class MagneticButton {
     constructor(wrapperParams) {
@@ -91,7 +89,6 @@ class MagneticButton {
         const rect = this.area.getBoundingClientRect();
         const x = e.clientX - rect.left - rect.width / 2;
         const y = e.clientY - rect.top - rect.height / 2;
-
         this.btn.style.transform = `translate(${x * 0.5}px, ${y * 0.5}px)`;
         this.area.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
     }
@@ -104,7 +101,6 @@ class MagneticButton {
 
 /**
  * COMPONENT: The Mirror
- * Core Logic for the "Weeping Shadow" interactive art piece.
  */
 class Mirror {
     constructor() {
@@ -147,9 +143,6 @@ class Mirror {
         });
     }
 
-    /**
-     * CHROMA KEY PROCESSOR
-     */
     processImage(source) {
         return new Promise(resolve => {
             const buffer = document.createElement('canvas');
@@ -186,9 +179,6 @@ class Mirror {
         });
     }
 
-    /**
-     * RESIZE HUD & FRAMING
-     */
     resize() {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
@@ -243,7 +233,6 @@ class Mirror {
                     p.x = p.originX + (wobble * dir);
                 }
             } else {
-                // Free Fall (Air)
                 p.vy += APP_CONFIG.PHYSICS.GRAVITY.Air;
                 p.x += Math.sin(p.y * 0.02) * 0.5;
             }
@@ -267,7 +256,7 @@ class Mirror {
             // 1. Draw Base Silhouette
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
 
-            // 2. Erase Cape (Reconstruct Anatomy)
+            // 2. Erase Cape (User Tracing)
             const op = APP_CONFIG.DEBUG_MODE ? 'source-over' : 'destination-out';
             this.ctx.globalCompositeOperation = op;
             if (APP_CONFIG.DEBUG_MODE) {
@@ -298,83 +287,60 @@ class Mirror {
     }
 
     /**
-     * RECONSTRUCTIVE SCULPTING
-     * Uses Bezier curves to "delete" the cape mass.
-     * Starts high on the neck and curves concave-ly to form human slope.
+     * RECONSTRUCTIVE SCULPTING (V2 - Traced from User Drawing)
+     * Cuts very deeply into the silhouette to produce a narrow, rounded slope.
      */
     sculptShoulders(stroke = false) {
         const { x, y, w, h } = this.layout;
         const cx = x + w / 2;
 
         const neckY = y + (h * APP_CONFIG.BODY.NECK_Start_Y);
-        // Half-width of the neck itself
         const neckRx = w * APP_CONFIG.BODY.NECK_WIDTH_PCT;
-        // Max width of the shoulders (cut everything outside this)
         const shoulderMaxRx = w * APP_CONFIG.BODY.SHOULDER_MAX_WIDTH;
 
         this.ctx.beginPath();
 
         // --- LEFT SIDE REMOVAL ---
-        // Start from top-left corner
+        // (Removing the Air, leaving the Body)
+        // No, using 'destination-out', we Draw the Air.
+
+        // 1. Start Top-Left
         this.ctx.moveTo(x, y);
-        // Go down to start of neck
+        // 2. Down to Neck Height
         this.ctx.lineTo(x, neckY);
 
-        // CURVE: This is the "Cut Line".
-        // It starts at the left edge. We want to cut *in* to the neck, then *out* to the shoulder.
-        // But since we are "clearing" pixels, we need to define the shape of the negative space (the Air).
-        // The negative space needs to touch the NECK line.
+        // 3. Line to the "Neck Start" (This chops off the top of the cape/traps)
+        this.ctx.lineTo(cx - neckRx, neckY);
 
-        // Point 1: Neck start position (User wants no hump).
-        // We draw a line from the edge(x) INWARDS to the neck boundary(cx - neckRx).
-        this.ctx.lineTo(cx - neckRx, neckY); // Top of 'Traps'
+        // 4. Curve OUT to the Neck/Shoulder Slope
+        // User wants a slope that goes down and out.
+        // We are drawing the SHAPE OF THE AIR above the shoulder.
+        // So we need a curve that follows the "Red Line" from the user.
+        // The Red Line IS the boundary.
+        // So our shape must fill everything ABOVE that red line.
 
-        // Point 2: Curve down-and-out to the shoulder tip.
-        // This curve defines the visible shoulder slope.
-        // Control Point 1: Down along the neck (vertical drop) -> creates a 90deg neck angle (human).
-        // Control Point 2: Out towards the arm.
-        // End Point: The shoulder width limit at the bottom of the screen.
-
-        // Actually, 'destination-out' erases INSIDE the shape. 
-        // So we are drawing the AIR.
-        // The AIR shape is: Corner -> Neck Top -> [Curve describing shoulder slope] -> Shoulder Tip -> Bottom Corner.
-        // Wait, to ERASE the cape, we need to draw ON TOP of the cape.
-        // The cape is OUTSIDE the human body line.
-
-        // CORRECTION: We define the "Human Body" shape, then INVERT it? No, canvas is easier if we draw the "Eraser Shape".
-        // Eraser Shape Left: 
-        // 1. Top-Left(x,y) 
-        // 2. Top-Center-Left(cx - neckRx, y)
-        // 3. Down to Neck Start (cx - neckRx, neckY) -> This clears the area above the traps.
-
-        // Let's stick to the previous reliable method: Draw a big shape on the sides that "bites" into the image.
-
-        // New BITE Logic:
-        // Start at Edge.
-        // Line to Neck Height.
-        // Bezier Curve that goes DEEP IN into the body (to remove cape thickness).
-        // CP1: (x + w*0.3, neckY + h*0.02) -> Pulls the cut inward quickly.
-        // CP2: (cx - shoulderMaxRx, neckY + h*0.1) -> Rounded slope.
-        // End: (cx - shoulderMaxRx * 0.9, h) -> Bottom of arm.
+        // Control points to match the user's concave/convex slope.
+        // User's slope looks fairly straight, slightly rounded at the end (deltoid).
 
         this.ctx.bezierCurveTo(
-            x + w * 0.35, neckY + h * 0.05, // Aggressive inward push (removes hump)
-            cx - shoulderMaxRx, neckY + h * 0.08, // Rounding the deltoid
-            cx - shoulderMaxRx * 0.9, h           // Tapering the arm
+            cx - neckRx * 1.5, neckY + h * 0.05, // CP1: Rounding out from neck
+            cx - shoulderMaxRx * 0.8, h * 0.8,   // CP2: Towards shoulder tip
+            cx - shoulderMaxRx, h                // End: Bottom of screen
         );
 
+        // Close the shape (Bottom Left Corner -> Top Left Corner)
         this.ctx.lineTo(x, h);
         this.ctx.lineTo(x, y);
 
         // --- RIGHT SIDE REMOVAL ---
         this.ctx.moveTo(x + w, y);
         this.ctx.lineTo(x + w, neckY);
+        this.ctx.lineTo(cx + neckRx, neckY); // Chop top traps
 
-        // Mirror the curve geometry
         this.ctx.bezierCurveTo(
-            x + w * 0.65, neckY + h * 0.05, // 1.0 - 0.35 = 0.65
-            cx + shoulderMaxRx, neckY + h * 0.08,
-            cx + shoulderMaxRx * 0.9, h
+            cx + neckRx * 1.5, neckY + h * 0.05,
+            cx + shoulderMaxRx * 0.8, h * 0.8,
+            cx + shoulderMaxRx, h
         );
 
         this.ctx.lineTo(x + w, h);
