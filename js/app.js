@@ -44,11 +44,10 @@ const APP_CONFIG = {
     },
 
     EYES: {
-        // Re-adjusting to be slightly tighter than the "Red Circle" wide version
-        // but wider than the original narrow version.
-        // Eyes move WITH the head (relative positioning).
+        // Left Eye stays at 0.46
+        // Right Eye moved slightly left (0.54 -> 0.53) to avoid edge and improve symmetry.
         LEFT: { x: 0.46, y: 0.24 },
-        RIGHT: { x: 0.54, y: 0.24 },
+        RIGHT: { x: 0.53, y: 0.24 },
 
         WIDTH: 0.045,
         HEIGHT: 0.025,
@@ -111,7 +110,7 @@ class Mirror {
             this.startLoop();
 
             if (this.input) this.input.value = "";
-            this.input.placeholder = "type here...";
+            this.input.placeholder = "Tell me your secrets";
 
         } catch (err) {
             console.error("Mirror Init Failed:", err);
