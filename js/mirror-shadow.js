@@ -5,29 +5,24 @@ export class MirrorShadow {
         this.input = document.getElementById('tearInput');
         this.particles = [];
 
-        // Eye coordinates (relative to canvas size)
+        // Coordinates
         this.eyeLeft = { x: 0, y: 0 };
         this.eyeRight = { x: 0, y: 0 };
+        this.chinY = 0;
 
         this.init();
     }
 
     init() {
-        // Resize canvas to match display size
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
         // Input listener
-        // Input listener - Changed to keydown/input combo or just smarter input handling
         this.input.addEventListener('input', (e) => {
-            // Get the last character of the value if e.data is missing (e.g. mobile/autocomplete)
             const char = e.data || this.input.value.slice(-1);
-            if (char) {
-                this.spawnTear(char);
-            }
+            if (char) this.spawnTear(char);
         });
 
-        // Start animation loop
         this.animate();
     }
 
@@ -35,28 +30,34 @@ export class MirrorShadow {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
 
-        // Recalculate eye positions based on canvas size
         const w = this.canvas.width;
         const h = this.canvas.height;
-        this.eyeLeft = { x: w * 0.45, y: h * 0.4 };
-        this.eyeRight = { x: w * 0.55, y: h * 0.4 };
+
+        // Big Head Mode (Focus on face)
+        this.headCenter = { x: w * 0.5, y: h * 0.35 };
+        this.headRadius = w * 0.25; // Much larger head
+        this.chinY = this.headCenter.y + this.headRadius * 0.9; // Chin boundary
+
+        // Eyes higher up in the big head
+        this.eyeLeft = { x: w * 0.42, y: this.headCenter.y };
+        this.eyeRight = { x: w * 0.58, y: this.headCenter.y };
     }
 
     spawnTear(char) {
-        // Randomly choose left or right eye
         const isLeft = Math.random() > 0.5;
         const eye = isLeft ? this.eyeLeft : this.eyeRight;
 
         this.particles.push({
             char: char,
             x: eye.x,
-            y: eye.y + 10,
-            initialX: eye.x, // Store origin for sine wave calculation
-            vy: 0.5, // Start very slow
-            time: 0, // Track time for wave
+            y: eye.y + 15, // Start inside the eye
+            initialX: eye.x,
+            vx: 0,
+            vy: 0.5, // Start slow (viscous)
             opacity: 1,
             size: 24,
-            rotation: (Math.random() - 0.5) * 0.2
+            rotation: (Math.random() - 0.5) * 0.2,
+            onFace: true // Track state
         });
     }
 
@@ -66,75 +67,86 @@ export class MirrorShadow {
         const ctx = this.ctx;
 
         // Shadow Silhouette
-        ctx.fillStyle = '#0a0a0a'; // Almost black
+        ctx.fillStyle = '#111';
         ctx.beginPath();
 
-        // Head
-        ctx.arc(w / 2, h * 0.4, w * 0.15, 0, Math.PI * 2);
+        // Big Head
+        ctx.arc(this.headCenter.x, this.headCenter.y, this.headRadius, 0, Math.PI * 2);
 
-        // Shoulders/Body (rough shape)
-        ctx.moveTo(w * 0.3, h * 1.0);
-        ctx.bezierCurveTo(w * 0.3, h * 0.6, w * 0.35, h * 0.5, w / 2, h * 0.5);
-        ctx.bezierCurveTo(w * 0.65, h * 0.5, w * 0.7, h * 0.6, w * 0.7, h * 1.0);
+        // Minimal Neck/Shoulders
+        const neckWidth = this.headRadius * 0.4;
+        ctx.rect(this.headCenter.x - neckWidth / 2, this.headCenter.y + this.headRadius * 0.8, neckWidth, this.headRadius);
+
+        // Shoulders sloping out
+        ctx.moveTo(this.headCenter.x - neckWidth / 2, this.headCenter.y + this.headRadius);
+        ctx.quadraticCurveTo(w * 0.2, h * 0.8, w * 0.1, h); // Left shoulder
+        ctx.lineTo(w * 0.9, h); // Bottom
+        ctx.lineTo(w * 0.8, h * 0.8); // Right shoulder start
+        ctx.quadraticCurveTo(w * 0.8, h * 0.8, this.headCenter.x + neckWidth / 2, this.headCenter.y + this.headRadius);
 
         ctx.fill();
 
-        // White Eyes (Hollow, eerie)
+        // White Eyes (Larger, more expression)
         ctx.fillStyle = '#f0f0f0';
-        // Left Eye
+        const eyeSize = this.headRadius * 0.15;
+
         ctx.beginPath();
-        ctx.arc(this.eyeLeft.x, this.eyeLeft.y, 8, 0, Math.PI * 2);
+        ctx.arc(this.eyeLeft.x, this.eyeLeft.y, eyeSize, 0, Math.PI * 2);
         ctx.fill();
 
-        // Right Eye
         ctx.beginPath();
-        ctx.arc(this.eyeRight.x, this.eyeRight.y, 8, 0, Math.PI * 2);
+        ctx.arc(this.eyeRight.x, this.eyeRight.y, eyeSize, 0, Math.PI * 2);
         ctx.fill();
     }
 
     animate() {
-        // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Draw the static shadow figure
         this.drawShadow();
 
-        // Update and draw particles (tears)
         this.ctx.font = '24px "Courier New"';
-        this.ctx.fillStyle = '#FFFFFF'; // Bright White Tears
+        this.ctx.fillStyle = '#FFFFFF';
 
         for (let i = this.particles.length - 1; i >= 0; i--) {
             let p = this.particles[i];
 
-            // Physics - Liquid Motion
-            p.time += 0.05;
-            p.vy += 0.05; // Very low gravity
+            // PHYSICS ENGINE
+            if (p.y < this.chinY) {
+                // == ON FACE (Viscous Fluid) ==
+                // Friction keeps it slow
+                if (p.vy < 2) p.vy += 0.05;
+
+                // Follow Contour (Wobble)
+                // Sine wave based on Y depth to "hug" the cheek
+                const cheekContour = Math.sin((p.y - this.eyeLeft.y) * 0.05) * 5;
+                p.x = p.initialX + cheekContour;
+
+            } else {
+                // == AIR (Free Fall) ==
+                // Gravity kicks in hard
+                p.vy += 0.5;
+
+                // Drift slightly in air
+                p.x += Math.sin(p.y * 0.02) * 0.5;
+            }
+
             p.y += p.vy;
+            p.opacity -= 0.003;
+            p.rotation += 0.01;
 
-            // Wavy path (sine wave based on time)
-            // Oscillate slightly left/right as it falls
-            p.x = p.initialX + Math.sin(p.time * 2) * 5;
-
-            p.opacity -= 0.002; // Very slow fade
-            p.rotation += 0.005;
-
-            // Draw
+            // Render
             this.ctx.save();
             this.ctx.globalAlpha = p.opacity;
             this.ctx.translate(p.x, p.y);
             this.ctx.rotate(p.rotation);
-            this.ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
-            this.ctx.shadowBlur = 5; // Add glow for visibility
+            this.ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
+            this.ctx.shadowBlur = 8;
             this.ctx.fillText(p.char, 0, 0);
             this.ctx.restore();
 
-
-            // Remove dead particles
             if (p.y > this.canvas.height || p.opacity <= 0) {
                 this.particles.splice(i, 1);
             }
         }
-
         requestAnimationFrame(() => this.animate());
     }
 }
