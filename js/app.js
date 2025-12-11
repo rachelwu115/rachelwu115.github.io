@@ -1,36 +1,77 @@
 /**
- * MIRROR SYSTEM
+ * MIRROR SYSTEM APPLICATION
  * 
- * Principal Engineer Implementation:
- * - Unifies Mirror and Magnetic logic for reliable single-file loading.
- * - Configurable, maintainable, and performance-optimized.
+ * Architecture:
+ * - Single-file module for guaranteed loading reliability on GitHub Pages.
+ * - Separation of Concerns: Config / Components / Main Loop.
+ * - "Chroma Key" Silhouette Generation: Programmatically creates shadow art from raw assets.
+ * 
+ * @author Antigravity (Principal Engineer Mode)
+ * @version 2.0 (Refined Aesthetics)
  */
 
 const APP_CONFIG = {
+    // -------------------------------------------------------------------------
     // ASSETS
+    // -------------------------------------------------------------------------
     IMAGE_URL: 'images/saitama-upper.png',
 
+    // -------------------------------------------------------------------------
     // VISUAL TUNING
-    CHROMA_TOLERANCE: 30, // 0-255: Higher removes more background
-    DEBUG_MODE: false,    // set FALSE to erase cape, TRUE to show cut lines
+    // -------------------------------------------------------------------------
+    // Threshold (0-255) for background removal. High = aggressive removal.
+    CHROMA_TOLERANCE: 30,
 
-    // LAYOUT
+    // Set FALSE for production (erases cape). 
+    // Set TRUE to see the "Cut Lines" in red for debugging geometry.
+    DEBUG_MODE: false,
+
+    // -------------------------------------------------------------------------
+    // LAYOUT & FRAMING
+    // -------------------------------------------------------------------------
     VIEWPORT: {
-        ZOOM: 1.8,        // 1.8x Zoom for Head & Shoulders framing
-        TOP_OFFSET: 0.05, // 5% padding from top
+        // Zoom Level: 
+        // 1.0 = Fit Width. 
+        // 2.4 = Aggressive Crop (Focus on Head/Shoulders, hiding body).
+        ZOOM: 2.4,
+
+        // Vertical Offset:
+        // 0.05 = Start rendering 5% down from the canvas top.
+        // Balances the large head within the frame.
+        TOP_OFFSET: 0.05,
     },
 
-    // ANIMATION
+    // -------------------------------------------------------------------------
+    // SILHOUETTE SCULPTING (CAPE REMOVAL)
+    // -------------------------------------------------------------------------
+    BODY: {
+        // Distance from center to shoulder "bone" (0.0 - 0.5 relative to width).
+        // 0.11 = Very narrow, human-like shoulders (removes cape bulk).
+        SHOULDER_WIDTH: 0.11,
+
+        // Vertical position of the neck/shoulder line (0.0 - 1.0 relative to height).
+        NECK_Y: 0.25,
+    },
+
+    // -------------------------------------------------------------------------
+    // TEAR PHYSICS & EYES
+    // -------------------------------------------------------------------------
     PHYSICS: {
         GRAVITY: { Face: 0.05, Air: 0.5 },
-        WOBBLE: { Speed: 0.03, Amp: 3 },
-        BOUNDARY_Y: 0.35, // Where face ends (relative to height)
+        WOBBLE: { Speed: 0.03, Amp: 3 }, // Cheek contour simulation
+        BOUNDARY_Y: 0.35, // Normalized Y-pos where face ends
+    },
+
+    EYES: {
+        // Positions mapped to the original 2.4x scaled image layout
+        LEFT: { x: 0.45, y: 0.24 }, // Moved down slightly for new zoom
+        RIGHT: { x: 0.55, y: 0.24 },
     }
 };
 
 /**
  * COMPONENT: Magnetic Interaction
- * Adds a subtle "pull" effect to UI elements.
+ * Adds a premium "weighted" feel to UI elements by tracking mouse movement.
  */
 class MagneticButton {
     constructor(wrapperParams) {
@@ -50,7 +91,7 @@ class MagneticButton {
         const x = e.clientX - rect.left - rect.width / 2;
         const y = e.clientY - rect.top - rect.height / 2;
 
-        // Parallax effect: Content moves more than container
+        // Parallax: Button moves 50% of mouse dist, Container moves 20%
         this.btn.style.transform = `translate(${x * 0.5}px, ${y * 0.5}px)`;
         this.area.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
     }
@@ -63,7 +104,7 @@ class MagneticButton {
 
 /**
  * COMPONENT: The Mirror
- * Renders the Saitama shadow with interactive tear physics.
+ * Core Logic for the "Weeping Shadow" interactive art piece.
  */
 class Mirror {
     constructor() {
@@ -71,7 +112,6 @@ class Mirror {
         this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
         this.input = document.getElementById('tearInput');
 
-        // State
         this.img = null;
         this.particles = [];
         this.layout = { x: 0, y: 0, w: 0, h: 0, s: 1 };
@@ -88,7 +128,8 @@ class Mirror {
             this.resize();
             this.startLoop();
 
-            if (this.input) this.input.value = ""; // Clear debug text
+            // Clean UI state
+            if (this.input) this.input.value = "";
             this.input.placeholder = "type here...";
 
         } catch (err) {
@@ -97,6 +138,9 @@ class Mirror {
         }
     }
 
+    /**
+     * Loads image with CORS support for canvas manipulation.
+     */
     loadImage(src) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -107,7 +151,11 @@ class Mirror {
         });
     }
 
-    // Pre-process image to remove background (Chroma Key)
+    /**
+     * CHROMA KEY PROCESSOR
+     * Scans pixel data to remove background color matching the top-left pixel.
+     * Converts foreground to a flat silhouette color.
+     */
     processImage(source) {
         return new Promise(resolve => {
             const buffer = document.createElement('canvas');
@@ -117,14 +165,14 @@ class Mirror {
             ctx.drawImage(source, 0, 0);
             const idata = ctx.getImageData(0, 0, buffer.width, buffer.height);
             const data = idata.data;
-            const bg = { r: data[0], g: data[1], b: data[2] }; // Sample top-left pixel
+            const bg = { r: data[0], g: data[1], b: data[2] };
 
             for (let i = 0; i < data.length; i += 4) {
                 const diff = Math.abs(data[i] - bg.r) + Math.abs(data[i + 1] - bg.g) + Math.abs(data[i + 2] - bg.b);
                 if (diff < APP_CONFIG.CHROMA_TOLERANCE) {
                     data[i + 3] = 0; // Transparent
                 } else {
-                    // Dark Silhouette Color
+                    // Dark Gray Silhouette (#141414)
                     data[i] = 20; data[i + 1] = 20; data[i + 2] = 20; data[i + 3] = 255;
                 }
             }
@@ -144,39 +192,44 @@ class Mirror {
         });
     }
 
+    /**
+     * RESIZE HUD
+     * Calculates the layout metrics to keep the shadow centered and framed correctly.
+     */
     resize() {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
 
         if (!this.img) return;
 
-        // Calculate Scale to fit width, then zoom
+        // 1. Calculate base scale to fit image width to canvas width
         const rawScale = this.canvas.width / this.img.width;
+
+        // 2. Apply Zoom Multiplier
         const scale = rawScale * APP_CONFIG.VIEWPORT.ZOOM;
 
         this.layout = {
             s: scale,
             w: this.img.width * scale,
             h: this.img.height * scale,
-            x: (this.canvas.width - (this.img.width * scale)) / 2, // Center X
-            y: this.canvas.height * APP_CONFIG.VIEWPORT.TOP_OFFSET // Top Y
+            // Center Horizontally
+            x: (this.canvas.width - (this.img.width * scale)) / 2,
+            // Top Offset
+            y: this.canvas.height * APP_CONFIG.VIEWPORT.TOP_OFFSET
         };
     }
 
     spawnTear(char) {
-        // Eyes position relative to original image (0.0-1.0)
-        const leftEye = { x: 0.45, y: 0.23 };
-        const rightEye = { x: 0.55, y: 0.23 };
-
+        const { LEFT, RIGHT } = APP_CONFIG.EYES;
         const isLeft = Math.random() > 0.5;
-        const target = isLeft ? leftEye : rightEye;
+        const target = isLeft ? LEFT : RIGHT;
 
         const x = this.layout.x + (target.x * this.layout.w);
-        const y = this.layout.y + (target.y * this.layout.h) + 10; // offset slightly down
+        const y = this.layout.y + (target.y * this.layout.h) + 10;
 
         this.particles.push({
             char, x, y,
-            originX: x, // for wobbling
+            originX: x,
             vx: 0, vy: 0,
             life: 1.0,
             angle: (Math.random() - 0.5) * 0.2,
@@ -187,13 +240,12 @@ class Mirror {
     update() {
         const chinY = this.layout.y + (APP_CONFIG.PHYSICS.BOUNDARY_Y * this.layout.h);
 
-        // Iterate backwards to allow removal
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
 
-            // PHYSICS
+            // --- PHYSICS ENGINE ---
             if (p.onFace) {
-                // Surface Tension / Viscosity Mode
+                // Viscosity Mode (On Cheek)
                 if (p.y > chinY) {
                     p.onFace = false; // Fell off chin
                 } else {
@@ -206,9 +258,9 @@ class Mirror {
                     p.x = p.originX + (wobble * dir);
                 }
             } else {
-                // Free Fall Mode
+                // Free Fall Mode (In Air)
                 p.vy += APP_CONFIG.PHYSICS.GRAVITY.Air;
-                p.x += Math.sin(p.y * 0.02) * 0.5; // Air resistance drift
+                p.x += Math.sin(p.y * 0.02) * 0.5; // Air resistance
             }
 
             p.y += p.vy;
@@ -227,25 +279,24 @@ class Mirror {
         if (this.img) {
             this.ctx.save();
 
-            // 1. Draw Silhouette
+            // 1. Draw Base Silhouette
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
 
-            // 2. Trim Cape (Composite or Debug)
+            // 2. Erase Cape (Sculpt Shoulders)
+            const op = APP_CONFIG.DEBUG_MODE ? 'source-over' : 'destination-out';
+            this.ctx.globalCompositeOperation = op;
             if (APP_CONFIG.DEBUG_MODE) {
-                this.ctx.globalCompositeOperation = 'source-over';
                 this.ctx.strokeStyle = 'red';
                 this.ctx.lineWidth = 4;
-                this.pathCapeCut(true);
-            } else {
-                this.ctx.globalCompositeOperation = 'destination-out';
-                this.pathCapeCut(false);
             }
+            this.sculptShoulders(APP_CONFIG.DEBUG_MODE);
 
             this.ctx.restore();
 
-            // 3. Draw Eyes
-            this.drawEye(0.45, 0.23); // Left
-            this.drawEye(0.55, 0.23); // Right
+            // 3. Draw Eyes (Overlay)
+            const { LEFT, RIGHT } = APP_CONFIG.EYES;
+            this.drawEye(LEFT.x, LEFT.y);
+            this.drawEye(RIGHT.x, RIGHT.y);
         }
 
         // 4. Draw Tears
@@ -261,26 +312,42 @@ class Mirror {
         });
     }
 
-    // Defines the Bezier path to remove the cape
-    pathCapeCut(stroke = false) {
+    /**
+     * Draws the "Negative Space" to cut away the cape and reveal human shoulders.
+     */
+    sculptShoulders(stroke = false) {
         const { x, y, w, h } = this.layout;
         const cx = x + w / 2;
-        const neckY = y + (h * 0.22);
-        const shoulderW = w * 0.16;
+
+        // Get sculpting parameters from Config
+        const neckY = y + (h * APP_CONFIG.BODY.NECK_Y);
+        const shoulderW = w * APP_CONFIG.BODY.SHOULDER_WIDTH;
 
         this.ctx.beginPath();
 
-        // Left Side
+        // --- LEFT CUT ---
         this.ctx.moveTo(x, y);
         this.ctx.lineTo(x, neckY);
-        this.ctx.bezierCurveTo(x + w * 0.1, neckY + h * 0.05, cx - shoulderW, neckY + h * 0.05, cx - shoulderW * 0.9, h); // Curve to bottom
+        // Curve inward to cut the cape off
+        // CP1: Push in slightly from edge
+        // CP2: The "Shoulder Tip" target
+        // End: Bottom of cape
+        this.ctx.bezierCurveTo(
+            x + w * 0.15, neckY + h * 0.05,
+            cx - shoulderW, neckY + h * 0.05,
+            cx - shoulderW * 0.9, h
+        );
         this.ctx.lineTo(x, h);
         this.ctx.lineTo(x, y);
 
-        // Right Side
+        // --- RIGHT CUT ---
         this.ctx.moveTo(x + w, y);
         this.ctx.lineTo(x + w, neckY);
-        this.ctx.bezierCurveTo(x + w * 0.9, neckY + h * 0.05, cx + shoulderW, neckY + h * 0.05, cx + shoulderW * 0.9, h);
+        this.ctx.bezierCurveTo(
+            x + w * 0.85, neckY + h * 0.05,
+            cx + shoulderW, neckY + h * 0.05,
+            cx + shoulderW * 0.9, h
+        );
         this.ctx.lineTo(x + w, h);
         this.ctx.lineTo(x + w, y);
 
