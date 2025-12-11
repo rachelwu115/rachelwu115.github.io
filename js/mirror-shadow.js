@@ -1,326 +1,345 @@
 /**
  * MIRROR SHADOW MODULE
  * 
- * Implements an interactive "weeping shadow" effect using HTML5 Canvas.
- * - Renders a user-provided image asset as the shadow.
- * - Simulates stylized "tear" physics (viscous face-hug -> free fall).
- * - Maps interactions to specific eye coordinates on the image.
+ * A clean, modular implementation of the "Weeping Shadow" effect.
+ * 
+ * ARCHITECTURE:
+ * 1. CONFIG: Centralized tuning parameters for easy adjustment.
+ * 2. LOADER: Async asset loading and unique "Chroma Key" processing to create silhouettes.
+ * 3. VIEWPORT: Responsive layout engine that guarantees specific framing (Head & Shoulders).
+ * 4. PHYSICS: Particle system for tear animation with surface viscosity simulation.
+ * 5. RENDERER: High-performance Canvas 2d rendering loop.
  */
 
 const CONFIG = {
-    DOM: {
-        CANVAS_ID: 'shadowCanvas',
-        INPUT_ID: 'tearInput',
-    },
     ASSETS: {
-        SHADOW_URL: 'images/saitama-upper.png',
+        // The source image for the shadow.
+        // Requires a backdrop that can be keyed out (e.g. solid white/gray/green).
+        URL: 'images/saitama-upper.png',
+
+        // Color difference threshold (0-255) for background removal.
+        // Higher = Remove more colors similar to top-left pixel.
+        CHROMA_TOLERANCE: 30,
     },
-    // Adjusted for the new full-body image
-    // Target: Head is near top.
+
+    VIEWPORT: {
+        // Zoom Level: 
+        // 1.0 = Fit Width. 
+        // >1.0 = Zoom In (Crop).
+        // 2.8 = Strong crop to focus on Head/Shoulders of a full-body image.
+        ZOOM_LEVEL: 2.8,
+
+        // Vertical Alignment:
+        // 0.0 = Top aligned.
+        // 0.1 = Start rendering 10% down from viewport top (Head room).
+        TOP_OFFSET: 0.1,
+    },
+
     EYES: {
+        // Eye positions relative to the *Original Image* dimensions (0.0 to 1.0).
+        // Mapped to the Saitama Full Body reference.
         LEFT: { x: 0.45, y: 0.23 },
         RIGHT: { x: 0.55, y: 0.23 },
+
+        // Visual styling for the "Bored" eyes
+        WIDTH_PERCENT: 0.07,  // Relative to rendered width
+        HEIGHT_PERCENT: 0.04, // Relative to rendered height
+        COLOR: '#FFFFFF',
+        PUPIL_COLOR: '#000000',
+        GLOW_BLUR: 8,
+        GLOW_COLOR: 'rgba(255, 255, 255, 0.6)',
     },
+
     PHYSICS: {
-        GRAVITY_AIR: 0.5,
-        GRAVITY_FACE: 0.05,
-        TERMINAL_VELOCITY_FACE: 2.0,
-        FACE_FRICTION_BOUNDARY: 0.35,
+        GRAVITY_FACE: 0.05,        // Slow drip
+        GRAVITY_AIR: 0.5,          // Fast fall
+        TERMINAL_VEL_FACE: 2.0,    // Max speed on face
+        FRICTION_BOUNDARY: 0.35,   // Y-position (0.0-1.0 of image) where face ends
+
+        // Cheek Contour Simulation
         WOBBLE_SPEED: 0.03,
         WOBBLE_AMP: 3,
     },
+
     PARTICLES: {
         FONT: '24px "Courier New"',
         COLOR: '#FFFFFF',
         FADE_RATE: 0.003,
-        SHADOW_BLUR: 4,
-        SHADOW_COLOR: "rgba(255, 255, 255, 0.5)",
-    },
-    VIEWPORT: {
-        MAX_WIDTH_PERCENT: 1.6, // Zoom in: 160% width to focus on head/shoulders
-        OFFSET_Y_PERCENT: 0.05,  // Top margin
     }
 };
 
 export class MirrorShadow {
     constructor() {
-        this.canvas = document.getElementById(CONFIG.DOM.CANVAS_ID);
-        this.ctx = this.canvas.getContext('2d');
-        this.input = document.getElementById(CONFIG.DOM.INPUT_ID);
+        // DOM Elements
+        this.canvas = document.getElementById('shadowCanvas');
+        this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+        this.input = document.getElementById('tearInput');
 
-        this.particles = [];
-        this.image = null;
+        // State
+        this.image = null;       // The processed silhouette
+        this.particles = [];     // Active tear particles
 
-        this.metrics = {
-            tX: 0, tY: 0,
-            scale: 1,
-            w: 0, h: 0
+        // Layout Metrics (Calculated on Resize)
+        this.layout = {
+            x: 0, y: 0,          // Top-Left render position
+            width: 0, height: 0, // Rendered dimensions
+            scale: 1             // Current scale factor
         };
 
         this.init();
     }
 
+    // =========================================================================
+    // INITIALIZATION & ASSETS
+    // =========================================================================
+
     async init() {
         try {
-            const rawImage = await this.loadImage(CONFIG.ASSETS.SHADOW_URL);
-            // Process the image to remove background and create silhouette
+            console.log('Mirror: Initializing...');
+            const rawImage = await this.loadImage(CONFIG.ASSETS.URL);
+            console.log('Mirror: Image loaded. Processing silhouette...');
+
             this.image = await this.processSilhouette(rawImage);
+            console.log('Mirror: Silhouette ready.');
 
             this.bindEvents();
             this.resize();
             this.loop();
-        } catch (err) {
-            console.error('Failed to load shadow asset:', err);
+        } catch (error) {
+            console.error('Mirror: Fatal initialization error.', error);
         }
     }
 
-    /**
-     * Creates a processed version of the image:
-     * 1. Detects background color (from top-left pixel)
-     * 2. Key out background -> Transparent
-     * 3. Turn foreground -> Black
-     */
-    processSilhouette(img) {
-        return new Promise((resolve) => {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = img.width;
-            tempCanvas.height = img.height;
-            const tCtx = tempCanvas.getContext('2d');
-
-            tCtx.drawImage(img, 0, 0);
-
-            const imageData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-            const data = imageData.data;
-
-            // Sample background color from top-left
-            const bgR = data[0];
-            const bgG = data[1];
-            const bgB = data[2];
-
-            // Threshold for background matching
-            const threshold = 30;
-
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-                // const a = data[i + 3];
-
-                // Distance from background color
-                const dist = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
-
-                if (dist < threshold) {
-                    // Start of 'Background' -> Make Transparent
-                    data[i + 3] = 0;
-                } else {
-                    // 'Foreground' -> Make Silhouette (Black)
-                    data[i] = 17;     // R (Dark Gray/Black)
-                    data[i + 1] = 17;   // G
-                    data[i + 2] = 17;   // B
-                    data[i + 3] = 255;  // Alpha Full
-                }
-            }
-
-            tCtx.putImageData(imageData, 0, 0);
-
-            // Create a new Image from this processed canvas
-            const processedImg = new Image();
-            processedImg.src = tempCanvas.toDataURL();
-            processedImg.onload = () => resolve(processedImg);
+    loadImage(url) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = () => resolve(img);
+            img.onerror = (e) => reject(e);
+            img.src = url;
         });
     }
 
-    loadImage(src) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "Anonymous"; // Allow pixel manipulation
-            img.src = src;
-            img.onload = () => resolve(img);
-            img.onerror = reject;
+    /**
+     * Performs "Chroma Keying" on the image.
+     * 1. Detects background color from pixel (0,0).
+     * 2. Iterates all pixels.
+     * 3. Matches -> Transparent. Non-Matches -> Black (#111).
+     */
+    processSilhouette(sourceImg) {
+        return new Promise((resolve) => {
+            const buffer = document.createElement('canvas');
+            buffer.width = sourceImg.width;
+            buffer.height = sourceImg.height;
+            const ctx = buffer.getContext('2d', { willReadFrequently: true });
+
+            ctx.drawImage(sourceImg, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, buffer.width, buffer.height);
+            const data = imageData.data;
+
+            // Sample Background Color (Top-Left)
+            const bg = { r: data[0], g: data[1], b: data[2] };
+            const limit = CONFIG.ASSETS.CHROMA_TOLERANCE;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i + 1], b = data[i + 2];
+                const diff = Math.abs(r - bg.r) + Math.abs(g - bg.g) + Math.abs(b - bg.b);
+
+                if (diff < limit) {
+                    // Background -> Transparent
+                    data[i + 3] = 0;
+                } else {
+                    // Foreground -> Silhouette Color (Dark Gray #111111)
+                    data[i] = 17;
+                    data[i + 1] = 17;
+                    data[i + 2] = 17;
+                    data[i + 3] = 255;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            const finalImg = new Image();
+            finalImg.onload = () => resolve(finalImg);
+            finalImg.src = buffer.toDataURL();
         });
     }
 
     bindEvents() {
         window.addEventListener('resize', () => this.resize());
+
+        // Tear Input Handler
         this.input.addEventListener('input', (e) => {
             const char = e.data || this.input.value.slice(-1);
-            if (char) this.spawnTear(char);
+            if (char && char.trim() !== '') {
+                this.spawnTear(char);
+            }
         });
     }
 
+    // =========================================================================
+    // VIEWPORT & LAYOUT
+    // =========================================================================
+
     resize() {
+        // match resolution to display size
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
 
         if (!this.image) return;
 
-        // SCALE LOGIC:
-        // We want the image width to be 85% of canvas width.
-        // This ensures margins on the side, so we see the silhouette shape.
-        const targetWidth = this.canvas.width * CONFIG.VIEWPORT.MAX_WIDTH_PERCENT;
-        const scale = targetWidth / this.image.width;
+        // "Objective: Cover Upper Body"
+        // Calculate Base Scale: How much to scale image width to equals canvas width?
+        const fitWidthScale = this.canvas.width / this.image.width;
 
-        this.metrics = {
-            scale: scale,
-            w: this.image.width * scale,
-            h: this.image.height * scale,
+        // Apply Zoom Multiplier
+        const finalScale = fitWidthScale * CONFIG.VIEWPORT.ZOOM_LEVEL;
+
+        this.layout = {
+            scale: finalScale,
+            width: this.image.width * finalScale,
+            height: this.image.height * finalScale,
             // Center Horizontally
-            tX: (this.canvas.width - (this.image.width * scale)) / 2,
-            // Align Top with small margin
-            tY: this.canvas.height * CONFIG.VIEWPORT.OFFSET_Y_PERCENT
+            x: (this.canvas.width - (this.image.width * finalScale)) / 2,
+            // Align Top with Offset
+            y: this.canvas.height * CONFIG.VIEWPORT.TOP_OFFSET
         };
     }
 
+    // =========================================================================
+    // SIMULATION
+    // =========================================================================
+
     spawnTear(char) {
-        if (!this.image) return;
-
+        // Pick an eye
         const isLeft = Math.random() > 0.5;
-        const eyeConfig = isLeft ? CONFIG.EYES.LEFT : CONFIG.EYES.RIGHT;
+        const eyeDef = isLeft ? CONFIG.EYES.LEFT : CONFIG.EYES.RIGHT;
 
-        const startX = this.metrics.tX + (eyeConfig.x * this.metrics.w);
-        const startY = this.metrics.tY + (eyeConfig.y * this.metrics.h);
+        // Calculate spawn position in Canvas Space
+        const startX = this.layout.x + (eyeDef.x * this.layout.width);
+        const startY = this.layout.y + (eyeDef.y * this.layout.height);
 
         this.particles.push({
             char: char,
             x: startX,
-            y: startY + 10,
-            initialX: startX,
+            y: startY + 10,  // Drop slightly below eyelid
+            originX: startX, // Pivot point for oscillation
             vx: 0,
-            vy: 0.5,
-            opacity: 1,
-            size: 24,
-            rotation: (Math.random() - 0.5) * 0.2,
-            onFace: true,
+            vy: 0,
+            life: 1.0,       // Opacity
+            angle: (Math.random() - 0.5) * 0.2, // Slight random rotation
+            onFace: true,    // Physics state
         });
     }
 
-    /**
-     * Physics Step
-     * Updates positions, applies gravity, handles friction zones
-     */
     update() {
-        // Chin boundary in absolute pixels
-        const chinY = this.metrics.tY + (CONFIG.PHYSICS.FACE_FRICTION_BOUNDARY * this.metrics.h);
+        const chinY = this.layout.y + (CONFIG.PHYSICS.FRICTION_BOUNDARY * this.layout.height);
 
+        // Loop backwards to allow removal
         for (let i = this.particles.length - 1; i >= 0; i--) {
-            let p = this.particles[i];
+            const p = this.particles[i];
 
-            // 1. Vertical Motion (Gravity/Viscosity)
+            // 1. Gravity & Velocity
             if (p.onFace) {
-                // Check if still on face
-                if (p.y >= chinY) {
-                    p.onFace = false; // Transition to air
+                // If it passes the chin, it falls freely
+                if (p.y > chinY) {
+                    p.onFace = false;
                 } else {
-                    // Viscous Friction
-                    if (p.vy < CONFIG.PHYSICS.TERMINAL_VELOCITY_FACE) {
-                        p.vy += CONFIG.PHYSICS.GRAVITY_FACE;
-                    }
+                    // Viscous Slide (Face)
+                    if (p.vy < CONFIG.PHYSICS.TERMINAL_VEL_FACE) p.vy += CONFIG.PHYSICS.GRAVITY_FACE;
                 }
             } else {
                 // Free Fall (Air)
                 p.vy += CONFIG.PHYSICS.GRAVITY_AIR;
             }
+
+            // 2. Position Integration
             p.y += p.vy;
 
-            // 2. Horizontal Motion (Surface interactions)
+            // 3. Horizontal Micro-Physics
             if (p.onFace) {
-                // Wobble to simulate contour following
-                const originOffset = Math.sin((p.y - this.metrics.tY) * CONFIG.PHYSICS.WOBBLE_SPEED) * CONFIG.PHYSICS.WOBBLE_AMP;
-                // Direction biased away from center slightly
-                const sideBias = p.initialX < (this.metrics.tX + this.metrics.w / 2) ? -1 : 1;
-
-                p.x = p.initialX + (originOffset * sideBias);
+                // Wobble to simulate cheek volume
+                const wobble = Math.sin((p.y - this.layout.y) * CONFIG.PHYSICS.WOBBLE_SPEED) * CONFIG.PHYSICS.WOBBLE_AMP;
+                const direction = p.originX < (this.layout.x + this.layout.width / 2) ? -1 : 1; // Push outwards
+                p.x = p.originX + (wobble * direction);
             } else {
                 // Air Drift
                 p.x += Math.sin(p.y * 0.02) * 0.5;
             }
 
-            // 3. Lifecycle
-            p.opacity -= CONFIG.PARTICLES.FADE_RATE;
-            p.rotation += 0.01;
+            // 4. Lifecycle
+            p.life -= CONFIG.PARTICLES.FADE_RATE;
+            p.angle += 0.01;
 
-            if (p.y > this.canvas.height || p.opacity <= 0) {
+            // Cull dead particles
+            if (p.y > this.canvas.height || p.life <= 0) {
                 this.particles.splice(i, 1);
             }
         }
     }
 
-    /**
-     * Render Step
-     * Clears canvas -> Draws Shadow -> Draws Particles
-     */
+    // =========================================================================
+    // RENDERING
+    // =========================================================================
+
     draw() {
+        // Clear Frame
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         if (this.image) {
             this.ctx.save();
-
-            // 1. Draw The Silhouette (The Image as Black)
-            // We use the image's alpha channel but fill it with black
-            this.ctx.translate(this.metrics.tX, this.metrics.tY);
-            this.ctx.scale(this.metrics.scale, this.metrics.scale);
-
-            // Draw result (which is already processed to be a black silhouette with transparency)
-            this.ctx.drawImage(this.image, 0, 0);
-
+            // Draw Silhouette
+            this.ctx.drawImage(
+                this.image,
+                this.layout.x, this.layout.y,
+                this.layout.width, this.layout.height
+            );
             this.ctx.restore();
 
-            // 2. Draw The Eyes (Overlaid on top - Manual Calculation for Visibility)
-            // We can't rely on the image's original eyes because they were turned black
-            this.ctx.save();
-            this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.shadowBlur = 8;
-            this.ctx.shadowColor = 'rgba(255,255,255,0.6)';
-
-            const eyeW = this.metrics.w * 0.07;
-            const eyeH = this.metrics.h * 0.04;
-
-            const lx = this.metrics.tX + (CONFIG.EYES.LEFT.x * this.metrics.w);
-            const ly = this.metrics.tY + (CONFIG.EYES.LEFT.y * this.metrics.h);
-            const rx = this.metrics.tX + (CONFIG.EYES.RIGHT.x * this.metrics.w);
-            const ry = this.metrics.tY + (CONFIG.EYES.RIGHT.y * this.metrics.h);
-
-            // Left Eye
-            this.ctx.beginPath();
-            this.ctx.ellipse(lx, ly, eyeW / 2, eyeH / 2, 0, 0, Math.PI * 2);
-            this.ctx.fill();
-            // Left Pupil
-            this.ctx.fillStyle = '#000';
-            this.ctx.shadowBlur = 0;
-            this.ctx.beginPath();
-            this.ctx.arc(lx, ly, 2, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            // Right Eye
-            this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.shadowBlur = 8;
-            this.ctx.beginPath();
-            this.ctx.ellipse(rx, ry, eyeW / 2, eyeH / 2, 0, 0, Math.PI * 2);
-            this.ctx.fill();
-            // Right Pupil
-            this.ctx.fillStyle = '#000';
-            this.ctx.shadowBlur = 0;
-            this.ctx.beginPath();
-            this.ctx.arc(rx, ry, 2, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            this.ctx.restore();
+            // Draw Eyes (Overlays)
+            this.drawEye(CONFIG.EYES.LEFT);
+            this.drawEye(CONFIG.EYES.RIGHT);
         }
 
-        // 3. Draw Particles (Tears)
+        // Draw Tears
         this.ctx.font = CONFIG.PARTICLES.FONT;
         this.ctx.fillStyle = CONFIG.PARTICLES.COLOR;
 
         this.particles.forEach(p => {
             this.ctx.save();
-            this.ctx.globalAlpha = p.opacity;
+            this.ctx.globalAlpha = p.life;
             this.ctx.translate(p.x, p.y);
-            this.ctx.rotate(p.rotation);
-            this.ctx.shadowColor = CONFIG.PARTICLES.SHADOW_COLOR;
-            this.ctx.shadowBlur = CONFIG.PARTICLES.SHADOW_BLUR;
+            this.ctx.rotate(p.angle);
             this.ctx.fillText(p.char, 0, 0);
             this.ctx.restore();
         });
+    }
+
+    drawEye(eyeDef) {
+        const x = this.layout.x + (eyeDef.x * this.layout.width);
+        const y = this.layout.y + (eyeDef.y * this.layout.height);
+        const w = this.layout.width * CONFIG.EYES.WIDTH_PERCENT;
+        const h = this.layout.height * CONFIG.EYES.HEIGHT_PERCENT;
+
+        this.ctx.save();
+
+        // Sclera (White)
+        this.ctx.fillStyle = CONFIG.EYES.COLOR;
+        this.ctx.shadowColor = CONFIG.EYES.GLOW_COLOR;
+        this.ctx.shadowBlur = CONFIG.EYES.GLOW_BLUR;
+        this.ctx.beginPath();
+        this.ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Pupil (Black)
+        this.ctx.fillStyle = CONFIG.EYES.PUPIL_COLOR;
+        this.ctx.shadowBlur = 0; // No glow on pupil
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.restore();
     }
 
     loop() {
@@ -330,7 +349,7 @@ export class MirrorShadow {
     }
 }
 
+// Entry Point
 export function initMirrorShadow() {
-    // Singleton instance
     new MirrorShadow();
 }
