@@ -41,9 +41,9 @@ const APP_CONFIG = {
     },
 
     EYES: {
-        // Tighter spacing to center on face (User Feedback)
-        LEFT: { x: 0.48, y: 0.24 },
-        RIGHT: { x: 0.52, y: 0.24 },
+        // Balanced spacing (Widened per "Red Circle" reference)
+        LEFT: { x: 0.44, y: 0.24 },
+        RIGHT: { x: 0.56, y: 0.24 },
 
         // Size Multipliers (Relative to Image Size)
         WIDTH: 0.045,
