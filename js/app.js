@@ -604,19 +604,18 @@ class RubberButton {
      * Initializes the confetti particles for the explosion effect.
      */
     initConfetti() {
-        const count = 120;
+        const count = 150;
         this.confettiGroup = new THREE.Group();
         this.scene.add(this.confettiGroup);
 
-        // Shared Geometry & Material
-        const geo = new THREE.PlaneGeometry(8, 8);
+        const geo = new THREE.PlaneGeometry(6, 6);
         const mat = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             side: THREE.DoubleSide
         });
 
         for (let i = 0; i < count; i++) {
-            const mesh = new THREE.Mesh(geo, mat.clone()); // Clone mat for individual colors
+            const mesh = new THREE.Mesh(geo, mat.clone());
             mesh.visible = false;
             this.confettiGroup.add(mesh);
 
@@ -624,6 +623,8 @@ class RubberButton {
                 mesh: mesh,
                 vel: new THREE.Vector3(),
                 rotVel: new THREE.Vector3(),
+                swaySpeed: 0.005 + Math.random() * 0.01,
+                swayOffset: Math.random() * Math.PI * 2,
                 life: 0
             });
         }
@@ -662,46 +663,60 @@ class RubberButton {
         this.state.isDragging = false;
         this.mesh.visible = false;
 
-        // Visual Debug: Flash
-        this.canvas.style.backgroundColor = 'rgba(255,255,255,0.1)';
-        setTimeout(() => this.canvas.style.backgroundColor = '', 100);
+        // Flash Canvas for feedback
+        this.canvas.style.backgroundColor = 'rgba(255,255,255,0.2)';
+        setTimeout(() => this.canvas.style.backgroundColor = '', 150);
 
         // Reset Physics
         this.physics.dragOffset.set(0, 0, 0);
         this.physics.targetPressY = 0;
         this.physics.pressY = 0;
 
-        // Audio
-        this.playTone(100, 'sawtooth', 0.1, 0.5);
-        setTimeout(() => this.playTone(200, 'square', 0.2, 0.3), 50);
+        // Sound: "Pop"
+        this.playTone(150, 'sawtooth', 0.1, 0.5);
+        setTimeout(() => this.playTone(300, 'square', 0.1, 0.3), 80);
 
         // Spawn Logic
-        const center = this.physics.grabPoint.clone();
-        if (center.lengthSq() < 1) center.set(0, 10, 0);
+        // Use mesh center if grabPoint is weird, otherwise grabPoint (tip of stretch)
+        let center = this.physics.grabPoint.clone();
+        if (center.lengthSq() < 1) center = this.mesh.position.clone();
+
+        // Lift start point slightly so it doesn't clip floor
+        center.y += 5;
 
         this.particles.forEach((p) => {
             p.mesh.visible = true;
-            p.mesh.position.copy(center).addScalar((Math.random() - 0.5) * 10);
-            p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
 
+            // Start at burst point with slight spread
+            p.mesh.position.copy(center).addScalar((Math.random() - 0.5) * 5);
+            p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+
+            // "Shoot into air": High Y velocity
             p.vel.set(
-                (Math.random() - 0.5) * 25,
-                (Math.random() * 20) + 10,
-                (Math.random() - 0.5) * 25
+                (Math.random() - 0.5) * 40,   // Wide spread X
+                30 + Math.random() * 40,    // SHOOT UP (30-70 units)
+                (Math.random() - 0.5) * 40    // Wide spread Z
             );
-            p.rotVel.setRandom().multiplyScalar(0.2);
 
-            // Random Colors
+            // Fast tumbling
+            p.rotVel.set(
+                (Math.random() - 0.5) * 0.5,
+                (Math.random() - 0.5) * 0.5,
+                (Math.random() - 0.5) * 0.5
+            );
+
+            // Aesthetic Colors
             const r = Math.random();
-            if (r < 0.33) p.mesh.material.color.setHex(0xff0000);
-            else if (r < 0.66) p.mesh.material.color.setHex(0x880000);
-            else p.mesh.material.color.setHex(0xffaaaa);
+            if (r < 0.25) p.mesh.material.color.setHex(0xFFD700); // Gold
+            else if (r < 0.5) p.mesh.material.color.setHex(0xFF69B4); // Hot Pink
+            else if (r < 0.75) p.mesh.material.color.setHex(0x00FFFF); // Cyan
+            else p.mesh.material.color.setHex(0xFFFFFF); // White
 
-            p.life = 1.0 + Math.random() * 0.8;
+            p.life = 1.0; // Normalized life (will last ~2-3s based on decay)
             p.mesh.scale.set(1, 1, 1);
         });
 
-        // REGENERATE
+        // Regen
         setTimeout(() => {
             this.state.isExploded = false;
             this.mesh.visible = true;
@@ -710,7 +725,7 @@ class RubberButton {
 
             this.physics.dragOffset.set(0, 0, 0);
             this.physics.returnVelocity.set(0, 0, 0);
-        }, 2500);
+        }, 3000); // 3s before return
     }
 
     /**
