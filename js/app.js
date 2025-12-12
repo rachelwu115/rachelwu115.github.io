@@ -474,89 +474,82 @@ class RubberButton {
         window.addEventListener('resize', () => this.onResize());
 
         // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Brighter ambient
         this.scene.add(ambientLight);
 
-
-        // Main Studio Light
-        const spotLight = new THREE.SpotLight(0xffdddd, 2);
-        spotLight.position.set(100, 200, 100);
-        spotLight.angle = Math.PI / 4;
-        spotLight.penumbra = 0.5;
+        // Main Light
+        const spotLight = new THREE.SpotLight(0xffffff, 1.5);
+        spotLight.position.set(50, 100, 50);
         spotLight.castShadow = true;
-        spotLight.shadow.mapSize.width = 2048;
-        spotLight.shadow.mapSize.height = 2048;
         this.scene.add(spotLight);
 
-        // Rim Light (Edge definition)
-        const rimLight = new THREE.SpotLight(0x4455ff, 5); // Blue Rim
-        rimLight.position.set(-100, 20, -100);
-        rimLight.lookAt(0, 0, 0);
+        // Rim Light
+        const rimLight = new THREE.SpotLight(0xffaaaa, 2); // Reddish rim
+        rimLight.position.set(-50, 20, -50);
         this.scene.add(rimLight);
 
-        // INTERACTIVE LIGHT (Follows Mouse)
-        // This makes reflections move, proving 3D
-        this.cursorLight = new THREE.PointLight(0xffffff, 1, 300);
-        this.cursorLight.position.set(0, 50, 100);
-        this.scene.add(this.cursorLight);
-
         // Materials
-        // TEXTURE: Generate "PUSH ME" text dynamically
-        const textCanvas = document.createElement('canvas');
-        textCanvas.width = 512;
-        textCanvas.height = 512;
-        const ctx = textCanvas.getContext('2d');
-
-        // Fill Red Background (Matches button)
-        ctx.fillStyle = '#cc0000';
-        ctx.fillRect(0, 0, 512, 512);
-
-        // Text
-        ctx.font = 'bold 80px Arial';
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Engraved look (dark)
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.save();
-        ctx.translate(256, 256);
-        ctx.rotate(-Math.PI / 2); // Rotate text to read vertically or horizontally?
-        // Let's keep it horizontal relative to the button face.
-        // Actually, button is cylinder, Top face UVs are radial usually. 
-        // We need to check mapping.
-        ctx.restore();
-        ctx.fillText("DO NOT", 256, 200);
-        ctx.fillText("TOUCH", 256, 300);
-
-        const textMap = new THREE.CanvasTexture(textCanvas);
-
         this.rubberMat = new THREE.MeshPhysicalMaterial({
-            color: 0xcc0000,
-            map: textMap, // Apply Texture
-            emissive: 0x110000,
-            roughness: 0.15,
+            color: 0xff0000, // BRIGHT RED
+            emissive: 0x220000,
+            roughness: 0.2, // Smoother plastic
             metalness: 0.1,
-            clearcoat: 1.0,
+            clearcoat: 0.5,
             clearcoatRoughness: 0.1,
-            flatShading: false,
-            side: THREE.DoubleSide
         });
 
-        const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x050505,
-            roughness: 0.3,
-            metalness: 0.9
-        });
+        // Group
+        this.pivot = new THREE.Group();
+        this.scene.add(this.pivot);
 
-        // SOUND ENGINE (Procedural)
+        // GEOMETRY: Smaller Mechanical Button
+        // Base Unit
+        const baseGeo = new THREE.CylinderGeometry(60, 65, 10, 64);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+        this.base = new THREE.Mesh(baseGeo, baseMat);
+        this.base.position.y = -10;
+        this.base.receiveShadow = true;
+        this.pivot.add(this.base);
+
+        // The Moving Button Cap
+        this.buttonGroup = new THREE.Group();
+        this.pivot.add(this.buttonGroup);
+
+        const capGeo = new THREE.CylinderGeometry(50, 50, 15, 64);
+        this.mesh = new THREE.Mesh(capGeo, this.rubberMat);
+        this.mesh.castShadow = true;
+        this.mesh.receiveShadow = true;
+        this.mesh.position.y = 5; // Initial height
+        this.buttonGroup.add(this.mesh);
+
+        // Shadow Plane
+        const planeGeo = new THREE.PlaneGeometry(500, 500);
+        const planeMat = new THREE.ShadowMaterial({ opacity: 0.2 });
+        const plane = new THREE.Mesh(planeGeo, planeMat);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -15;
+        this.pivot.add(plane);
+
+        // State
+        this.isPressed = false;
+        this.currentY = 0;
+        this.targetY = 0;
+
+        // Interaction
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+
+        // Audio
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        this.playTone = (freq, type, duration) => {
+        this.playTone = (freq, type, duration, vol = 0.5) => {
             if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
             const osc = this.audioCtx.createOscillator();
             const gain = this.audioCtx.createGain();
             osc.type = type;
             osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(freq * 0.5, this.audioCtx.currentTime + duration);
 
-            gain.gain.setValueAtTime(0.5, this.audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + duration);
 
             osc.connect(gain);
@@ -564,49 +557,6 @@ class RubberButton {
             osc.start();
             osc.stop(this.audioCtx.currentTime + duration);
         };
-
-        // Group
-        this.pivot = new THREE.Group();
-        this.scene.add(this.pivot);
-
-        // GEOMETRY: The "Massive" Button
-        this.buttonGroup = new THREE.Group();
-        this.pivot.add(this.buttonGroup);
-
-        // Single High-Res Mesh for Physics + Bevels
-        // radiusTop, radiusBottom, height, radialSegments, heightSegments(for bending)
-        this.geometry = new THREE.CylinderGeometry(110, 115, 40, 64, 20, false);
-        this.mesh = new THREE.Mesh(this.geometry, this.rubberMat);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
-        this.mesh.position.y = 0; // Centered
-        this.pivot.add(this.mesh);
-
-        // SHADOW PLANE (Invisible but receives shadow to ground the object)
-        const planeGeo = new THREE.PlaneGeometry(500, 500);
-        const planeMat = new THREE.ShadowMaterial({ opacity: 0.3 });
-        const plane = new THREE.Mesh(planeGeo, planeMat);
-        plane.rotation.x = -Math.PI / 2;
-        plane.position.y = -30;
-        this.pivot.add(plane);
-
-        // Save Original Positions
-        this.originalPositions = Float32Array.from(this.geometry.attributes.position.array);
-        this.velocities = new Float32Array(this.originalPositions.length);
-
-        // Interaction
-        this.raycaster = new THREE.Raycaster();
-        this.mouse = new THREE.Vector2();
-        this.interactionMode = null;
-        this.dragIndex = -1;
-
-        this.targetRotation = { x: 0, y: 0 };
-        this.currentRotation = { x: 0, y: 0 };
-        this.lastMouse = { x: 0, y: 0 };
-
-        this.stiffness = 0.05;
-        this.friction = 0.90;
-        this.maxStretch = 150;
 
         this.bindEvents();
         this.start();
@@ -616,133 +566,60 @@ class RubberButton {
         if (!this.camera || !this.renderer) return;
         const width = window.innerWidth;
         const height = window.innerHeight;
-
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
     }
 
     bindEvents() {
-        const getNDC = (e) => {
+        const onDown = (e) => {
+            // Raycast check
             const rect = this.canvas.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-            const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-            return { x, y };
-        };
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-        this.canvas.addEventListener('mousemove', (e) => {
-            const ndc = getNDC(e);
+            const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
-            // MOVE LIGHT WITH MOUSE
-            // Map NDC (-1 to 1) to Light Pos (-100 to 100)
-            this.cursorLight.position.x = ndc.x * 100;
-            this.cursorLight.position.y = 50 + (ndc.y * 50);
-
-            // Dragging Logic
-            if (this.interactionMode === 'drag' && this.dragIndex !== -1) {
-                this.mouse.set(ndc.x, ndc.y);
-                this.raycaster.setFromCamera(this.mouse, this.camera);
-
-                const target = new THREE.Vector3();
-                const p = new THREE.Plane(new THREE.Vector3(0, 1, 0), -20);
-                this.raycaster.ray.intersectPlane(p, target);
-
-                if (target) {
-                    const localTarget = this.mesh.worldToLocal(target.clone());
-                    const positions = this.geometry.attributes.position.array;
-
-                    // Vertex Manipulation
-                    positions[this.dragIndex] = localTarget.x;
-                    positions[this.dragIndex + 1] = Math.max(0, localTarget.y);
-                    positions[this.dragIndex + 2] = localTarget.z;
-
-                    this.geometry.attributes.position.needsUpdate = true;
-                }
-            } else if (this.interactionMode === 'rotate') {
-                const deltaX = e.clientX - this.lastMouse.x;
-                const deltaY = e.clientY - this.lastMouse.y;
-                this.targetRotation.y += deltaX * 0.01;
-                this.targetRotation.x += deltaY * 0.01;
-                this.lastMouse = { x: e.clientX, y: e.clientY };
-            }
-        });
-
-        this.canvas.addEventListener('mousedown', (e) => {
-            const ndc = getNDC(e);
-            this.mouse.set(ndc.x, ndc.y);
-            this.raycaster.setFromCamera(this.mouse, this.camera);
-
+            this.raycaster.setFromCamera({ x, y }, this.camera);
             const intersects = this.raycaster.intersectObject(this.mesh);
 
             if (intersects.length > 0) {
-                this.interactionMode = 'drag';
-                const hit = intersects[0];
-                const localPoint = this.mesh.worldToLocal(hit.point.clone());
-
-                const positions = this.geometry.attributes.position.array;
-                let minDst = Infinity;
-                let closestIdx = -1;
-
-                for (let i = 0; i < positions.length; i += 3) {
-                    const dx = positions[i] - localPoint.x;
-                    const dy = positions[i + 1] - localPoint.y;
-                    const dz = positions[i + 2] - localPoint.z;
-                    const d = dx * dx + dy * dy + dz * dz;
-                    if (d < minDst) {
-                        minDst = d;
-                        closestIdx = i;
-                    }
-                }
-
-                if (closestIdx !== -1) {
-                    this.dragIndex = closestIdx;
-                    this.canvas.style.cursor = 'grabbing';
-                    // SQUELCH SOUND
-                    this.playTone(150, 'sawtooth', 0.2);
-                }
-            } else {
-                this.interactionMode = 'rotate';
-                this.lastMouse = { x: e.clientX, y: e.clientY };
-                this.canvas.style.cursor = 'move';
+                this.isPressed = true;
+                this.targetY = -8; // Press down amount
+                // Click Sound
+                this.playTone(600, 'square', 0.1, 0.3);
+                this.canvas.style.cursor = 'grabbing';
             }
-        });
+        };
 
-        window.addEventListener('mouseup', () => {
-            if (this.interactionMode === 'drag') {
-                // SNAP SOUND
-                this.playTone(300, 'square', 0.1);
+        const onUp = () => {
+            if (this.isPressed) {
+                this.isPressed = false;
+                this.targetY = 0; // Return to origin
+                // Release Sound (Clack)
+                this.playTone(400, 'sawtooth', 0.15, 0.3);
+                this.canvas.style.cursor = 'pointer';
             }
-            this.interactionMode = null;
-            this.dragIndex = -1;
-            this.canvas.style.cursor = 'grab';
-        });
+        };
+
+        this.canvas.addEventListener('mousedown', onDown);
+        window.addEventListener('mouseup', onUp);
+
+        this.canvas.addEventListener('touchstart', onDown, { passive: false });
+        window.addEventListener('touchend', onUp);
     }
 
     start() {
         const animate = () => {
             requestAnimationFrame(animate);
 
-            // Rotation
-            this.pivot.rotation.y += (this.targetRotation.y - this.pivot.rotation.y) * 0.1;
-            this.pivot.rotation.x += (this.targetRotation.x - this.pivot.rotation.x) * 0.1;
+            // Simple Spring Physics for Button vertical movement
+            // Lerp currentY to targetY
+            const speed = 0.4;
+            this.currentY += (this.targetY - this.currentY) * speed;
 
-            // Physics
-            const positions = this.geometry.attributes.position.array;
-
-            for (let i = 0; i < positions.length; i++) {
-                if (this.interactionMode === 'drag' && (i >= this.dragIndex && i <= this.dragIndex + 2)) continue;
-
-                const home = this.originalPositions[i];
-                const current = positions[i];
-                const diff = home - current;
-
-                this.velocities[i] += diff * this.stiffness;
-                this.velocities[i] *= this.friction;
-                positions[i] += this.velocities[i];
-            }
-
-            this.geometry.attributes.position.needsUpdate = true;
-            this.geometry.computeVertexNormals();
+            this.buttonGroup.position.y = this.currentY;
 
             this.renderer.render(this.scene, this.camera);
         };
