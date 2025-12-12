@@ -442,84 +442,6 @@ class GlassCase {
 }
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
-
-/**
- * COMPONENT: Hand Controller (Vibe Coding)
- */
-class HandController {
-    constructor(callback) {
-        this.video = document.getElementById('webcam');
-        this.landmarker = null;
-        this.callback = callback; // Function to call with hand data { x, y, isPinching }
-        this.lastVideoTime = -1;
-        this.init();
-    }
-
-    async init() {
-        if (!this.video) return;
-
-        // 1. Initialize Mediapipe
-        const vision = await FilesetResolver.forVisionTasks(
-            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
-        );
-        this.landmarker = await HandLandmarker.createFromOptions(vision, {
-            baseOptions: {
-                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-                delegate: "GPU"
-            },
-            runningMode: "VIDEO",
-            numHands: 1
-        });
-
-        // 2. Start Webcam
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            this.video.srcObject = stream;
-            this.video.addEventListener('loadeddata', () => this.predict());
-        } catch (err) {
-            console.error("Webcam denied:", err);
-            // Fallback to mouse only
-        }
-    }
-
-    async predict() {
-        if (this.video.currentTime !== this.lastVideoTime) {
-            this.lastVideoTime = this.video.currentTime;
-            const results = this.landmarker.detectForVideo(this.video, performance.now());
-
-            if (results.landmarks && results.landmarks.length > 0) {
-                const hand = results.landmarks[0]; // First hand
-
-                // Detect Pinch (Index Tip [8] vs Thumb Tip [4])
-                const thumb = hand[4];
-                const index = hand[8];
-                const dist = Math.sqrt(
-                    (thumb.x - index.x) ** 2 +
-                    (thumb.y - index.y) ** 2 +
-                    (thumb.z - index.z) ** 2
-                );
-
-                const isPinching = dist < 0.05; // Threshold
-
-                // Average position of pinch
-                const x = (thumb.x + index.x) / 2;
-                const y = (thumb.y + index.y) / 2;
-
-                // Send to App
-                // Note: Mediapipe X is inverted (mirror), Y is top-down 0-1
-                this.callback({
-                    x: 1 - x, // Flip X for mirror effect
-                    y: y,
-                    isPinching: isPinching
-                });
-            } else {
-                this.callback(null);
-            }
-        }
-        requestAnimationFrame(() => this.predict());
-    }
-}
 
 /**
  * COMPONENT: Sticky Rubber Button (Three.js WebGL)
@@ -529,19 +451,14 @@ class RubberButton {
         this.canvas = document.getElementById('buttonCanvas');
         if (!this.canvas) return;
 
-        // Init Hand Tracking
-        this.handController = new HandController((data) => this.onHandUpdate(data));
-
         // Scene
         this.scene = new THREE.Scene();
-        // this.scene.background = new THREE.Color(0x000000); // Transparent currently
 
-        // Camera
-        // FOV, Aspect, Near, Far
+        // Camera (Orbiting)
         const width = this.canvas.clientWidth;
         const height = this.canvas.clientHeight;
         this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-        this.camera.position.set(0, 150, 150); // High angle
+        this.camera.position.set(0, 100, 200); // Initial View
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
@@ -552,144 +469,87 @@ class RubberButton {
         });
         this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true; // Shadows enable depth perception
 
         // Lights
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         this.scene.add(ambientLight);
 
         const spotLight = new THREE.SpotLight(0xffffff, 2);
-        spotLight.position.set(50, 100, 50);
+        spotLight.position.set(100, 200, 100);
         spotLight.angle = Math.PI / 4;
         spotLight.penumbra = 0.5;
+        spotLight.castShadow = true;
         this.scene.add(spotLight);
 
-        const pointLight = new THREE.PointLight(0xff0000, 1, 100);
-        pointLight.position.set(0, 20, 0);
-        this.scene.add(pointLight);
+        const rimLight = new THREE.PointLight(0xff0000, 1, 100);
+        rimLight.position.set(-50, 50, -50);
+        this.scene.add(rimLight);
 
         // Materials
         this.rubberMat = new THREE.MeshPhysicalMaterial({
-            color: 0xd32f2f,
-            roughness: 0.2, // Shiny but rubbery
+            color: 0xd32f2f, // Red
+            emissive: 0x330000,
+            roughness: 0.2,
             metalness: 0.1,
-            clearcoat: 0.5,
+            clearcoat: 0.8, // Glossy
             clearcoatRoughness: 0.1,
             flatShading: false,
             side: THREE.DoubleSide
         });
 
-        // Geometry (Cylinder-ish button)
-        // High segmentation for vertex distortion
-        this.geometry = new THREE.CylinderGeometry(40, 45, 20, 32, 10, false);
-        // Rotate geometry so it sits flat? Cylinder is Y-up default.
-        // It's fine.
+        const baseMat = new THREE.MeshStandardMaterial({
+            color: 0x222222,
+            roughness: 0.8,
+            metalness: 0.5
+        });
 
-        // Mesh
+        // Group to Rotate
+        this.pivot = new THREE.Group();
+        this.scene.add(this.pivot);
+
+        // Geometry: Button
+        this.geometry = new THREE.CylinderGeometry(40, 45, 20, 32, 10, false);
         this.mesh = new THREE.Mesh(this.geometry, this.rubberMat);
-        this.scene.add(this.mesh);
+        this.mesh.castShadow = true;
+        this.mesh.receiveShadow = true;
+        this.mesh.position.y = 10;
+        this.pivot.add(this.mesh);
+
+        // Geometry: Base/Pedestal (To give context for rotation)
+        const baseGeo = new THREE.CylinderGeometry(50, 55, 10, 32);
+        this.base = new THREE.Mesh(baseGeo, baseMat);
+        this.base.position.y = -5;
+        this.base.receiveShadow = true;
+        this.pivot.add(this.base);
 
         // Save Original Positions for Physics
         this.originalPositions = Float32Array.from(this.geometry.attributes.position.array);
         this.velocities = new Float32Array(this.originalPositions.length);
 
-        // 3D Cursor (For Hand Tracking Debug)
-        this.cursor3D = new THREE.Mesh(
-            new THREE.SphereGeometry(2, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00 }) // Green dot
-        );
-        this.scene.add(this.cursor3D);
-        this.cursor3D.visible = false;
-
         // Interaction State
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
-        this.isDragging = false;
-        this.dragIndex = -1; // Vertex index
-        this.dragOffset = new THREE.Vector3();
+
+        // Mode: 'drag' (Button Physics) or 'rotate' (View Orbit)
+        this.interactionMode = null;
+        this.dragIndex = -1;
+
+        // Rotation State
+        this.targetRotation = { x: 0, y: 0 };
+        this.currentRotation = { x: 0, y: 0 };
+        this.lastMouse = { x: 0, y: 0 };
 
         // Physics Params
         this.stiffness = 0.05;
         this.friction = 0.90;
-        this.maxStretch = 100;
+        this.maxStretch = 120;
 
         this.bindEvents();
         this.start();
     }
 
-    onHandUpdate(data) {
-        if (!data) {
-            this.cursor3D.visible = false;
-            // Map release
-            if (this.isDragging && this.dragIndex !== -1) {
-                this.isDragging = false;
-                this.dragIndex = -1;
-            }
-            return;
-        }
-
-        // Visualize Hand Position in 3D Space
-        this.cursor3D.visible = true;
-
-        // Project normalized (0-1) hand to 3D Plane
-        // We project to a plane at Y=20 (Top of button)
-        const x = (data.x * 2) - 1; // NDC
-        const y = -(data.y * 2) + 1; // NDC
-
-        this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
-        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -20);
-        const target = new THREE.Vector3();
-        this.raycaster.ray.intersectPlane(plane, target);
-
-        if (target) {
-            this.cursor3D.position.copy(target);
-
-            // Interaction
-            if (data.isPinching) {
-                this.cursor3D.material.color.set(0xff0000); // Red when pinching
-
-                if (!this.isDragging) {
-                    // Try to grab
-                    // Check distance to mesh vertices
-                    const positions = this.geometry.attributes.position.array;
-                    let closest = -1;
-                    let minDst = 50 * 50; // Tolerance squared
-
-                    for (let i = 0; i < positions.length; i += 3) {
-                        const dx = positions[i] - target.x;
-                        const dy = positions[i + 1] - target.y; // Height diff check?
-                        const dz = positions[i + 2] - target.z;
-
-                        const d2 = dx * dx + dy * dy + dz * dz;
-                        if (d2 < minDst) {
-                            minDst = d2;
-                            closest = i;
-                        }
-                    }
-
-                    if (closest !== -1) {
-                        this.isDragging = true;
-                        this.dragIndex = closest;
-                    }
-                } else if (this.isDragging && this.dragIndex !== -1) {
-                    // Move Vertex
-                    const positions = this.geometry.attributes.position.array;
-                    positions[this.dragIndex] = target.x;
-                    positions[this.dragIndex + 1] = Math.max(10, target.y); // Floor
-                    positions[this.dragIndex + 2] = target.z;
-
-                    this.geometry.attributes.position.needsUpdate = true;
-                }
-            } else {
-                this.cursor3D.material.color.set(0x00ff00); // Green when hovering
-                this.isDragging = false;
-                this.dragIndex = -1;
-            }
-        }
-    }
-
     bindEvents() {
-        // ... (keep Mouse for fallback)
-        // We need to map Mouse Event to normalized device coordinates (-1 to +1)
         const getNDC = (e) => {
             const rect = this.canvas.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -697,99 +557,114 @@ class RubberButton {
             return { x, y };
         };
 
-        window.addEventListener('mousedown', (e) => {
+        this.canvas.addEventListener('mousedown', (e) => {
             const ndc = getNDC(e);
             this.mouse.set(ndc.x, ndc.y);
             this.raycaster.setFromCamera(this.mouse, this.camera);
 
+            // 1. Check if clicking the Rubber Button
             const intersects = this.raycaster.intersectObject(this.mesh);
-            if (intersects.length > 0) {
-                // Find closest vertex to impact point
-                const hit = intersects[0];
-                const point = hit.point; // World space
 
-                // Convert world point to local space to find vertex index
-                // Mesh is at 0,0,0 usually
-                // Brute force search for closest vertex
+            if (intersects.length > 0) {
+                // BUTTON INTERACTION (Physics)
+                this.interactionMode = 'drag';
+
+                // Find closest vertex
+                const hit = intersects[0];
+                const point = hit.point;
+                // Convert world point to local space (relative to mesh)
+                // Mesh is inside pivot, so we need inverse world matrix?
+                // Simplification for now: Assume identity rotation during check or use world positions
+                // We'll update world positions in physics loop.
+
+                // Actually, `hit.point` is world space. The geometry positions are local space.
+                // We need to inverse transform the hit point to local space of the mesh.
+                const localPoint = this.mesh.worldToLocal(point.clone());
+
                 const positions = this.geometry.attributes.position.array;
                 let minDst = Infinity;
                 let closestIdx = -1;
 
-                // Mesh world matrix is identity generally unless transformed
-                // Assume object is at 0,0,0
-
                 for (let i = 0; i < positions.length; i += 3) {
-                    const vx = positions[i];
-                    const vy = positions[i + 1];
-                    const vz = positions[i + 2];
-
-                    // Simple distance check (ignoring world transform if simple)
-                    const dx = vx - point.x;
-                    const dy = vy - point.y;
-                    const dz = vz - point.z;
-                    const dist = dx * dx + dy * dy + dz * dz;
-
-                    if (dist < minDst) {
-                        minDst = dist;
-                        closestIdx = i; // Store index of X
+                    const dx = positions[i] - localPoint.x;
+                    const dy = positions[i + 1] - localPoint.y;
+                    const dz = positions[i + 2] - localPoint.z;
+                    const d = dx * dx + dy * dy + dz * dz;
+                    if (d < minDst) {
+                        minDst = d;
+                        closestIdx = i;
                     }
                 }
 
-                if (closestIdx !== -1 && minDst < 100) { // Tolerance
-                    this.isDragging = true;
+                if (closestIdx !== -1) {
                     this.dragIndex = closestIdx;
                     this.canvas.style.cursor = 'grabbing';
                 }
+            } else {
+                // BACKGROUND INTERACTION (Rotate)
+                this.interactionMode = 'rotate';
+                this.lastMouse = { x: e.clientX, y: e.clientY };
+                this.canvas.style.cursor = 'move';
             }
         });
 
         window.addEventListener('mousemove', (e) => {
-            const ndc = getNDC(e);
-            this.mouse.set(ndc.x, ndc.y); // Always update mouse for raycaster
-
-            if (this.isDragging && this.dragIndex !== -1) {
-                // Raycast to an invisible plane to get 3D drag position?
-                // Or allows arbitrary movement?
-                // Let's create a plane at the button height
-                const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // Flat XZ plane
-                // Raycast
+            if (this.interactionMode === 'drag' && this.dragIndex !== -1) {
+                // Dragging Logic
+                const ndc = getNDC(e);
+                this.mouse.set(ndc.x, ndc.y);
                 this.raycaster.setFromCamera(this.mouse, this.camera);
+
+                // Plane at button height
+                // Need to rotate plane to match pivot?
+                // Complex constraint. Let's just project ray to a plane facing camera?
+                // Or plane at y=20
+
+                // Simplified: Raycast to a plane perpendicular to camera?
+                const distance = this.camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
+                const plane = new THREE.Plane(this.camera.getWorldDirection(new THREE.Vector3()), -distance);
+                // Actually easier: Plane at button Y (local 10), transformed to world.
+
+                // Let's use camera-facing plane at target depth
                 const target = new THREE.Vector3();
-                this.raycaster.ray.intersectPlane(plane, target);
+                // Just use a dummy plane at 0,0,0 facing Y
+                // We want to drag the point in 3D.
+
+                // Raycast to invisible plane at Y=20 (World space approx)
+                // If pivot is rotated, this is hard.
+                // Approach: Unproject mouse to a line, find closest point on line to original vertex?
+
+                // Simple approach: Assume button is mostly facing up.
+                // Raycast to Plane(Normal(0,1,0), Constant(20))
+                const p = new THREE.Plane(new THREE.Vector3(0, 1, 0), -20);
+                this.raycaster.ray.intersectPlane(p, target);
 
                 if (target) {
-                    // Update the vertex position
+                    // Convert World Target back to Local Space
+                    const localTarget = this.mesh.worldToLocal(target.clone());
+
                     const positions = this.geometry.attributes.position.array;
-                    // Apply offset
-                    // We pull it UP a bit too (Y axis) based on stretch
-                    positions[this.dragIndex] = target.x;
-                    positions[this.dragIndex + 1] = Math.max(10, target.y + 20); // Pull Up
-                    positions[this.dragIndex + 2] = target.z;
+                    positions[this.dragIndex] = localTarget.x;
+                    positions[this.dragIndex + 1] = Math.max(10, localTarget.y + 10); // Pull Up
+                    positions[this.dragIndex + 2] = localTarget.z;
 
                     this.geometry.attributes.position.needsUpdate = true;
-
-                    // Break Threshold
-                    const ox = this.originalPositions[this.dragIndex];
-                    const oy = this.originalPositions[this.dragIndex + 1];
-                    const oz = this.originalPositions[this.dragIndex + 2];
-
-                    const dist = Math.sqrt(
-                        (target.x - ox) ** 2 +
-                        (target.y - oy) ** 2 +
-                        (target.z - oz) ** 2
-                    );
-
-                    if (dist > this.maxStretch) {
-                        this.isDragging = false;
-                        this.dragIndex = -1;
-                        this.canvas.style.cursor = 'grab';
-                    }
                 }
+
+            } else if (this.interactionMode === 'rotate') {
+                // Rotating Logic
+                const deltaX = e.clientX - this.lastMouse.x;
+                const deltaY = e.clientY - this.lastMouse.y;
+
+                this.targetRotation.y += deltaX * 0.01;
+                this.targetRotation.x += deltaY * 0.01;
+
+                this.lastMouse = { x: e.clientX, y: e.clientY };
             }
         });
 
         window.addEventListener('mouseup', () => {
-            this.isDragging = false;
+            this.interactionMode = null;
             this.dragIndex = -1;
             this.canvas.style.cursor = 'grab';
         });
@@ -799,11 +674,14 @@ class RubberButton {
         const animate = () => {
             requestAnimationFrame(animate);
 
-            // Physics Update (Spring back to original)
+            // 1. Smooth Rotation (Lerp)
+            this.pivot.rotation.y += (this.targetRotation.y - this.pivot.rotation.y) * 0.1;
+            this.pivot.rotation.x += (this.targetRotation.x - this.pivot.rotation.x) * 0.1;
+
+            // 2. Physics (Springs)
             const positions = this.geometry.attributes.position.array;
 
             for (let i = 0; i < positions.length; i++) {
-                // Skip dragged vertex (locked to mouse)
                 if (this.isDragging && (i >= this.dragIndex && i <= this.dragIndex + 2)) continue;
 
                 // Spring
