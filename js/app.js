@@ -639,7 +639,7 @@ class RubberButton {
                 this.returnVelocity.set(0, 0, 0); // Stop bouncing on grab
 
                 // PRESS EFFECT
-                this.targetPressY = -12.0; // Push down
+                this.targetPressY = -10.0; // Reduced depth for safety
 
                 const hit = intersects[0];
                 this.grabPoint.copy(hit.point);
@@ -803,7 +803,7 @@ class RubberButton {
                     // LocalY * ScaleY >= -PressY
                     // LocalY >= -PressY / ScaleY
 
-                    const limitY = -this.pressY / this.mesh.scale.y;
+                    const limitY = (2.0 - this.pressY) / this.mesh.scale.y;
                     newY = Math.max(limitY, newY);
 
                     positions[i * 3 + 1] = newY;
