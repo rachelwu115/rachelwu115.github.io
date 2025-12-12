@@ -921,7 +921,7 @@ class RubberButton {
 
         // --- ORGANIC REGROWTH LOGIC ---
         if (this.state.isRegenerating) {
-            this.state.regrowthProgress += 0.015; // Speed
+            this.state.regrowthProgress += 0.005; // 3x Slower
 
             if (this.state.regrowthProgress >= 1.0) {
                 this.state.regrowthProgress = 1.0;
@@ -934,35 +934,40 @@ class RubberButton {
                 const undo = 1.0 - t;
                 const origin = this.state.regrowthOrigin || { x: 0, y: -20, z: 0 };
 
-                // 1. POSITION: Slide from offset to center
-                // Uses EaseOutQuad for smooth arrival
-                const easePos = 1 - undo * undo;
+                // 1. POSITION: Eased slide to center
+                // Cushion out cubic
+                const easePos = 1 - Math.pow(1 - t, 3);
                 this.mesh.position.x = origin.x * (1 - easePos);
                 this.mesh.position.z = origin.z * (1 - easePos);
                 this.mesh.position.y = origin.y * (1 - easePos) + this.physics.pressY;
 
-                // 2. SCALE: Elastic Bouncing (Overshoot)
-                // "BounceOut" feel
-                const elastic = 1.0 + Math.pow(2, -10 * t) * Math.sin((t - 0.1) * 5 * Math.PI);
+                // 2. SCALE: "BackOut" / Gentle Bounce
+                // Overshoots slightly and returns
+                // t=1 -> 1.0. t=0.8 -> >1.0.
+                const s = 1.70158;
+                let scaleT = t - 1;
+                const backOut = scaleT * scaleT * ((s + 1) * scaleT + s) + 1;
 
-                // 3. SQUISHY NOISE (Metabolizing)
-                // Random wobbles that decrease as t approaches 1
-                const noiseX = Math.sin(now * 0.02) * 0.3 * undo;
-                const noiseY = Math.cos(now * 0.023) * 0.3 * undo;
+                // Muted bounce logic: blend between linear growth (0->1) and BackOut
+                const currentScale = t < 0.2 ? (t * 5) : backOut; // Fast start, then settle
+
+                // 3. SQUISHY NOISE (Reduced by 60%)
+                // Subtle organic metabolic wobble
+                const noiseX = Math.sin(now * 0.01) * 0.1 * undo;
+                const noiseY = Math.cos(now * 0.015) * 0.1 * undo;
 
                 // Apply
                 this.mesh.scale.set(
-                    elastic + noiseX,
-                    elastic * 0.7 + noiseY, // 0.7 is natural button aspect
-                    elastic - noiseX
+                    currentScale + noiseX,
+                    currentScale * 0.7 + noiseY, // 0.7 base aspect
+                    currentScale - noiseX
                 );
 
-                // 4. TUMBLE
-                // Rotate slightly as it grows
-                this.mesh.rotation.z = Math.sin(t * Math.PI) * 0.1;
-                this.mesh.rotation.x = Math.cos(t * Math.PI) * 0.1;
+                // 4. TUMBLE (Reduced)
+                this.mesh.rotation.z = Math.sin(t * Math.PI) * 0.05;
+                this.mesh.rotation.x = Math.cos(t * Math.PI) * 0.05;
 
-                return; // SKIP normal heartbeat while growing
+                return; // SKIP normal heartbeat
             }
         }
 
@@ -979,12 +984,12 @@ class RubberButton {
         // Apply Shiver (Idle Jitter)
         this.mesh.position.x = (Math.random() - 0.5) * 0.2;
         this.mesh.position.z = (Math.random() - 0.5) * 0.2;
-        // Keep Y pinned to physics
         this.mesh.position.y = this.physics.pressY;
 
         // Audio Trigger
         if (phase < 50 && this.state.beatPhase === 0) {
-            this.playTone(55, 'sine', 0.2, 0.2);
+            const vol = this.state.isRegenerating ? 0.1 : 0.2;
+            this.playTone(55, 'sine', 0.2, vol);
             this.state.beatPhase = 1;
         }
         if (phase > 500) this.state.beatPhase = 0;
