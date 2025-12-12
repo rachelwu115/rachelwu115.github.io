@@ -441,266 +441,257 @@ class GlassCase {
     }
 }
 
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
 /**
- * COMPONENT: Sticky Rubber Button (True 3D Software Renderer)
+ * COMPONENT: Sticky Rubber Button (Three.js WebGL)
  */
 class RubberButton {
     constructor() {
         this.canvas = document.getElementById('buttonCanvas');
         if (!this.canvas) return;
-        this.ctx = this.canvas.getContext('2d');
 
-        // 3D Config
-        this.focalLength = 400;
-        this.center = { x: this.canvas.width / 2, y: this.canvas.height / 2 };
-        this.rotation = { x: 0.4, y: 0, z: 0 }; // Tilt to show depth
+        // Scene
+        this.scene = new THREE.Scene();
+        // this.scene.background = new THREE.Color(0x000000); // Transparent currently
 
-        // Physics Config
+        // Camera
+        // FOV, Aspect, Near, Far
+        const width = this.canvas.clientWidth;
+        const height = this.canvas.clientHeight;
+        this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+        this.camera.position.set(0, 150, 150); // High angle
+        this.camera.lookAt(0, 0, 0);
+
+        // Renderer
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: this.canvas,
+            alpha: true,
+            antialias: true
+        });
+        this.renderer.setSize(width, height);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        this.scene.add(ambientLight);
+
+        const spotLight = new THREE.SpotLight(0xffffff, 2);
+        spotLight.position.set(50, 100, 50);
+        spotLight.angle = Math.PI / 4;
+        spotLight.penumbra = 0.5;
+        this.scene.add(spotLight);
+
+        const pointLight = new THREE.PointLight(0xff0000, 1, 100);
+        pointLight.position.set(0, 20, 0);
+        this.scene.add(pointLight);
+
+        // Materials
+        this.rubberMat = new THREE.MeshPhysicalMaterial({
+            color: 0xd32f2f,
+            roughness: 0.2, // Shiny but rubbery
+            metalness: 0.1,
+            clearcoat: 0.5,
+            clearcoatRoughness: 0.1,
+            flatShading: false,
+            side: THREE.DoubleSide
+        });
+
+        // Geometry (Cylinder-ish button)
+        // High segmentation for vertex distortion
+        this.geometry = new THREE.CylinderGeometry(40, 45, 20, 32, 10, false);
+        // Rotate geometry so it sits flat? Cylinder is Y-up default.
+        // It's fine.
+
+        // Mesh
+        this.mesh = new THREE.Mesh(this.geometry, this.rubberMat);
+        this.scene.add(this.mesh);
+
+        // Save Original Positions for Physics
+        this.originalPositions = Float32Array.from(this.geometry.attributes.position.array);
+        this.velocities = new Float32Array(this.originalPositions.length);
+
+        // Interaction State
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        this.isDragging = false;
+        this.dragIndex = -1; // Vertex index
+        this.dragOffset = new THREE.Vector3();
+
+        // Physics Params
         this.stiffness = 0.05;
         this.friction = 0.90;
-        this.maxStretch = 400;
+        this.maxStretch = 100;
 
-        this.points = [];
-        this.mesh = []; // Quads: [p1, p2, p3, p4] (indices)
-
-        this.mouse = { x: 0, y: 0 };
-        this.dragPoint = null;
-
-        this.initMesh();
         this.bindEvents();
         this.start();
     }
 
-    initMesh() {
-        this.canvas.width = 240;
-        this.canvas.height = 180;
-        this.center = { x: this.canvas.width / 2, y: 100 }; // Lower center
-
-        // Generate a 3D Box/Button shape
-        // Let's make a grid on the X/Z plane (flat) that bumps up in Y?
-        // Or X/Y plane that bumps in Z?
-        // Let's do X/Y plane but with depth (Z thickness).
-
-        const rows = 5;
-        const cols = 7;
-        const gap = 20;
-        const startX = -((cols - 1) * gap) / 2;
-        const startY = -((rows - 1) * gap) / 2;
-
-        // 1. Create Surface Points (Top Layer)
-        for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < cols; x++) {
-                // bulging center?
-                const dx = x - (cols - 1) / 2;
-                const dy = y - (rows - 1) / 2;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const bulge = Math.max(0, 15 - dist * 5); // Center is higher
-
-                this.points.push({
-                    x: startX + x * gap,
-                    y: startY + y * gap,
-                    z: -bulge, // Negative Z is closer? Standard is +Z closer. Let's say -Z is "up" in 3D space if we look from top?
-                    // Let's use standard: Y down, X right, Z into screen.
-                    // So "Up" towards camera is negative Z.
-                    ox: startX + x * gap,
-                    oy: startY + y * gap,
-                    oz: -bulge,
-                    vx: 0, vy: 0, vz: 0,
-                    pinned: (y === rows - 1 || y === 0 || x === 0 || x === cols - 1) // Pin Edges
-                });
-            }
-        }
-
-        // 2. Define Mesh Faces (Quads)
-        for (let y = 0; y < rows - 1; y++) {
-            for (let x = 0; x < cols - 1; x++) {
-                const i = y * cols + x;
-                this.mesh.push([i, i + 1, i + cols + 1, i + cols]);
-            }
-        }
-    }
-
-    // Project 3D point to 2D screen
-    project(p) {
-        // Simple Rotation Matrix (Around X axis only for now to tilt)
-        // y' = y*cos(theta) - z*sin(theta)
-        // z' = y*sin(theta) + z*cos(theta)
-
-        const theta = this.rotation.x;
-        const sin = Math.sin(theta);
-        const cos = Math.cos(theta);
-
-        const ry = p.y * cos - p.z * sin;
-        const rz = p.y * sin + p.z * cos;
-        const rx = p.x; // No Y-rotation
-
-        // Perspective Projection
-        // Offset Z so it's in front of camera
-        const depth = 400 + rz;
-        const scale = this.focalLength / depth;
-
-        return {
-            x: this.center.x + rx * scale,
-            y: this.center.y + ry * scale,
-            scale: scale,
-            depth: depth // For Z-sorting
-        };
-    }
-
     bindEvents() {
-        const getMouse = (e) => {
+        // We need to map Mouse Event to normalized device coordinates (-1 to +1)
+        const getNDC = (e) => {
             const rect = this.canvas.getBoundingClientRect();
-            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            return { x, y };
         };
 
-        this.canvas.addEventListener('mousedown', (e) => {
-            const m = getMouse(e);
+        window.addEventListener('mousedown', (e) => {
+            const ndc = getNDC(e);
+            this.mouse.set(ndc.x, ndc.y);
+            this.raycaster.setFromCamera(this.mouse, this.camera);
 
-            // Raycast / Hit Test
-            // Find closest projected point to mouse
-            let closest = null;
-            let minDst = 30;
+            const intersects = this.raycaster.intersectObject(this.mesh);
+            if (intersects.length > 0) {
+                // Find closest vertex to impact point
+                const hit = intersects[0];
+                const point = hit.point; // World space
 
-            this.points.forEach(p => {
-                const proj = this.project(p);
-                const dx = m.x - proj.x;
-                const dy = m.y - proj.y;
-                const d = Math.sqrt(dx * dx + dy * dy);
-                if (d < minDst) {
-                    minDst = d;
-                    closest = p;
+                // Convert world point to local space to find vertex index
+                // Mesh is at 0,0,0 usually
+                // Brute force search for closest vertex
+                const positions = this.geometry.attributes.position.array;
+                let minDst = Infinity;
+                let closestIdx = -1;
+
+                // Mesh world matrix is identity generally unless transformed
+                // Assume object is at 0,0,0
+
+                for (let i = 0; i < positions.length; i += 3) {
+                    const vx = positions[i];
+                    const vy = positions[i + 1];
+                    const vz = positions[i + 2];
+
+                    // Simple distance check (ignoring world transform if simple)
+                    const dx = vx - point.x;
+                    const dy = vy - point.y;
+                    const dz = vz - point.z;
+                    const dist = dx * dx + dy * dy + dz * dz;
+
+                    if (dist < minDst) {
+                        minDst = dist;
+                        closestIdx = i; // Store index of X
+                    }
                 }
-            });
 
-            if (closest) {
-                this.dragPoint = closest;
-                this.canvas.style.cursor = 'grabbing';
+                if (closestIdx !== -1 && minDst < 100) { // Tolerance
+                    this.isDragging = true;
+                    this.dragIndex = closestIdx;
+                    this.canvas.style.cursor = 'grabbing';
+                }
             }
         });
 
         window.addEventListener('mousemove', (e) => {
-            if (this.dragPoint) {
-                const m = getMouse(e);
+            const ndc = getNDC(e);
+            this.mouse.set(ndc.x, ndc.y); // Always update mouse for raycaster
 
-                // Inverse Projection (Approximate)
-                // We want to move the point in 3D such that it projects to Mouse X/Y
-                // Assuming Z stays roughly same? Or drag in Screen Plane.
+            if (this.isDragging && this.dragIndex !== -1) {
+                // Raycast to an invisible plane to get 3D drag position?
+                // Or allows arbitrary movement?
+                // Let's create a plane at the button height
+                const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // Flat XZ plane
+                // Raycast
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const target = new THREE.Vector3();
+                this.raycaster.ray.intersectPlane(plane, target);
 
-                // Simple approach: Unproject assuming current depth
-                const proj = this.project(this.dragPoint);
-                const scale = proj.scale;
+                if (target) {
+                    // Update the vertex position
+                    const positions = this.geometry.attributes.position.array;
+                    // Apply offset
+                    // We pull it UP a bit too (Y axis) based on stretch
+                    positions[this.dragIndex] = target.x;
+                    positions[this.dragIndex + 1] = Math.max(10, target.y + 20); // Pull Up
+                    positions[this.dragIndex + 2] = target.z;
 
-                // Delta movement
-                const dx = (m.x - this.center.x) / scale;
-                const dy = (m.y - this.center.y) / scale;
+                    this.geometry.attributes.position.needsUpdate = true;
 
-                // Apply rotation checking inverse? Too complex.
-                // Simplified: Just set raw X/Y. 3D rotation will warp it visually. 
-                // We'll set X/Y directly and let the physics engine solve the rest.
+                    // Break Threshold
+                    const ox = this.originalPositions[this.dragIndex];
+                    const oy = this.originalPositions[this.dragIndex + 1];
+                    const oz = this.originalPositions[this.dragIndex + 2];
 
-                this.dragPoint.x = dx;
-                this.dragPoint.y = dy;
-                // Add some Z-pull too?
-                this.dragPoint.z = this.dragPoint.oz - 50; // Pull it UP (Negative Z)
+                    const dist = Math.sqrt(
+                        (target.x - ox) ** 2 +
+                        (target.y - oy) ** 2 +
+                        (target.z - oz) ** 2
+                    );
 
-                // Snap Check
-                const d = Math.sqrt(
-                    (this.dragPoint.x - this.dragPoint.ox) ** 2 +
-                    (this.dragPoint.y - this.dragPoint.oy) ** 2
-                );
-                if (d > this.maxStretch) {
-                    this.dragPoint = null;
-                    this.canvas.style.cursor = 'grab';
+                    if (dist > this.maxStretch) {
+                        this.isDragging = false;
+                        this.dragIndex = -1;
+                        this.canvas.style.cursor = 'grab';
+                    }
                 }
             }
         });
 
         window.addEventListener('mouseup', () => {
-            this.dragPoint = null;
+            this.isDragging = false;
+            this.dragIndex = -1;
             this.canvas.style.cursor = 'grab';
         });
     }
 
-    update() {
-        this.points.forEach(p => {
-            if (p.pinned) return;
-            if (p === this.dragPoint) return;
-
-            const dx = p.ox - p.x;
-            const dy = p.oy - p.y;
-            const dz = p.oz - p.z; // Z Spring
-
-            p.vx += dx * this.stiffness;
-            p.vy += dy * this.stiffness;
-            p.vz += dz * this.stiffness;
-
-            p.vx *= this.friction;
-            p.vy *= this.friction;
-            p.vz *= this.friction;
-
-            p.x += p.vx;
-            p.y += p.vy;
-            p.z += p.vz;
-        });
-    }
-
-    draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Pre-calculate projections
-        const projected = this.points.map(p => this.project(p));
-
-        // Sort Faces by Depth (Painter's Algorithm)
-        // Calculate average depth of each face
-        const faces = this.mesh.map(indices => {
-            const z = (
-                projected[indices[0]].depth +
-                projected[indices[1]].depth +
-                projected[indices[2]].depth +
-                projected[indices[3]].depth
-            ) / 4;
-            return { indices, z };
-        });
-
-        faces.sort((a, b) => b.z - a.z); // Draw furthest first
-
-        // Draw Faces
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-
-        faces.forEach(face => {
-            const [i1, i2, i3, i4] = face.indices;
-            const p1 = projected[i1];
-            const p2 = projected[i2];
-            const p3 = projected[i3];
-            const p4 = projected[i4];
-
-            this.ctx.beginPath();
-            this.ctx.moveTo(p1.x, p1.y);
-            this.ctx.lineTo(p2.x, p2.y);
-            this.ctx.lineTo(p3.x, p3.y);
-            this.ctx.lineTo(p4.x, p4.y);
-            this.ctx.closePath();
-
-            // Dynamic Lighting
-            // Calculate Normal (Cross product of edges) - tricky in 2D proj. 
-            // Fake it based on Z? 
-            // Let's use Color based on Slope/Height?
-
-            // Simple coloring
-            this.ctx.fillStyle = '#d32f2f';
-            this.ctx.fill();
-            this.ctx.stroke();
-        });
-    }
-
     start() {
-        const loop = () => {
-            this.update();
-            this.draw();
-            requestAnimationFrame(loop);
+        const animate = () => {
+            requestAnimationFrame(animate);
+
+            // Physics Update (Spring back to original)
+            const positions = this.geometry.attributes.position.array;
+
+            for (let i = 0; i < positions.length; i++) {
+                // Skip dragged vertex (locked to mouse)
+                if (this.isDragging && (i >= this.dragIndex && i <= this.dragIndex + 2)) continue;
+
+                // Spring
+                const home = this.originalPositions[i];
+                const current = positions[i];
+                const diff = home - current;
+
+                this.velocities[i] += diff * this.stiffness;
+                this.velocities[i] *= this.friction;
+                positions[i] += this.velocities[i];
+            }
+
+            // Area of Effect (Pull neighbors)
+            if (this.isDragging) {
+                // Cheap Soft-body: Iterate and pull nearby vertices towards dragged one
+                // This is O(N^2) potentially, be careful. 
+                // Just do trivial distance check? 
+                // Optimization: Just rely on spring web if we had one.
+                // Since we don't have constraints, vertices are independent springs.
+                // To make it look "Gooey", we should pull neighbors.
+
+                const dx = positions[this.dragIndex];
+                const dy = positions[this.dragIndex + 1];
+                const dz = positions[this.dragIndex + 2];
+
+                for (let i = 0; i < positions.length; i += 3) {
+                    if (i === this.dragIndex) continue;
+
+                    const vx = positions[i];
+                    const vy = positions[i + 1];
+                    const vz = positions[i + 2];
+
+                    const d2 = (dx - vx) ** 2 + (dy - vy) ** 2 + (dz - vz) ** 2;
+                    if (d2 < 400) { // Influence Radius
+                        // Pull factor
+                        const factor = 0.05 * (400 - d2) / 400;
+                        positions[i] += (dx - vx) * factor;
+                        positions[i + 1] += (dy - vy) * factor;
+                        positions[i + 2] += (dz - vz) * factor;
+                    }
+                }
+            }
+
+            this.geometry.attributes.position.needsUpdate = true;
+            this.geometry.computeVertexNormals(); // Recalc for lighting
+
+            this.renderer.render(this.scene, this.camera);
         };
-        loop();
+        animate();
     }
 }
 
