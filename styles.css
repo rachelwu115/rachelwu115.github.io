@@ -51,19 +51,39 @@ body {
 .art-frame {
     position: relative;
     /* Stays in Flex Center */
-    width: 450px;
+    width: 500px;
+    /* Slightly wider to accommodate frame thickness */
     height: 600px;
-    background: #1a1a1a;
-    border: 20px solid #2d1b0e;
-    box-shadow:
-        0 20px 50px rgba(0, 0, 0, 0.5),
-        inset 0 0 20px rgba(0, 0, 0, 0.8),
-        inset 0 2px 5px rgba(255, 255, 255, 0.1);
+
+    /* IMAGE BASED FRAME */
+    background-image: url('images/antique-frame.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+
+    /* Remove CSS Border */
+    border: none;
+
+    /* Padding to push content inside the frame's "window" */
+    /* Estimated based on visual: Frame is roughly 15-20% of width */
+    padding: 85px 85px 85px 85px;
+
+    /* Box Shadow only for outer depth, not internal since image has it */
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+
     display: flex;
     flex-direction: column;
     align-items: center;
     z-index: 2;
+    /* overflow: hidden;  <-- Careful w/ overflow if image has transparent corners?
+       Actually, we want to clip the content (shadowman) to the inner rectangle.
+       We might need an inner-container for clipping if padding doesn't clip.
+       Flexbox content usually overflows if not handled.
+       Let's rely on the Canvas size matching the inner content box.
+    */
     overflow: hidden;
+    box-sizing: border-box;
+    /* Crucial for padding to be part of width */
 }
 
 /* --- THE MUSEUM LABEL --- */
