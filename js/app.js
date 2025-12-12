@@ -883,23 +883,23 @@ class RubberButton {
         const animate = () => {
             requestAnimationFrame(animate);
 
-            // 1. CONFETTI MODE
-            if (this.state.isExploded) {
-                this.updateConfetti();
-                this.renderer.render(this.scene, this.camera);
-                return;
+            // 1. CONFETTI (Always update if active)
+            this.updateConfetti();
+
+            // 2. BUTTON RENDERING
+            // Only update button visuals/physics if it's visible
+            if (this.mesh.visible) {
+                // ALIVE STATE (Heartbeat)
+                this.updateHeartbeat();
+
+                // PRESS PHYSICS
+                // Smooth lerp for mechanical press
+                this.physics.pressY += (this.physics.targetPressY - this.physics.pressY) * 0.6;
+                this.mesh.position.y = this.physics.pressY; // Overrides Shiver Y, preserves press
+
+                // DEFORMATION PHYSICS
+                this.updateDeformation();
             }
-
-            // 2. ALIVE STATE (Heartbeat)
-            this.updateHeartbeat();
-
-            // 3. PRESS PHYSICS
-            // Smooth lerp for mechanical press
-            this.physics.pressY += (this.physics.targetPressY - this.physics.pressY) * 0.6;
-            this.mesh.position.y = this.physics.pressY; // Overrides Shiver Y, preserves press
-
-            // 4. DEFORMATION PHYSICS
-            this.updateDeformation();
 
             this.renderer.render(this.scene, this.camera);
         };
@@ -938,43 +938,44 @@ class RubberButton {
      */
     updateConfetti() {
         const now = Date.now();
-        let activeCount = 0;
+        // Optimization: check if any particles are alive?
+        // We'll just loop, overhead of 150 items is tiny.
 
         this.particles.forEach((p) => {
             if (p.life > 0) {
                 // Physics: Velocity
                 p.mesh.position.add(p.vel);
 
-                // Gravity & Drag
-                p.vel.y -= 0.25; // Gravity
-                p.vel.multiplyScalar(0.97); // Air resistance
+                // SLOW MOTION PHYSICS
+                p.vel.y -= 0.05; // Very low gravity (Floaty)
+                p.vel.multiplyScalar(0.99); // Low drag (Sustain velocity)
 
                 // Flower Petal Flutter (Sine wave sway)
                 // We added swaySpeed/swayOffset in init, but if they don't exist, default them
-                const sSpeed = p.swaySpeed || 0.01;
+                const sSpeed = p.swaySpeed || 0.005;
                 const sOffset = p.swayOffset || 0;
 
-                const sway = Math.sin(now * sSpeed + sOffset) * 0.2;
+                const sway = Math.sin(now * sSpeed + sOffset) * 0.1;
                 p.mesh.position.x += sway;
                 p.mesh.position.z += sway;
 
-                // Rotation
-                p.mesh.rotation.x += p.rotVel.x;
-                p.mesh.rotation.y += p.rotVel.y;
-                p.mesh.rotation.z += p.rotVel.z;
+                // Slow Tumble
+                p.mesh.rotation.x += p.rotVel.x * 0.5;
+                p.mesh.rotation.y += p.rotVel.y * 0.5;
+                p.mesh.rotation.z += p.rotVel.z * 0.5;
 
-                // Decay
-                p.life -= 0.01;
+                // Long Decay
+                p.life -= 0.005; // ~3 seconds life
 
                 if (p.life <= 0 || p.mesh.position.y < -100) {
                     p.mesh.visible = false;
                     p.life = 0;
                 } else {
-                    activeCount++;
+                    // activeCount++; // No longer needed
                 }
 
-                // Pop-out Scale effect
-                const s = Math.min(1.0, p.life * 3.0);
+                // Smooth Pop-in
+                const s = Math.min(1.0, p.life * 5.0); // Fast initial scale up
                 p.mesh.scale.set(s, s, s);
             }
         });
@@ -1052,6 +1053,26 @@ class RubberButton {
             this.mesh.geometry.attributes.position.needsUpdate = true;
             this.mesh.geometry.computeVertexNormals();
         }
+    }
+
+    /**
+     * Resets the button physics to its original state.
+     */
+    resetPhysics() {
+        this.physics.dragOffset.set(0, 0, 0);
+        this.physics.returnVelocity.set(0, 0, 0);
+        this.physics.grabPoint.set(0, 0, 0);
+        this.physics.localGrabPoint.set(0, 0, 0);
+        this.physics.pressY = 0;
+        this.physics.targetPressY = 0;
+
+        // CRITICAL: Clear weights to prevent lingering deformation
+        this.weights.fill(0);
+
+        // Reset Geometry
+        this.mesh.geometry.attributes.position.array.set(this.originalPositions);
+        this.mesh.geometry.attributes.position.needsUpdate = true;
+        this.mesh.position.y = 0;
     }
 
     /**
