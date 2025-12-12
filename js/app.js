@@ -443,158 +443,195 @@ import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
 /**
  * COMPONENT: Sticky Rubber Button (Three.js WebGL)
+ * 
+ * A soft-body physics simulation using vertex displacement.
+ * Features:
+ * - Gooey/Sticky Interaction (Mouse Drag).
+ * - Soft-body deformation (Gaussian Weights).
+ * - "Alive" States: Heartbeat, Shiver, Drip.
+ * - Confetti Explosion Finale.
  */
 class RubberButton {
     constructor() {
         this.canvas = document.getElementById('buttonCanvas');
         if (!this.canvas) return;
 
-        // Scene
+        // Configuration
+        this.config = {
+            snapLimit: 25.0, // Burst Threshold (Lowered for easier trigger)
+            softness: 80.0,  // Gaussian Blob Width
+            gravity: 0.5,    // Confetti Gravity
+            beatRate: 1200,  // Heartbeat ms
+        };
+
+        // State
+        this.state = {
+            isDragging: false,
+            isReturning: false,
+            isExploded: false,
+            isDripping: false, // Drips functionality removed, but keeping for consistency if re-added
+            beatPhase: 0,
+        };
+
+        // Physics Vectors
+        this.physics = {
+            dragOffset: new THREE.Vector3(),
+            grabPoint: new THREE.Vector3(),
+            localGrabPoint: new THREE.Vector3(),
+            returnVelocity: new THREE.Vector3(),
+            pressY: 0,
+            targetPressY: 0,
+            drips: [] // Drips functionality removed, but keeping for consistency if re-added
+        };
+
+        // Systems
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.mesh = null;
+        this.particles = []; // For confetti
+
+        this.init();
+    }
+
+    /**
+     * Initializes all components of the RubberButton.
+     */
+    init() {
+        this.initScene();
+        this.initLighting();
+        this.initGeometry();
+        this.initConfetti();
+        this.initAudio();
+        this.bindEvents();
+        this.startLoop();
+    }
+
+    /**
+     * Sets up the Three.js scene, camera, and renderer.
+     */
+    initScene() {
         this.scene = new THREE.Scene();
 
-        // Camera
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        this.camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 1000);
         this.camera.position.set(0, 100, 160);
         this.camera.lookAt(0, 0, 0);
 
-        // Renderer
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             alpha: true,
             antialias: true
         });
-        this.renderer.setSize(width, height);
+        this.renderer.setSize(w, h);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-        // Resize Listener
         window.addEventListener('resize', () => this.onResize());
+    }
 
-        // LIGHTING SETUP (Studio)
-
-        // 1. Hemisphere Light (Base illumination - prevents black shadows)
+    /**
+     * Configures the lighting for the scene.
+     */
+    initLighting() {
         const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
         this.scene.add(hemiLight);
 
-        // 2. Key Light (Main Highlight)
         const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
         dirLight.position.set(50, 100, 50);
         dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.mapSize.set(2048, 2048);
         this.scene.add(dirLight);
 
-        // 3. Rim Light (Back highlight for 3D shape)
         const rimLight = new THREE.DirectionalLight(0x4455ff, 1.0);
         rimLight.position.set(-50, 20, -100);
         this.scene.add(rimLight);
+    }
 
-        // MATERIALS
+    /**
+     * Creates the 3D geometry for the button and its base.
+     */
+    initGeometry() {
+        // Shared Materials
+        this.materials = {
+            rubber: new THREE.MeshPhysicalMaterial({
+                color: 0xff0000, emissive: 0x330000,
+                roughness: 0.15, metalness: 0.0,
+                clearcoat: 1.0, clearcoatRoughness: 0.1,
+            }),
+            base: new THREE.MeshStandardMaterial({
+                color: 0x252525, roughness: 0.4, metalness: 0.5
+            })
+        };
 
-        // Red Cap (Glossy Plastic)
-        this.rubberMat = new THREE.MeshPhysicalMaterial({
-            color: 0xff0000,
-            emissive: 0x330000,
-            roughness: 0.15,
-            metalness: 0.0,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.1,
-            specularIntensity: 1.0,
-        });
-
-        // Black Base (Dark Grey Satin - Lighter to show 3D form)
-        const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x252525, // Lighter than 0x050505
-            roughness: 0.4,
-            metalness: 0.5
-        });
-
-        // Group
         this.pivot = new THREE.Group();
         this.scene.add(this.pivot);
 
-        // GEOMETRY
+        // Base & Bezel
+        const baseGroup = new THREE.Group();
+        const puck = new THREE.Mesh(new THREE.CylinderGeometry(70, 75, 20, 64), this.materials.base);
+        puck.position.y = -10; puck.receiveShadow = true;
+        baseGroup.add(puck);
 
-        // 1. Base (Casing)
-        this.baseGroup = new THREE.Group();
-        this.pivot.add(this.baseGroup);
+        const bezel = new THREE.Mesh(new THREE.TorusGeometry(68, 6, 16, 100), this.materials.base);
+        bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
+        baseGroup.add(bezel);
+        this.pivot.add(baseGroup);
 
-        // Puck Body
-        const puckGeo = new THREE.CylinderGeometry(70, 75, 20, 64);
-        const puckMesh = new THREE.Mesh(puckGeo, baseMat);
-        puckMesh.position.y = -10;
-        puckMesh.receiveShadow = true;
-        this.baseGroup.add(puckMesh);
-
-        // Bezel (Rounded Edge) - Torus
-        const bezelGeo = new THREE.TorusGeometry(68, 6, 16, 100);
-        const bezelMesh = new THREE.Mesh(bezelGeo, baseMat);
-        bezelMesh.rotation.x = -Math.PI / 2;
-        bezelMesh.position.y = 0;
-        bezelMesh.receiveShadow = true;
-        this.baseGroup.add(bezelMesh);
-
-        // 2. Button Cap (Dome)
-        this.buttonGroup = new THREE.Group();
-        this.pivot.add(this.buttonGroup);
-
-        // Dome: Hemisphere scaled vertically
+        // Button Mesh (Soft Body)
         const domeGeo = new THREE.SphereGeometry(66, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
-        this.mesh = new THREE.Mesh(domeGeo, this.rubberMat);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
-
-        // Transform: TALLER (0.7 scale instead of 0.4)
+        this.mesh = new THREE.Mesh(domeGeo, this.materials.rubber);
+        this.mesh.castShadow = true; this.mesh.receiveShadow = true;
         this.mesh.scale.set(1, 0.7, 1);
-        this.mesh.position.y = 0;
+        this.pivot.add(this.mesh);
 
-        this.buttonGroup.add(this.mesh);
-
-        // Shadow Plane
-        const planeGeo = new THREE.PlaneGeometry(500, 500);
-        const planeMat = new THREE.ShadowMaterial({ opacity: 0.3, color: 0x000000 });
-        const plane = new THREE.Mesh(planeGeo, planeMat);
-        plane.rotation.x = -Math.PI / 2;
-        plane.position.y = -20;
-        this.pivot.add(plane);
-
-        // Initialize State
-        this.originalPositions = Float32Array.from(this.mesh.geometry.attributes.position.array);
+        // Physics Data Init
+        this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // Physics Parameters
-        this.isDragging = false;
-        this.dragOffset = new THREE.Vector3();
-        this.grabPoint = new THREE.Vector3(); // World Space
-        this.localGrabPoint = new THREE.Vector3(); // Local Space
+        // Floor Shadow
+        const shadowPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(500, 500),
+            new THREE.ShadowMaterial({ opacity: 0.3, color: 0x000000 })
+        );
+        shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.position.y = -20;
+        this.pivot.add(shadowPlane);
+    }
 
-        this.snapLimit = 45.0; // Easier to trigger burst
-        this.softness = 80.0;
+    /**
+     * Initializes the confetti particles for the explosion effect.
+     */
+    initConfetti() {
+        const count = 150;
+        const geo = new THREE.PlaneGeometry(4, 4);
+        const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+        this.particleMesh = new THREE.InstancedMesh(geo, mat, count);
+        this.particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.scene.add(this.particleMesh);
 
-        // Return Animation Physics
-        this.returnVelocity = new THREE.Vector3();
-        this.isReturning = false;
+        const dummy = new THREE.Object3D();
+        dummy.position.set(0, -1000, 0);
+        dummy.updateMatrix();
 
-        // Drip Physics
-        this.drips = [];
-        this.isDripping = false;
+        for (let i = 0; i < count; i++) {
+            this.particleMesh.setMatrixAt(i, dummy.matrix);
+            this.particles.push({
+                pos: new THREE.Vector3(0, -9999, 0),
+                vel: new THREE.Vector3(),
+                rot: new THREE.Vector3(),
+                rotVel: new THREE.Vector3(),
+                color: new THREE.Color(),
+                life: 0
+            });
+        }
+    }
 
-        // Heartbeat
-        this.pulseTime = 0;
-        this.beatState = 0; // 0=Wait, 1=Bed, 2=Dub
-
-        // "Press" State
-        this.pressY = 0;
-        this.targetPressY = 0;
-
-        // Interaction
-        this.raycaster = new THREE.Raycaster();
-        this.mouse = new THREE.Vector2();
-
-        // Audio
+    /**
+     * Sets up the AudioContext and a helper for playing tones.
+     */
+    initAudio() {
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         this.playTone = (freq, type, duration, vol = 0.5) => {
             if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
@@ -602,339 +639,369 @@ class RubberButton {
             const gain = this.audioCtx.createGain();
             osc.type = type;
             osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
-
             gain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
-
             osc.connect(gain);
             gain.connect(this.audioCtx.destination);
             osc.start();
             osc.stop(this.audioCtx.currentTime + duration);
         };
-
-        this.bindEvents();
-        this.start();
     }
 
-    triggerDrips() {
-        this.drips = [];
-        const count = 3 + Math.floor(Math.random() * 3); // 3-5 drips
-        for (let i = 0; i < count; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const r = 25; // Drip from rim
-            this.drips.push({
-                x: Math.cos(angle) * r,
-                z: Math.sin(angle) * r,
-                time: 0,
-                speed: 1.0 + Math.random() * 2.0,
-                width: 30.0 + Math.random() * 20.0,
-                life: 60 + Math.random() * 40
-            });
+    // -------------------------------------------------------------------------
+    // PHYSICS ACTIONS
+    // -------------------------------------------------------------------------
+
+    /**
+     * Triggers the confetti explosion effect.
+     */
+    explode() {
+        if (this.state.isExploded) return;
+        this.state.isExploded = true;
+        this.state.isDragging = false;
+        this.mesh.visible = false;
+
+        // Reset Physics
+        this.physics.dragOffset.set(0, 0, 0);
+        this.physics.targetPressY = 0;
+        this.physics.pressY = 0;
+
+        // Audio
+        this.playTone(100, 'sawtooth', 0.1, 0.5);
+        setTimeout(() => this.playTone(200, 'square', 0.2, 0.3), 50);
+
+        // Spawn
+        const center = this.physics.grabPoint.clone();
+        if (center.lengthSq() < 1) center.set(0, 10, 0);
+
+        this.particles.forEach((p, i) => {
+            p.pos.copy(center).addScalar((Math.random() - 0.5) * 10);
+            p.vel.set(
+                (Math.random() - 0.5) * 15,
+                (Math.random() * 25) + 10, // Higher Upward Bias
+                (Math.random() - 0.5) * 15
+            );
+            p.rot.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
+            p.rotVel.setRandom().multiplyScalar(0.5);
+
+            // Colors
+            const r = Math.random();
+            if (r < 0.6) p.color.setHex(0xff0000); // Red
+            else if (r < 0.8) p.color.setHex(0x880000); // Dark
+            else p.color.setHex(0xffaaaa); // Pale
+
+            this.particleMesh.setColorAt(i, p.color);
+            p.life = 1.0;
+        });
+        this.particleMesh.instanceColor.needsUpdate = true;
+
+        // Reset Timer
+        setTimeout(() => {
+            this.state.isExploded = false;
+            this.mesh.visible = true;
+            this.hideConfetti();
+            this.playTone(300, 'sine', 0.5, 0.2); // Reform
+        }, 2000);
+    }
+
+    /**
+     * Hides all confetti particles.
+     */
+    hideConfetti() {
+        const dummy = new THREE.Object3D();
+        dummy.position.set(0, -9999, 0);
+        dummy.updateMatrix();
+        this.particles.forEach(p => p.life = 0);
+        for (let i = 0; i < this.particles.length; i++) {
+            this.particleMesh.setMatrixAt(i, dummy.matrix);
         }
-        this.isDripping = true;
+        this.particleMesh.instanceMatrix.needsUpdate = true;
     }
 
-    onResize() {
-        if (!this.camera || !this.renderer) return;
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height);
-    }
+    // -------------------------------------------------------------------------
+    // INTERACTION LOOP
+    // -------------------------------------------------------------------------
 
+    /**
+     * Binds event listeners for mouse and touch interactions.
+     */
     bindEvents() {
-        const getIntersects = (e) => {
+        this.raycaster = new THREE.Raycaster();
+
+        /**
+         * Converts client coordinates to Normalized Device Coordinates (NDC).
+         * @param {Event} e - The mouse or touch event.
+         * @returns {Object} An object with x and y NDC coordinates.
+         */
+        const getNDC = (e) => {
             const rect = this.canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-            const x = ((clientX - rect.left) / rect.width) * 2 - 1;
-            const y = -((clientY - rect.top) / rect.height) * 2 + 1;
-
-            this.raycaster.setFromCamera({ x, y }, this.camera);
-            return this.raycaster.intersectObject(this.mesh);
+            return {
+                x: ((clientX - rect.left) / rect.width) * 2 - 1,
+                y: -((clientY - rect.top) / rect.height) * 2 + 1
+            };
         };
 
         const onDown = (e) => {
-            const intersects = getIntersects(e);
+            if (this.state.isExploded) return;
+            const { x, y } = getNDC(e);
+            this.raycaster.setFromCamera({ x, y }, this.camera);
+            const hits = this.raycaster.intersectObject(this.mesh);
 
-            if (intersects.length > 0) {
-                this.isDragging = true;
-                this.isReturning = false;
-                this.drips = []; // Clear old drips
-                this.isDripping = false;
-                this.returnVelocity.set(0, 0, 0);
+            if (hits.length > 0) {
+                this.state.isDragging = true;
+                this.state.isReturning = false;
+                this.physics.returnVelocity.set(0, 0, 0);
+                this.physics.targetPressY = -10.0;
 
-                // PRESS EFFECT
-                this.targetPressY = -10.0; // Reduced depth for safety
+                const hit = hits[0];
+                this.physics.grabPoint.copy(hit.point);
+                this.physics.localGrabPoint.copy(this.mesh.worldToLocal(hit.point.clone()));
+                this.physics.dragOffset.set(0, 0, 0);
 
-                const hit = intersects[0];
-                this.grabPoint.copy(hit.point);
-                this.localGrabPoint.copy(this.mesh.worldToLocal(hit.point.clone()));
-                this.dragOffset.set(0, 0, 0);
-
-                // CALCULATE WEIGHTS
-                const positions = this.originalPositions;
-                const localGrab = this.localGrabPoint;
-                const grabY = Math.max(0.1, localGrab.y);
-
-                for (let i = 0; i < positions.length; i += 3) {
-                    const dx = positions[i] - localGrab.x;
-                    const dy = positions[i + 1] - localGrab.y;
-                    const dz = positions[i + 2] - localGrab.z;
-                    const distSq = dx * dx + dy * dy + dz * dz;
-
-                    let weight = Math.exp(-distSq / (2 * this.softness * this.softness));
-
-                    // TAFFY PINNING
-                    const yVal = positions[i + 1];
-                    let pinFactor = 1.0;
-
-                    if (yVal < grabY) {
-                        pinFactor = Math.max(0, yVal / grabY);
-                        pinFactor = Math.pow(pinFactor, 0.8);
-                    }
-
-                    this.weights[i / 3] = weight * pinFactor;
-                }
-
-                // Squelch
-                this.playTone(150, 'square', 0.1, 0.3); // Mechanical Click Sound
+                this.calculateWeights();
+                this.playTone(150, 'square', 0.1, 0.3);
                 this.canvas.style.cursor = 'grabbing';
             }
         };
 
         const onMove = (e) => {
-            if (!this.isDragging) return;
+            if (!this.state.isDragging || this.state.isExploded) return;
+            const { x, y } = getNDC(e);
 
-            const rect = this.canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            // FAIL-SAFE: If dragging near edge of screen, FORCE EXPLODE
+            // This prevents the "stick to edge" bug if coordinate math is weird.
+            if (Math.abs(x) > 0.95 || Math.abs(y) > 0.95) {
+                this.explode();
+                this.canvas.style.cursor = 'grab';
+                return;
+            }
 
-            const x = ((clientX - rect.left) / rect.width) * 2 - 1;
-            const y = -((clientY - rect.top) / rect.height) * 2 + 1;
-
+            // Raycast on Virtual Plane
             const ray = new THREE.Ray();
             ray.origin.setFromMatrixPosition(this.camera.matrixWorld);
             ray.direction.set(x, y, 0.5).unproject(this.camera).sub(ray.origin).normalize();
 
-            const targetDist = this.grabPoint.distanceTo(this.camera.position);
+            // Project point onto Sphere of radius = distance(camera, grabPoint)
+            const targetDist = this.physics.grabPoint.distanceTo(this.camera.position);
             const targetPos = ray.origin.clone().add(ray.direction.multiplyScalar(targetDist));
 
-            const worldOffset = targetPos.clone().sub(this.grabPoint);
-            this.dragOffset.copy(worldOffset);
+            this.physics.dragOffset.copy(targetPos).sub(this.physics.grabPoint);
 
-            // Releasing Press if stretched
-            // If we pull UP, release the press immediately
-            if (this.dragOffset.y > 5) {
-                this.targetPressY = 0;
-            }
+            // Logic: Release Press on Pull Up
+            if (this.physics.dragOffset.y > 5) this.physics.targetPressY = 0;
 
-            // BURST (Explode)
-            if (this.dragOffset.length() > this.snapLimit) {
-                this.explode(); // BURST INTO CONFETTI
+            // Logic: Check Burst Limit
+            if (this.physics.dragOffset.length() > this.config.snapLimit) {
+                this.explode();
                 this.canvas.style.cursor = 'grab';
             }
         };
 
         const onUp = () => {
-            // Sticky Mode: No Release on Up
-            if (this.isDragging) {
-                this.canvas.style.cursor = 'grabbing';
-            }
+            if (this.state.isDragging) this.canvas.style.cursor = 'grabbing';
         };
 
-        // Events
-        this.canvas.addEventListener('mousedown', onDown);
+        const c = this.canvas;
+        c.addEventListener('mousedown', onDown);
+        c.addEventListener('touchstart', onDown, { passive: false });
         window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-
-        this.canvas.addEventListener('touchstart', onDown, { passive: false });
         window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('mouseup', onUp);
         window.addEventListener('touchend', onUp);
-        window.addEventListener('touchcancel', onUp);
     }
 
-    start() {
+    /**
+     * Calculates the weight for each vertex based on its distance from the grab point.
+     */
+    calculateWeights() {
+        const pos = this.originalPositions;
+        const localGrab = this.physics.localGrabPoint;
+        const grabY = Math.max(0.1, localGrab.y);
+
+        for (let i = 0; i < pos.length; i += 3) {
+            const dx = pos[i] - localGrab.x;
+            const dy = pos[i + 1] - localGrab.y;
+            const dz = pos[i + 2] - localGrab.z;
+            const distSq = dx * dx + dy * dy + dz * dz;
+
+            // Gaussian Falloff
+            let w = Math.exp(-distSq / (2 * this.config.softness * this.config.softness));
+
+            // Taffy Pinning (Rooted at bottom)
+            if (pos[i + 1] < grabY) {
+                let pin = Math.max(0, pos[i + 1] / grabY);
+                w *= Math.pow(pin, 0.8);
+            }
+            this.weights[i / 3] = w;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // RENDER LOOP
+    // -------------------------------------------------------------------------
+
+    /**
+     * Starts the animation loop for the button.
+     */
+    startLoop() {
         const animate = () => {
             requestAnimationFrame(animate);
 
-            // CONFETTI LOOP
-            if (this.isExploded) {
-                const dummy = new THREE.Object3D();
-                for (let i = 0; i < this.particleCount; i++) {
-                    const p = this.particles[i];
-                    if (p.life > 0) {
-                        p.pos.add(p.vel);
-                        p.vel.y -= 0.5; // Gravity
-                        p.vel.multiplyScalar(0.98); // Drag
-
-                        p.rot.add(p.rotVel);
-
-                        dummy.position.copy(p.pos);
-                        dummy.rotation.set(p.rot.x, p.rot.y, p.rot.z);
-                        dummy.scale.set(1, 1, 1);
-                        dummy.updateMatrix();
-                        this.particleMesh.setMatrixAt(i, dummy.matrix);
-                    }
-                }
-                this.particleMesh.instanceMatrix.needsUpdate = true;
+            // 1. CONFETTI MODE
+            if (this.state.isExploded) {
+                this.updateConfetti();
                 this.renderer.render(this.scene, this.camera);
-                return; // SKIP BUTTON RENDER
+                return;
             }
 
-            // 1. HEARTBEAT LOGIC (Visual + Audio)
-            const now = Date.now();
-            const beatLen = 1200; // 1.2s (Faster, normal rate)
-            const phase = now % beatLen;
+            // 2. ALIVE STATE (Heartbeat)
+            this.updateHeartbeat();
 
-            // Visual Pulse (Single Beat)
-            let pulseScale = 1.0;
-            if (phase < 200) {
-                pulseScale = 1.0 + Math.sin((phase / 200) * Math.PI) * 0.008;
-            }
+            // 3. PRESS PHYSICS
+            // Smooth lerp for mechanical press
+            this.physics.pressY += (this.physics.targetPressY - this.physics.pressY) * 0.6;
+            this.mesh.position.y = this.physics.pressY; // Overrides Shiver Y, preserves press
 
-            // Apply scale (Respecting Y=0.7 base)
-            this.mesh.scale.set(pulseScale, 0.7 * pulseScale, pulseScale);
-
-            // Alive Shiver (Visible Vibration)
-            // Increased amplitude so it's clearly shaking
-            this.mesh.position.x = (Math.random() - 0.5) * 0.2;
-            this.mesh.position.z = (Math.random() - 0.5) * 0.2;
-
-            // Audio Triggers
-            if (phase < 50 && this.beatState === 0) {
-                this.playTone(55, 'sine', 0.2, 0.2);
-                this.beatState = 1;
-            }
-            if (phase > 500) {
-                this.beatState = 0; // Reset
-            }
-
-            // 2. UPDATE PRESS STATE
-            this.pressY += (this.targetPressY - this.pressY) * 0.6;
-            // this.mesh.position.y = this.pressY + (Math.random() * 0.02); // Add jitter to Y too? No, keep press clean.
-            // Actually, adding jitter to Y might fight the press logic.
-            // Let's keep Y clean for press.
-            this.mesh.position.y = this.pressY; // Shiver applied above overrides this? No, above is X/Z.
-
-            // 3. UPDATE DRIPS
-            if (this.isDripping) {
-                let active = false;
-                for (let d of this.drips) {
-                    d.time += 1.0;
-                    if (d.time < d.life) active = true;
-                }
-                if (!active) this.isDripping = false;
-            }
-
-            // PHYSICS LOOP
-            const positions = this.mesh.geometry.attributes.position.array;
-
-            if (!this.isDragging) {
-                // Return Logic
-                const stiffness = 0.15;
-                const damping = 0.85;
-                const force = this.dragOffset.clone().multiplyScalar(-stiffness);
-                this.returnVelocity.add(force);
-                this.returnVelocity.multiplyScalar(damping);
-                this.dragOffset.add(this.returnVelocity);
-
-                if (this.dragOffset.lengthSq() < 0.01 && this.returnVelocity.lengthSq() < 0.01) {
-                    this.dragOffset.set(0, 0, 0);
-                    this.returnVelocity.set(0, 0, 0);
-                    this.isReturning = false;
-                }
-            } else {
-                this.isReturning = false; // Manually controlled
-            }
-
-            // Apply Deformation
-            if (this.dragOffset.lengthSq() > 0.001 || this.isDragging || this.isReturning || this.isDripping) {
-                const localDrag = this.dragOffset.clone();
-                // Inverse Scale logic (MUST USE CURRENT DYNAMIC SCALE)
-                localDrag.x /= this.mesh.scale.x;
-                localDrag.y /= this.mesh.scale.y;
-                localDrag.z /= this.mesh.scale.z;
-
-                // DIRECTIONAL PHYSICS (Gooey Squash)
-                let effDragY = localDrag.y;
-                let radialSquash = 0;
-
-                if (localDrag.y < 0) {
-                    // Pushing Down: SQUEEZE
-                    effDragY *= 0.1; // Limit downward movement (prevents clip)
-                    radialSquash = -localDrag.y * 0.4; // Expand outwards
-                }
-
-                for (let i = 0; i < this.weights.length; i++) {
-                    const w = this.weights[i];
-                    // Drag Deformation
-                    let dx = 0, dy = 0, dz = 0;
-                    if (w > 0.001) {
-                        const ox = this.originalPositions[i * 3];
-                        const oz = this.originalPositions[i * 3 + 2];
-                        const rS = ox * radialSquash * 0.01 * w;
-                        const rSz = oz * radialSquash * 0.01 * w;
-
-                        dx = localDrag.x * w + rS;
-                        dy = effDragY * w;
-                        dz = localDrag.z * w + rSz;
-                    }
-
-                    // Drip Deformation
-                    let dripY = 0;
-                    let isDrop = false;
-                    if (this.isDripping) {
-                        const ox = this.originalPositions[i * 3];
-                        const oz = this.originalPositions[i * 3 + 2];
-
-                        for (let d of this.drips) {
-                            if (d.time >= d.life) continue;
-
-                            const distX = ox - d.x;
-                            const distZ = oz - d.z;
-                            const distSq = distX * distX + distZ * distZ;
-
-                            // Check Y height (only bottom drips)
-                            if (this.originalPositions[i * 3 + 1] > 10.0) continue;
-
-                            const dripW = Math.exp(-distSq / d.width);
-
-                            if (dripW > 0.1) {
-                                let fall = d.time * d.speed * 0.1;
-                                if (d.time > d.life * 0.8) {
-                                    fall *= (d.life - d.time) / (d.life * 0.2);
-                                }
-                                dripY -= fall * dripW;
-                                isDrop = true;
-                            }
-                        }
-                    }
-
-                    positions[i * 3] = this.originalPositions[i * 3] + dx;
-
-                    // Y DEFORMATION + DRIP
-                    let newY = this.originalPositions[i * 3 + 1] + dy + dripY;
-
-                    // FLOOR CONSTRAINT (Scale Corrected - DYNAMIC SCALE)
-                    if (!isDrop) {
-                        // Now uses animated mesh.scale.y automaticall
-                        const limitY = (2.0 - this.pressY) / this.mesh.scale.y;
-                        newY = Math.max(limitY, newY);
-                    }
-
-                    positions[i * 3 + 1] = newY;
-                    positions[i * 3 + 2] = this.originalPositions[i * 3 + 2] + dz;
-                }
-                this.mesh.geometry.attributes.position.needsUpdate = true;
-                this.mesh.geometry.computeVertexNormals();
-            }
+            // 4. DEFORMATION PHYSICS
+            this.updateDeformation();
 
             this.renderer.render(this.scene, this.camera);
         };
         animate();
+    }
+
+    /**
+     * Updates the heartbeat and shiver effects for the button.
+     */
+    updateHeartbeat() {
+        const now = Date.now();
+        const phase = now % this.config.beatRate;
+
+        let pulse = 1.0;
+        if (phase < 300) {
+            pulse = 1.0 + Math.sin((phase / 300) * Math.PI) * 0.008;
+        }
+
+        // Apply Pulse
+        this.mesh.scale.set(pulse, 0.7 * pulse, pulse);
+
+        // Apply Shiver (Idle Jitter)
+        this.mesh.position.x = (Math.random() - 0.5) * 0.2;
+        this.mesh.position.z = (Math.random() - 0.5) * 0.2;
+
+        // Audio Trigger
+        if (phase < 50 && this.state.beatPhase === 0) {
+            this.playTone(55, 'sine', 0.2, 0.2);
+            this.state.beatPhase = 1;
+        }
+        if (phase > 500) this.state.beatPhase = 0;
+    }
+
+    /**
+     * Updates the position and rotation of confetti particles.
+     */
+    updateConfetti() {
+        const dummy = new THREE.Object3D();
+        this.particles.forEach((p, i) => {
+            if (p.life > 0) {
+                p.pos.add(p.vel);
+                p.vel.y -= this.config.gravity;
+                p.vel.multiplyScalar(0.98);
+                p.rot.add(p.rotVel);
+
+                dummy.position.copy(p.pos);
+                dummy.rotation.set(p.rot.x, p.rot.y, p.rot.z);
+                dummy.scale.set(1, 1, 1);
+                dummy.updateMatrix();
+                this.particleMesh.setMatrixAt(i, dummy.matrix);
+            }
+        });
+        this.particleMesh.instanceMatrix.needsUpdate = true;
+    }
+
+    /**
+     * Applies deformation physics to the button mesh.
+     */
+    updateDeformation() {
+        const P = this.physics;
+        const positions = this.mesh.geometry.attributes.position.array;
+
+        // Spring Return Logic
+        if (!this.state.isDragging) {
+            const force = P.dragOffset.clone().multiplyScalar(-0.15); // Stiffness
+            P.returnVelocity.add(force).multiplyScalar(0.85); // Damping
+            P.dragOffset.add(P.returnVelocity);
+
+            if (P.dragOffset.lengthSq() < 0.01 && P.returnVelocity.lengthSq() < 0.01) {
+                P.dragOffset.set(0, 0, 0);
+                P.returnVelocity.set(0, 0, 0);
+            }
+        }
+
+        // Vertex Displacement
+        if (P.dragOffset.lengthSq() > 0.001 || this.state.isDragging) {
+            const localDrag = P.dragOffset.clone();
+            localDrag.x /= this.mesh.scale.x;
+            localDrag.y /= this.mesh.scale.y;
+            localDrag.z /= this.mesh.scale.z;
+
+            // Directional Logic (Squash vs Stretch)
+            let effDragY = localDrag.y;
+            let radialSquash = 0;
+
+            if (localDrag.y < 0) {
+                effDragY *= 0.1;
+                radialSquash = -localDrag.y * 0.4;
+            }
+
+            for (let i = 0; i < this.weights.length; i++) {
+                const w = this.weights[i];
+                if (w < 0.001) {
+                    // Reset to original (optimization)
+                    positions[i * 3] = this.originalPositions[i * 3];
+                    positions[i * 3 + 1] = this.originalPositions[i * 3 + 1];
+                    positions[i * 3 + 2] = this.originalPositions[i * 3 + 2];
+                    continue;
+                }
+
+                // Apply X/Z drag + Radial Squash
+                const ox = this.originalPositions[i * 3];
+                const oz = this.originalPositions[i * 3 + 2];
+
+                // Squash Expansion
+                const sx = ox * radialSquash * 0.01 * w;
+                const sz = oz * radialSquash * 0.01 * w;
+
+                positions[i * 3] = ox + (localDrag.x * w) + sx;
+                positions[i * 3 + 2] = oz + (localDrag.z * w) + sz;
+
+                // Apply Y Drag + Floor Constraint
+                let newY = this.originalPositions[i * 3 + 1] + (effDragY * w);
+
+                // Constraint: Y must be above floor relative to Press depth
+                // LocalY * ScaleY + PressY >= FloorY (2.0)
+                const limitY = (2.0 - P.pressY) / this.mesh.scale.y;
+                newY = Math.max(limitY, newY);
+
+                positions[i * 3 + 1] = newY;
+            }
+            this.mesh.geometry.attributes.position.needsUpdate = true;
+            this.mesh.geometry.computeVertexNormals();
+        }
+    }
+
+    /**
+     * Handles window resize events to update camera aspect ratio and renderer size.
+     */
+    onResize() {
+        if (!this.camera || !this.renderer) return;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        this.camera.aspect = w / h;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(w, h);
     }
 }
 
