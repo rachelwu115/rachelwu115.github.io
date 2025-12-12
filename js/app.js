@@ -515,9 +515,13 @@ class RubberButton {
 
         const w = window.innerWidth;
         const h = window.innerHeight;
-        this.camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 1000);
-        this.camera.position.set(0, 100, 160);
-        this.camera.lookAt(0, 0, 0);
+        this.camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 2000);
+
+        // VIEW ANGLE: Profile view of Pillar + Label
+        // Y=-50 puts eye level between button and label
+        // Z=320 pulls back to see the monumentality
+        this.camera.position.set(0, -50, 320);
+        this.camera.lookAt(0, -90, 0);
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -536,23 +540,26 @@ class RubberButton {
      * Configures the lighting for the scene.
      */
     initLighting() {
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
-        this.scene.add(hemiLight);
+        // Bright ambient for White Pillar validity
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        this.scene.add(ambient);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        dirLight.position.set(50, 100, 50);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 200, 100);
         dirLight.castShadow = true;
         dirLight.shadow.mapSize.set(2048, 2048);
+        dirLight.shadow.bias = -0.0001;
         this.scene.add(dirLight);
 
-        const rimLight = new THREE.DirectionalLight(0x4455ff, 1.0);
-        rimLight.position.set(-50, 20, -100);
+        const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        rimLight.position.set(-50, 50, -100);
         this.scene.add(rimLight);
-    }
 
-    /**
-     * Creates the 3D geometry for the button and its base.
-     */
+        // Front Fill for Label Visibility
+        const frontLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        frontLight.position.set(0, 0, 200);
+        this.scene.add(frontLight);
+    }
     initGeometry() {
         // Shared Materials
         this.materials = {
@@ -563,37 +570,64 @@ class RubberButton {
             }),
             base: new THREE.MeshStandardMaterial({
                 color: 0x252525, roughness: 0.4, metalness: 0.5
+            }),
+            pillar: new THREE.MeshStandardMaterial({
+                color: 0xffffff, // White
+                roughness: 0.3,
+                metalness: 0.1
             })
         };
 
         this.pivot = new THREE.Group();
         this.scene.add(this.pivot);
 
-        // Base Group (Puck + Bezel + Pillar)
+        // Base & Bezel
         const baseGroup = new THREE.Group();
-
-        // 1. Puck (The immediate base)
         const puck = new THREE.Mesh(new THREE.CylinderGeometry(70, 75, 20, 64), this.materials.base);
-        puck.position.y = -10;
-        puck.receiveShadow = true;
+        puck.position.y = -10; puck.receiveShadow = true;
         baseGroup.add(puck);
 
-        // 2. Bezel (The ring around)
         const bezel = new THREE.Mesh(new THREE.TorusGeometry(68, 6, 16, 100), this.materials.base);
-        bezel.rotation.x = -Math.PI / 2;
-        bezel.receiveShadow = true;
+        bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
         baseGroup.add(bezel);
 
-        // 3. Rectangular Pillar Stand (Art Piece Pedestal)
-        // Sits under the puck (Puck bottom is -20)
-        // Height 400. Center = -20 - 200 = -220.
+        // MUSEUM PILLAR (White, Rectangular)
         const pillar = new THREE.Mesh(
             new THREE.BoxGeometry(150, 400, 150),
-            this.materials.base
+            this.materials.pillar
         );
-        pillar.position.y = -220;
+        pillar.position.y = -220; // Center
         pillar.receiveShadow = true;
+        pillar.castShadow = true; // Cast shadow on floor
         baseGroup.add(pillar);
+
+        // MUSEUM LABEL
+        const canvas = document.createElement('canvas');
+        canvas.width = 512; canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        // Transparent BG (Text on Pillar)
+        ctx.fillStyle = 'rgba(255,255,255,0)';
+        ctx.fillRect(0, 0, 512, 256);
+
+        ctx.fillStyle = '#111'; // Black Text
+        ctx.textAlign = 'center';
+
+        // Title: "The Button" (Serif, Classy)
+        ctx.font = 'bold 70px "Playfair Display", "Times New Roman", serif';
+        ctx.fillText('The Button', 256, 90);
+
+        // Subtitle: "Your actions..." (Sans, Modern)
+        ctx.font = '300 32px "Inter", "Arial", sans-serif';
+        ctx.fillText('Your actions have no consequences.', 256, 150);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        const label = new THREE.Mesh(
+            new THREE.PlaneGeometry(120, 60),
+            new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+        );
+        label.position.set(0, -90, 75.5); // Slightly protruding from z=75 face, slightly down
+        baseGroup.add(label);
 
         this.pivot.add(baseGroup);
 
@@ -608,13 +642,12 @@ class RubberButton {
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // Floor Shadow (At bottom of pillar)
+        // Floor Shadow
         const shadowPlane = new THREE.Mesh(
             new THREE.PlaneGeometry(2000, 2000),
-            new THREE.ShadowMaterial({ opacity: 0.3, color: 0x000000 })
+            new THREE.ShadowMaterial({ opacity: 0.1, color: 0x000000 }) // Softer shadow for white pillar
         );
-        shadowPlane.rotation.x = -Math.PI / 2;
-        shadowPlane.position.y = -420; // Floor level
+        shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.position.y = -420;
         this.pivot.add(shadowPlane);
     }
 
