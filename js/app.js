@@ -442,7 +442,7 @@ class GlassCase {
 }
 
 /**
- * COMPONENT: Sticky Rubber Button (Verlet Physics)
+ * COMPONENT: Sticky Rubber Button (True 3D Software Renderer)
  */
 class RubberButton {
     constructor() {
@@ -450,21 +450,21 @@ class RubberButton {
         if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
 
-        // Grid Config
-        this.rows = 5;
-        this.cols = 7;
-        this.gap = 25;
+        // 3D Config
+        this.focalLength = 400;
+        this.center = { x: this.canvas.width / 2, y: this.canvas.height / 2 };
+        this.rotation = { x: 0.4, y: 0, z: 0 }; // Tilt to show depth
 
         // Physics Config
-        this.stiffness = 0.08; // VERY Gummy (was 0.15)
-        this.friction = 0.92; // More wobbling/oscillation (was 0.85)
-        this.maxStretch = 300; // "Really far", almost off screen (was 200)
+        this.stiffness = 0.05;
+        this.friction = 0.90;
+        this.maxStretch = 400;
 
         this.points = [];
-        this.mouse = { x: 0, y: 0 };
-        this.dragPoint = null; // The single trapped vertex
+        this.mesh = []; // Quads: [p1, p2, p3, p4] (indices)
 
-        this.color = '#ff0000'; // Bright Cartoon Red
+        this.mouse = { x: 0, y: 0 };
+        this.dragPoint = null;
 
         this.initMesh();
         this.bindEvents();
@@ -472,200 +472,226 @@ class RubberButton {
     }
 
     initMesh() {
-        this.canvas.width = 240; // Wider
-        this.canvas.height = 180; // Taller
+        this.canvas.width = 240;
+        this.canvas.height = 180;
+        this.center = { x: this.canvas.width / 2, y: 100 }; // Lower center
 
-        const offsetX = 20;
-        const offsetY = 20;
+        // Generate a 3D Box/Button shape
+        // Let's make a grid on the X/Z plane (flat) that bumps up in Y?
+        // Or X/Y plane that bumps in Z?
+        // Let's do X/Y plane but with depth (Z thickness).
 
-        for (let y = 0; y < this.rows; y++) {
-            for (let x = 0; x < this.cols; x++) {
+        const rows = 5;
+        const cols = 7;
+        const gap = 20;
+        const startX = -((cols - 1) * gap) / 2;
+        const startY = -((rows - 1) * gap) / 2;
+
+        // 1. Create Surface Points (Top Layer)
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                // bulging center?
+                const dx = x - (cols - 1) / 2;
+                const dy = y - (rows - 1) / 2;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const bulge = Math.max(0, 15 - dist * 5); // Center is higher
+
                 this.points.push({
-                    x: offsetX + x * this.gap,
-                    y: offsetY + y * this.gap,
-                    ox: offsetX + x * this.gap,
-                    oy: offsetY + y * this.gap,
-                    vx: 0, vy: 0,
-                    pinned: (y === this.rows - 1) // Bottom row pinned
+                    x: startX + x * gap,
+                    y: startY + y * gap,
+                    z: -bulge, // Negative Z is closer? Standard is +Z closer. Let's say -Z is "up" in 3D space if we look from top?
+                    // Let's use standard: Y down, X right, Z into screen.
+                    // So "Up" towards camera is negative Z.
+                    ox: startX + x * gap,
+                    oy: startY + y * gap,
+                    oz: -bulge,
+                    vx: 0, vy: 0, vz: 0,
+                    pinned: (y === rows - 1 || y === 0 || x === 0 || x === cols - 1) // Pin Edges
                 });
+            }
+        }
+
+        // 2. Define Mesh Faces (Quads)
+        for (let y = 0; y < rows - 1; y++) {
+            for (let x = 0; x < cols - 1; x++) {
+                const i = y * cols + x;
+                this.mesh.push([i, i + 1, i + cols + 1, i + cols]);
             }
         }
     }
 
+    // Project 3D point to 2D screen
+    project(p) {
+        // Simple Rotation Matrix (Around X axis only for now to tilt)
+        // y' = y*cos(theta) - z*sin(theta)
+        // z' = y*sin(theta) + z*cos(theta)
+
+        const theta = this.rotation.x;
+        const sin = Math.sin(theta);
+        const cos = Math.cos(theta);
+
+        const ry = p.y * cos - p.z * sin;
+        const rz = p.y * sin + p.z * cos;
+        const rx = p.x; // No Y-rotation
+
+        // Perspective Projection
+        // Offset Z so it's in front of camera
+        const depth = 400 + rz;
+        const scale = this.focalLength / depth;
+
+        return {
+            x: this.center.x + rx * scale,
+            y: this.center.y + ry * scale,
+            scale: scale,
+            depth: depth // For Z-sorting
+        };
+    }
+
     bindEvents() {
-        const getPos = (e) => {
+        const getMouse = (e) => {
             const rect = this.canvas.getBoundingClientRect();
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
         };
 
-        const onDown = (e) => {
-            const pos = getPos(e);
-            // Find closest Point
+        this.canvas.addEventListener('mousedown', (e) => {
+            const m = getMouse(e);
+
+            // Raycast / Hit Test
+            // Find closest projected point to mouse
             let closest = null;
-            let minDst = 9999;
+            let minDst = 30;
 
             this.points.forEach(p => {
-                const dx = pos.x - p.x;
-                const dy = pos.y - p.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < minDst) {
-                    minDst = dist;
+                const proj = this.project(p);
+                const dx = m.x - proj.x;
+                const dy = m.y - proj.y;
+                const d = Math.sqrt(dx * dx + dy * dy);
+                if (d < minDst) {
+                    minDst = d;
                     closest = p;
                 }
             });
 
-            // Logic: Catch the vertex if clicked near it
-            if (closest && minDst < 30) {
+            if (closest) {
                 this.dragPoint = closest;
                 this.canvas.style.cursor = 'grabbing';
             }
-        };
+        });
 
-        const onMove = (e) => {
-            const pos = getPos(e);
-            this.mouse = pos;
-
+        window.addEventListener('mousemove', (e) => {
             if (this.dragPoint) {
-                // HARD LOCK to mouse
-                this.dragPoint.x = pos.x;
-                this.dragPoint.y = pos.y;
+                const m = getMouse(e);
 
-                // CHECK BREAKING THRESHOLD
-                const dx = this.dragPoint.x - this.dragPoint.ox;
-                const dy = this.dragPoint.y - this.dragPoint.oy;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+                // Inverse Projection (Approximate)
+                // We want to move the point in 3D such that it projects to Mouse X/Y
+                // Assuming Z stays roughly same? Or drag in Screen Plane.
 
-                if (dist > this.maxStretch) {
-                    // SNAP!
+                // Simple approach: Unproject assuming current depth
+                const proj = this.project(this.dragPoint);
+                const scale = proj.scale;
+
+                // Delta movement
+                const dx = (m.x - this.center.x) / scale;
+                const dy = (m.y - this.center.y) / scale;
+
+                // Apply rotation checking inverse? Too complex.
+                // Simplified: Just set raw X/Y. 3D rotation will warp it visually. 
+                // We'll set X/Y directly and let the physics engine solve the rest.
+
+                this.dragPoint.x = dx;
+                this.dragPoint.y = dy;
+                // Add some Z-pull too?
+                this.dragPoint.z = this.dragPoint.oz - 50; // Pull it UP (Negative Z)
+
+                // Snap Check
+                const d = Math.sqrt(
+                    (this.dragPoint.x - this.dragPoint.ox) ** 2 +
+                    (this.dragPoint.y - this.dragPoint.oy) ** 2
+                );
+                if (d > this.maxStretch) {
                     this.dragPoint = null;
                     this.canvas.style.cursor = 'grab';
                 }
-            } else {
-                // Check if can grab
-                // (Optional hover effect could go here)
             }
-        };
+        });
 
-        const onUp = () => {
-            if (this.dragPoint) {
-                this.dragPoint = null;
-                this.canvas.style.cursor = 'grab';
-            }
-        };
-
-        this.canvas.addEventListener('mousedown', onDown);
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-
-        // Initial Cursor
-        this.canvas.style.cursor = 'grab';
+        window.addEventListener('mouseup', () => {
+            this.dragPoint = null;
+            this.canvas.style.cursor = 'grab';
+        });
     }
 
     update() {
         this.points.forEach(p => {
             if (p.pinned) return;
-            if (p === this.dragPoint) return; // Handled by mouse
+            if (p === this.dragPoint) return;
 
-            // Spring Force (Return to Origin)
             const dx = p.ox - p.x;
             const dy = p.oy - p.y;
+            const dz = p.oz - p.z; // Z Spring
 
             p.vx += dx * this.stiffness;
             p.vy += dy * this.stiffness;
+            p.vz += dz * this.stiffness;
 
-            // Apply Physics
             p.vx *= this.friction;
             p.vy *= this.friction;
+            p.vz *= this.friction;
+
             p.x += p.vx;
             p.y += p.vy;
+            p.z += p.vz;
         });
     }
 
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // --- 1. THE BASE (The Hole) --- 
-        // We assume the pinned points form the base perimeter
-        // But since we have a grid, let's just draw a dark ellipse at the bottom
-        // to represent where the rubber enters the casing.
-        this.ctx.fillStyle = '#0a0000';
-        this.ctx.beginPath();
-        this.ctx.ellipse(this.canvas.width / 2, this.canvas.height - 20, 70, 20, 0, 0, Math.PI * 2);
-        this.ctx.fill();
+        // Pre-calculate projections
+        const projected = this.points.map(p => this.project(p));
 
-        // --- 2. CALCULATE PERIMETER ---
-        // We need the outer boundary of the mesh to draw the "Sides"
-        const perimeter = [];
-        // Walk the edge points
-        // Top Row
-        for (let x = 0; x < this.cols; x++) perimeter.push(this.points[x]);
-        // Right Col
-        for (let y = 1; y < this.rows; y++) perimeter.push(this.points[y * this.cols + (this.cols - 1)]);
-        // Bottom Row (reversed)
-        for (let x = this.cols - 2; x >= 0; x--) perimeter.push(this.points[(this.rows - 1) * this.cols + x]);
-        // Left Col (reversed)
-        for (let y = this.rows - 2; y > 0; y--) perimeter.push(this.points[y * this.cols]);
+        // Sort Faces by Depth (Painter's Algorithm)
+        // Calculate average depth of each face
+        const faces = this.mesh.map(indices => {
+            const z = (
+                projected[indices[0]].depth +
+                projected[indices[1]].depth +
+                projected[indices[2]].depth +
+                projected[indices[3]].depth
+            ) / 4;
+            return { indices, z };
+        });
 
-        // --- 3. DRAW SIDES (Extrusion) ---
-        // Connect perimeter to the "Center Base" or vertically down?
-        // Let's connect them to a fictitious base at (ox, oy + depth)
-        // Or simpler: Draw the hull.
+        faces.sort((a, b) => b.z - a.z); // Draw furthest first
 
-        this.ctx.fillStyle = '#8e0000'; // Darker Red Side
-        this.ctx.beginPath();
-        this.ctx.moveTo(perimeter[0].x, perimeter[0].y);
-        perimeter.forEach(p => this.ctx.lineTo(p.x, p.y));
-        // Close shape? No, this is just the top.
-        // We need to fill the area between this shape and the base ellipse.
-        // This is hard to get perfect in 2D without z-sorting.
-        // Hack: Fill the whole shape, then overlay top?
-        this.ctx.fill();
-
-        // --- 4. DRAW TOP SURFACE (Mesh) ---
-        // Create a radial gradient relative to the "Apex" (highest point)
-        // Find center-ish point
-        const apex = this.points[Math.floor(this.rows / 2) * this.cols + Math.floor(this.cols / 2)];
-
-        // 3D Shading Gradient
-        const gradient = this.ctx.createRadialGradient(
-            apex.x - 10, apex.y - 10, 5, // Highlight offset
-            apex.x, apex.y, 80
-        );
-        gradient.addColorStop(0, '#ffcfcf'); // Specular Highlight (Shiny Plastic)
-        gradient.addColorStop(0.2, '#ff0000'); // Main Color
-        gradient.addColorStop(1, '#660000'); // Shadow Edge
-
-        this.ctx.fillStyle = gradient;
-        this.ctx.beginPath();
-        this.ctx.moveTo(perimeter[0].x, perimeter[0].y);
-        perimeter.forEach(p => this.ctx.lineTo(p.x, p.y));
-        this.ctx.closePath();
-        this.ctx.fill();
-
-        // --- 5. WIREFRAME (Subtle) ---
-        this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        // Draw Faces
         this.ctx.lineWidth = 1;
-        this.ctx.beginPath();
-        // Horizontals
-        for (let y = 0; y < this.rows; y++) {
-            this.ctx.moveTo(this.points[y * this.cols].x, this.points[y * this.cols].y);
-            for (let x = 1; x < this.cols; x++) {
-                const p = this.points[y * this.cols + x];
-                this.ctx.lineTo(p.x, p.y);
-            }
-        }
-        // Verticals
-        for (let x = 0; x < this.cols; x++) {
-            this.ctx.moveTo(this.points[x].x, this.points[x].y);
-            for (let y = 1; y < this.rows; y++) {
-                const p = this.points[y * this.cols + x];
-                this.ctx.lineTo(p.x, p.y);
-            }
-        }
-        this.ctx.stroke();
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+
+        faces.forEach(face => {
+            const [i1, i2, i3, i4] = face.indices;
+            const p1 = projected[i1];
+            const p2 = projected[i2];
+            const p3 = projected[i3];
+            const p4 = projected[i4];
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1.x, p1.y);
+            this.ctx.lineTo(p2.x, p2.y);
+            this.ctx.lineTo(p3.x, p3.y);
+            this.ctx.lineTo(p4.x, p4.y);
+            this.ctx.closePath();
+
+            // Dynamic Lighting
+            // Calculate Normal (Cross product of edges) - tricky in 2D proj. 
+            // Fake it based on Z? 
+            // Let's use Color based on Slope/Height?
+
+            // Simple coloring
+            this.ctx.fillStyle = '#d32f2f';
+            this.ctx.fill();
+            this.ctx.stroke();
+        });
     }
 
     start() {
