@@ -420,27 +420,6 @@ class GalleryNav {
     }
 }
 
-/**
- * COMPONENT: Glass Case
- */
-class GlassCase {
-    constructor() {
-        this.el = document.getElementById('glassCase');
-        this.isOpen = false;
-        this.init();
-    }
-
-    init() {
-        if (!this.el) return;
-        this.el.addEventListener('click', () => {
-            if (!this.isOpen) {
-                this.el.classList.add('open');
-                this.isOpen = true;
-            }
-        });
-    }
-}
-
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
 /**
@@ -499,80 +478,94 @@ class RubberButton {
         this.scene.add(this.cursorLight);
 
         // Materials
+        // TEXTURE: Generate "PUSH ME" text dynamically
+        const textCanvas = document.createElement('canvas');
+        textCanvas.width = 512;
+        textCanvas.height = 512;
+        const ctx = textCanvas.getContext('2d');
+
+        // Fill Red Background (Matches button)
+        ctx.fillStyle = '#cc0000';
+        ctx.fillRect(0, 0, 512, 512);
+
+        // Text
+        ctx.font = 'bold 80px Arial';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Engraved look (dark)
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.save();
+        ctx.translate(256, 256);
+        ctx.rotate(-Math.PI / 2); // Rotate text to read vertically or horizontally?
+        // Let's keep it horizontal relative to the button face.
+        // Actually, button is cylinder, Top face UVs are radial usually. 
+        // We need to check mapping.
+        ctx.restore();
+        ctx.fillText("DO NOT", 256, 200);
+        ctx.fillText("TOUCH", 256, 300);
+
+        const textMap = new THREE.CanvasTexture(textCanvas);
+
         this.rubberMat = new THREE.MeshPhysicalMaterial({
             color: 0xcc0000,
+            map: textMap, // Apply Texture
             emissive: 0x110000,
             roughness: 0.15,
             metalness: 0.1,
             clearcoat: 1.0,
             clearcoatRoughness: 0.1,
-            flatShading: false, // Smooth
+            flatShading: false,
             side: THREE.DoubleSide
         });
 
         const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x050505, // Almost black
+            color: 0x050505,
             roughness: 0.3,
-            metalness: 0.9 // Chrome stand
+            metalness: 0.9
         });
+
+        // SOUND ENGINE (Procedural)
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        this.playTone = (freq, type, duration) => {
+            if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.5, this.audioCtx.currentTime + duration);
+
+            gain.gain.setValueAtTime(0.5, this.audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + duration);
+
+            osc.connect(gain);
+            gain.connect(this.audioCtx.destination);
+            osc.start();
+            osc.stop(this.audioCtx.currentTime + duration);
+        };
 
         // Group
         this.pivot = new THREE.Group();
         this.scene.add(this.pivot);
 
         // GEOMETRY: The "Massive" Button
-        // We construct a "Beveled" shape using multiple cylinders to get distinct faces that catch light
         this.buttonGroup = new THREE.Group();
         this.pivot.add(this.buttonGroup);
 
-        // 1. Top Face (Cap)
-        const topGeo = new THREE.CylinderGeometry(85, 90, 5, 64);
-        const topMesh = new THREE.Mesh(topGeo, this.rubberMat);
-        topMesh.position.y = 12.5;
-        topMesh.castShadow = true;
-        topMesh.receiveShadow = true;
-        this.buttonGroup.add(topMesh);
-
-        // 2. Main Body (Side)
-        const bodyGeo = new THREE.CylinderGeometry(90, 90, 20, 64);
-        const bodyMesh = new THREE.Mesh(bodyGeo, this.rubberMat);
-        bodyMesh.position.y = 0;
-        bodyMesh.castShadow = true;
-        bodyMesh.receiveShadow = true;
-        this.buttonGroup.add(bodyMesh);
-
-        // 3. Bottom Bevel
-        const botGeo = new THREE.CylinderGeometry(90, 80, 5, 64);
-        const botMesh = new THREE.Mesh(botGeo, this.rubberMat);
-        botMesh.position.y = -12.5;
-        botMesh.castShadow = true;
-        botMesh.receiveShadow = true;
-        this.buttonGroup.add(botMesh);
-
-        // Store Vertices for Physics (We'll animate the Group scale/pos or main body vertices?)
-        // Complex to animate 3 meshes. 
-        // Let's MERGE them or just use one highly segmented cylinder with manual vertex manipulation for shape.
-        // Actually, let's use a single LatheGeometry or just a high-res Cylinder and accept smooth edges.
-        // The user wants "Faces reflect differently". A beveled cylinder (Cylinder with 3 height segments) works best.
-
-        // RE-DO GEOMETRY AS SINGLE MESH for Physics Compatibility
-        this.buttonGroup.clear();
-
-        // Cylinder with radiusTop, radiusBottom, height, radialSegments, heightSegments
-        // heightSegments = 5 allows us to bulge/bevel it manually or just have resolution for physics
-        this.geometry = new THREE.CylinderGeometry(90, 90, 30, 64, 10, false);
+        // Single High-Res Mesh for Physics + Bevels
+        // radiusTop, radiusBottom, height, radialSegments, heightSegments(for bending)
+        this.geometry = new THREE.CylinderGeometry(110, 115, 40, 64, 20, false);
         this.mesh = new THREE.Mesh(this.geometry, this.rubberMat);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
-        this.mesh.position.y = 15;
+        this.mesh.position.y = 0; // Centered
         this.pivot.add(this.mesh);
 
-        // GEOMETRY: The "Tiny" Stand
-        const baseGeo = new THREE.CylinderGeometry(20, 30, 40, 32); // Narrow stem
-        this.base = new THREE.Mesh(baseGeo, baseMat);
-        this.base.position.y = -20; // Underneath
-        this.base.receiveShadow = true;
-        this.pivot.add(this.base);
+        // SHADOW PLANE (Invisible but receives shadow to ground the object)
+        const planeGeo = new THREE.PlaneGeometry(500, 500);
+        const planeMat = new THREE.ShadowMaterial({ opacity: 0.3 });
+        const plane = new THREE.Mesh(planeGeo, planeMat);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -30;
+        this.pivot.add(plane);
 
         // Save Original Positions
         this.originalPositions = Float32Array.from(this.geometry.attributes.position.array);
@@ -671,6 +664,8 @@ class RubberButton {
                 if (closestIdx !== -1) {
                     this.dragIndex = closestIdx;
                     this.canvas.style.cursor = 'grabbing';
+                    // SQUELCH SOUND
+                    this.playTone(150, 'sawtooth', 0.2);
                 }
             } else {
                 this.interactionMode = 'rotate';
@@ -680,6 +675,10 @@ class RubberButton {
         });
 
         window.addEventListener('mouseup', () => {
+            if (this.interactionMode === 'drag') {
+                // SNAP SOUND
+                this.playTone(300, 'square', 0.1);
+            }
             this.interactionMode = null;
             this.dragIndex = -1;
             this.canvas.style.cursor = 'grab';

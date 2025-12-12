@@ -170,73 +170,8 @@ body {
     transform-origin: bottom center;
 }
 
-/* The Industrial Switch Base (Black Box) */
-.button-mount {
-    width: 200px;
-    height: 60px;
-    background: #111;
-    /* Glossy Black */
-    border-radius: 10px 10px 4px 4px;
-    /* Slight bevel */
-    position: relative;
-    bottom: 20px;
-    /* Offset from tilt */
-    z-index: 5;
-    box-shadow:
-        0 20px 40px rgba(0, 0, 0, 0.6),
-        inset 0 1px 1px rgba(255, 255, 255, 0.3);
-    transform-style: preserve-3d;
-    transform: translateZ(20px);
-    /* Pop out from base */
-
-    /* Hazard Stripes on the "side" (simulated via gradient on bottom edge or separate div) */
-    border-bottom: 12px solid #1a1a1a;
-    /* Thick bottom lip */
-}
-
-/* Hazard Stripes Decoration */
-.button-mount::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 12px;
-    background: repeating-linear-gradient(-45deg,
-            #222,
-            #222 10px,
-            #333 10px,
-            #333 20px);
-    /* Subtle dark stripes */
-    border-radius: 0 0 4px 4px;
-}
-
 #buttonCanvas {
-    position: absolute;
-    top: -50px;
-    /* Floating above the black box */
-    left: 10px;
-    width: 180px;
-    height: 120px;
-    z-index: 6;
-    cursor: grab;
-    /* transition: top 0.1s; Hover effect? */
-}
-
-/* THE GLASS CASE (Rectangular Safety Cover) */
-.glass-case {
-    position: absolute;
-    bottom: 350px;
-    /* Sitting above the mount */
-    width: 180px;
-    height: 180px;
-    /* Taller, rectangular */
-
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow:
-        0 5px 15px rgba(0, 0, 0, 0.1),
-        inset 0 0 10px rgba(255, 255, 255, 0.1);
+    inset 0 0 10px rgba(255, 255, 255, 0.1);
 
     /* Hinge at TOP-BACK */
     transform-origin: 50% 100%;
