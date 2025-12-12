@@ -86,6 +86,28 @@ body {
     box-sizing: border-box;
 }
 
+/* --- EXHIBIT SWITCHING --- */
+.exhibit-section {
+    display: none;
+    width: 100%;
+    height: 100vh;
+    animation: fadeIn 1s ease;
+}
+
+.exhibit-section.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
 /* --- NAVIGATION ARROWS --- */
 .nav-arrow {
     position: absolute;
@@ -97,9 +119,95 @@ body {
     cursor: pointer;
     opacity: 0.6;
     transition: opacity 0.2s, transform 0.2s;
-    z-index: 10;
-    /* Above gallery wall */
+    z-index: 100;
+    /* High z-index to sit above everything */
 }
+
+/* --- EXHIBIT 2: THE PEDESTAL --- */
+.pedestal-container {
+    position: relative;
+    width: 300px;
+    /* Width of the pillar */
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    /* Build from bottom up */
+    perspective: 1000px;
+    /* For the glass flip */
+}
+
+.pedestal-base {
+    width: 100%;
+    height: 300px;
+    background: linear-gradient(to right, #cfcfcf, #e0e0e0, #cfcfcf);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.button-mount {
+    width: 200px;
+    height: 20px;
+    background: #333;
+    border-radius: 10px 10px 0 0;
+    position: relative;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+}
+
+#buttonCanvas {
+    position: absolute;
+    bottom: 20px;
+    /* Sit on top of the mount */
+    width: 180px;
+    height: 120px;
+}
+
+/* THE GLASS CASE */
+.glass-case {
+    position: absolute;
+    bottom: 320px;
+    /* Position atop the base (300px + 20px mount) */
+    width: 220px;
+    height: 160px;
+    background: rgba(220, 240, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow:
+        0 5px 15px rgba(0, 0, 0, 0.1),
+        inset 0 0 20px rgba(255, 255, 255, 0.2);
+    transform-origin: bottom center;
+    /* Flip from back hinge? Or Top? User said "Flipps open" */
+    /* Usually glass cases flip from the BACK hinge (bottom edge in 3D perspective). */
+    /* Let's try hinge at the "Back" edge. */
+    transform-origin: 50% 100%;
+    transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 10;
+    cursor: pointer;
+    backdrop-filter: blur(2px);
+    border-radius: 4px 4px 0 0;
+    /* Add a "Handle" visual */
+}
+
+.glass-case:after {
+    content: '';
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 2px;
+}
+
+.glass-case.open {
+    transform: rotateX(-110deg);
+    /* Flip backward */
+}
+
 
 .nav-arrow:hover {
     opacity: 1;

@@ -377,6 +377,11 @@ class Mirror {
 class GalleryNav {
     constructor() {
         this.nextBtn = document.getElementById('navNext');
+        this.exhibits = {
+            1: document.getElementById('exhibit-1'),
+            2: document.getElementById('exhibit-2')
+        };
+        this.currentExhibit = 1;
         this.init();
     }
 
@@ -389,18 +394,214 @@ class GalleryNav {
     }
 
     goToNext() {
-        // For now, this just reloads or logs. 
-        // In Phase 2, this will route to "The Button".
-        console.log("Navigating to Exhibit 2: The Button");
+        // Toggle Logic
+        if (this.currentExhibit === 1) {
+            this.switchExhibit(2);
+            this.currentExhibit = 2;
+            // Update arrow for "Previous" or "Loop"?
+            // For now, let's just rotate it or hide it?
+            // User said: "means we can only go to the next one not last one".
+            // So we stay at 2? Or loop back?
+            // "only have one trangle on the right for now"
+            // implying linear. Let's hide it at the end or reset.
+            this.nextBtn.style.display = 'none'; // Hide arrow at end
+        }
+    }
 
-        // Use a query param to simulate state change for now (or distinct URL)
-        const currentUrl = new URL(window.location);
-        currentUrl.searchParams.set('exhibit', 'button');
-        window.history.pushState({}, '', currentUrl);
+    switchExhibit(id) {
+        // Hide all
+        Object.values(this.exhibits).forEach(el => el.classList.remove('active'));
 
-        // Force reload to trigger "New Page" feeling for now? 
-        // Or keep it SPA. Let's just log and maybe alert user we are ready for Phase 2.
-        alert("Proceeding to Exhibit 2: THE BUTTON");
+        // Show Target
+        const target = this.exhibits[id];
+        if (target) {
+            target.classList.add('active');
+
+            // Trigger specific Exhibit logic (Pause Mirror, Start Button Physics)
+            if (id === 1) {
+                // Resume Mirror?
+            } else if (id === 2) {
+                // Init Button if needed
+                if (!window.rubberButton) {
+                    window.rubberButton = new RubberButton();
+                } else {
+                    window.rubberButton.start();
+                }
+            }
+        }
+    }
+}
+
+/**
+ * COMPONENT: Glass Case
+ */
+class GlassCase {
+    constructor() {
+        this.el = document.getElementById('glassCase');
+        this.isOpen = false;
+        this.init();
+    }
+
+    init() {
+        if (!this.el) return;
+        this.el.addEventListener('click', () => this.toggle());
+    }
+
+    toggle() {
+        if (!this.isOpen) {
+            this.el.classList.add('open');
+            this.isOpen = true;
+        } else {
+            // Optional: Toggle closed? User said "flipps open, then you can interact"
+            // implying it stays open.
+        }
+    }
+}
+
+/**
+ * COMPONENT: Sticky Rubber Button (Verlet Physics)
+ */
+class RubberButton {
+    constructor() {
+        this.canvas = document.getElementById('buttonCanvas');
+        if (!this.canvas) return;
+        this.ctx = this.canvas.getContext('2d');
+
+        // Physics Params
+        this.points = [];
+        this.constraints = [];
+        this.rows = 4; // Grid density
+        this.cols = 6;
+        this.gap = 30; // Spacing
+        this.stiffness = 0.2;
+        this.friction = 0.9;
+        this.mouse = { x: 0, y: 0, down: false };
+
+        // Visuals
+        this.color = '#d32f2f'; // Red
+
+        this.initMesh();
+        this.bindEvents();
+        this.start();
+    }
+
+    initMesh() {
+        this.canvas.width = 180;
+        this.canvas.height = 120;
+
+        // Create Grid of Points
+        const offsetX = 10;
+        const offsetY = 10;
+
+        for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+                this.points.push({
+                    x: offsetX + x * this.gap,
+                    y: offsetY + y * this.gap,
+                    ox: offsetX + x * this.gap, // Original/Pinned X
+                    oy: offsetY + y * this.gap, // Original/Pinned Y
+                    vx: 0, vy: 0,
+                    pinned: (y === this.rows - 1) // Pin the bottom row to the "mount"
+                });
+            }
+        }
+    }
+
+    bindEvents() {
+        // Track mouse relative to canvas
+        const track = (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            this.mouse.x = e.clientX - rect.left;
+            this.mouse.y = e.clientY - rect.top;
+        };
+
+        window.addEventListener('mousemove', track);
+        window.addEventListener('mousedown', () => this.mouse.down = true);
+        window.addEventListener('mouseup', () => this.mouse.down = false);
+    }
+
+    update() {
+        // 1. Verlet / Spring Logic
+        this.points.forEach(p => {
+            if (p.pinned) return;
+
+            // Spring Force (Return to Origin)
+            const dx = p.ox - p.x;
+            const dy = p.oy - p.y;
+
+            p.vx += dx * this.stiffness;
+            p.vy += dy * this.stiffness;
+
+            // Mouse Interaction (Sticky Gum)
+            const mdx = this.mouse.x - p.x;
+            const mdy = this.mouse.y - p.y;
+            const dist = Math.sqrt(mdx * mdx + mdy * mdy);
+
+            // If near mouse, pull towards it
+            if (dist < 40) {
+                // Determine Pull Strength
+                // If clicked, VERY sticky. If just hover, slight nudge.
+                const force = this.mouse.down ? 0.3 : 0.05;
+                p.vx += mdx * force;
+                p.vy += mdy * force;
+            }
+
+            // Apply Physics
+            p.vx *= this.friction;
+            p.vy *= this.friction;
+            p.x += p.vx;
+            p.y += p.vy;
+        });
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw the fleshy button shape
+        this.ctx.fillStyle = this.color;
+        this.ctx.beginPath();
+
+        // Draw Perimeter using the outer points
+        // Top Edge
+        this.ctx.moveTo(this.points[0].x, this.points[0].y);
+        for (let x = 1; x < this.cols; x++) {
+            const p = this.points[x];
+            this.ctx.lineTo(p.x, p.y);
+        }
+        // Right Edge
+        for (let y = 1; y < this.rows; y++) {
+            const p = this.points[(y * this.cols) + (this.cols - 1)];
+            this.ctx.lineTo(p.x, p.y);
+        }
+        // Bottom Edge (Pinned)
+        for (let x = this.cols - 2; x >= 0; x--) {
+            const p = this.points[((this.rows - 1) * this.cols) + x];
+            this.ctx.lineTo(p.x, p.y);
+        }
+        // Left Edge
+        for (let y = this.rows - 2; y > 0; y--) {
+            const p = this.points[y * this.cols];
+            this.ctx.lineTo(p.x, p.y);
+        }
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Internal Grid debug (optional, maybe make it look like rubber mesh?)
+        // Let's add a "Highlight" / Shine
+        this.ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        this.ctx.beginPath();
+        const highlightP = this.points[1 + 1 * this.cols]; // Roughly top-left-center
+        this.ctx.arc(highlightP.x + 5, highlightP.y + 5, 10, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+
+    start() {
+        const loop = () => {
+            this.update();
+            this.draw();
+            requestAnimationFrame(loop);
+        };
+        loop();
     }
 }
 
@@ -412,4 +613,5 @@ document.addEventListener('DOMContentLoaded', () => {
     new MagneticButton({ area: '.magnetic-area', button: '.magnetic-content' });
     new Mirror();
     new GalleryNav();
+    new GlassCase();
 });

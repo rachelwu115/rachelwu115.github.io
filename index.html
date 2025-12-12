@@ -12,25 +12,49 @@
 
 <body>
     <div id="particleCanvas"></div>
-    <div class="gallery-wall">
-        <div class="art-frame">
-            <!-- The Aperture: This masks the original image content -->
-            <canvas id="shadowCanvas"></canvas>
-            <div class="dialog-box">
-                <div id="ghostContainer"></div>
-                <div id="ghostPlaceholder">Tell me your secrets</div>
-                <input type="text" id="tearInput" autocomplete="off" autofocus>
+
+    <!-- GLOBAL NAVIGATION -->
+    <div class="nav-arrow nav-next" id="navNext" title="Next Exhibit"></div>
+
+    <!-- EXHIBIT 1: THE WEEPING SHADOW -->
+    <section id="exhibit-1" class="exhibit-section active">
+        <div class="gallery-wall">
+            <div class="art-frame">
+                <!-- The Aperture: This masks the original image content -->
+                <canvas id="shadowCanvas"></canvas>
+                <div class="dialog-box">
+                    <div id="ghostContainer"></div>
+                    <div id="ghostPlaceholder">Tell me your secrets</div>
+                    <input type="text" id="tearInput" autocomplete="off" autofocus>
+                </div>
+            </div>
+
+            <div class="museum-label">
+                <h2 class="label-title">The Weeping Shadow</h2>
+                <p class="label-desc">Your secrets are safe with me.</p>
             </div>
         </div>
+    </section>
 
-        <div class="museum-label">
-            <h2 class="label-title">The Weeping Shadow</h2>
-            <p class="label-desc">Your secrets are safe with me.</p>
+    <!-- EXHIBIT 2: THE BUTTON -->
+    <section id="exhibit-2" class="exhibit-section">
+        <div class="gallery-wall">
+            <div class="pedestal-container">
+                <div class="glass-case" id="glassCase">
+                    <div class="glass-reflection"></div>
+                </div>
+                <div class="button-mount">
+                    <canvas id="buttonCanvas"></canvas>
+                </div>
+                <div class="pedestal-base"></div>
+            </div>
+
+            <div class="museum-label">
+                <h2 class="label-title">The Button</h2>
+                <p class="label-desc">Your actions have no consequences.</p>
+            </div>
         </div>
-
-        <!-- Navigation -->
-        <div class="nav-arrow nav-next" id="navNext" title="Next Exhibit"></div>
-    </div>
+    </section>
 
     <!-- Scripts -->
     <script src="js/app.js"></script>
