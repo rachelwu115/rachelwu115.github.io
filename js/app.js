@@ -442,6 +442,84 @@ class GlassCase {
 }
 
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
+
+/**
+ * COMPONENT: Hand Controller (Vibe Coding)
+ */
+class HandController {
+    constructor(callback) {
+        this.video = document.getElementById('webcam');
+        this.landmarker = null;
+        this.callback = callback; // Function to call with hand data { x, y, isPinching }
+        this.lastVideoTime = -1;
+        this.init();
+    }
+
+    async init() {
+        if (!this.video) return;
+
+        // 1. Initialize Mediapipe
+        const vision = await FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+        );
+        this.landmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numHands: 1
+        });
+
+        // 2. Start Webcam
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            this.video.srcObject = stream;
+            this.video.addEventListener('loadeddata', () => this.predict());
+        } catch (err) {
+            console.error("Webcam denied:", err);
+            // Fallback to mouse only
+        }
+    }
+
+    async predict() {
+        if (this.video.currentTime !== this.lastVideoTime) {
+            this.lastVideoTime = this.video.currentTime;
+            const results = this.landmarker.detectForVideo(this.video, performance.now());
+
+            if (results.landmarks && results.landmarks.length > 0) {
+                const hand = results.landmarks[0]; // First hand
+
+                // Detect Pinch (Index Tip [8] vs Thumb Tip [4])
+                const thumb = hand[4];
+                const index = hand[8];
+                const dist = Math.sqrt(
+                    (thumb.x - index.x) ** 2 +
+                    (thumb.y - index.y) ** 2 +
+                    (thumb.z - index.z) ** 2
+                );
+
+                const isPinching = dist < 0.05; // Threshold
+
+                // Average position of pinch
+                const x = (thumb.x + index.x) / 2;
+                const y = (thumb.y + index.y) / 2;
+
+                // Send to App
+                // Note: Mediapipe X is inverted (mirror), Y is top-down 0-1
+                this.callback({
+                    x: 1 - x, // Flip X for mirror effect
+                    y: y,
+                    isPinching: isPinching
+                });
+            } else {
+                this.callback(null);
+            }
+        }
+        requestAnimationFrame(() => this.predict());
+    }
+}
 
 /**
  * COMPONENT: Sticky Rubber Button (Three.js WebGL)
@@ -450,6 +528,9 @@ class RubberButton {
     constructor() {
         this.canvas = document.getElementById('buttonCanvas');
         if (!this.canvas) return;
+
+        // Init Hand Tracking
+        this.handController = new HandController((data) => this.onHandUpdate(data));
 
         // Scene
         this.scene = new THREE.Scene();
@@ -511,6 +592,14 @@ class RubberButton {
         this.originalPositions = Float32Array.from(this.geometry.attributes.position.array);
         this.velocities = new Float32Array(this.originalPositions.length);
 
+        // 3D Cursor (For Hand Tracking Debug)
+        this.cursor3D = new THREE.Mesh(
+            new THREE.SphereGeometry(2, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00 }) // Green dot
+        );
+        this.scene.add(this.cursor3D);
+        this.cursor3D.visible = false;
+
         // Interaction State
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
@@ -527,7 +616,79 @@ class RubberButton {
         this.start();
     }
 
+    onHandUpdate(data) {
+        if (!data) {
+            this.cursor3D.visible = false;
+            // Map release
+            if (this.isDragging && this.dragIndex !== -1) {
+                this.isDragging = false;
+                this.dragIndex = -1;
+            }
+            return;
+        }
+
+        // Visualize Hand Position in 3D Space
+        this.cursor3D.visible = true;
+
+        // Project normalized (0-1) hand to 3D Plane
+        // We project to a plane at Y=20 (Top of button)
+        const x = (data.x * 2) - 1; // NDC
+        const y = -(data.y * 2) + 1; // NDC
+
+        this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -20);
+        const target = new THREE.Vector3();
+        this.raycaster.ray.intersectPlane(plane, target);
+
+        if (target) {
+            this.cursor3D.position.copy(target);
+
+            // Interaction
+            if (data.isPinching) {
+                this.cursor3D.material.color.set(0xff0000); // Red when pinching
+
+                if (!this.isDragging) {
+                    // Try to grab
+                    // Check distance to mesh vertices
+                    const positions = this.geometry.attributes.position.array;
+                    let closest = -1;
+                    let minDst = 50 * 50; // Tolerance squared
+
+                    for (let i = 0; i < positions.length; i += 3) {
+                        const dx = positions[i] - target.x;
+                        const dy = positions[i + 1] - target.y; // Height diff check?
+                        const dz = positions[i + 2] - target.z;
+
+                        const d2 = dx * dx + dy * dy + dz * dz;
+                        if (d2 < minDst) {
+                            minDst = d2;
+                            closest = i;
+                        }
+                    }
+
+                    if (closest !== -1) {
+                        this.isDragging = true;
+                        this.dragIndex = closest;
+                    }
+                } else if (this.isDragging && this.dragIndex !== -1) {
+                    // Move Vertex
+                    const positions = this.geometry.attributes.position.array;
+                    positions[this.dragIndex] = target.x;
+                    positions[this.dragIndex + 1] = Math.max(10, target.y); // Floor
+                    positions[this.dragIndex + 2] = target.z;
+
+                    this.geometry.attributes.position.needsUpdate = true;
+                }
+            } else {
+                this.cursor3D.material.color.set(0x00ff00); // Green when hovering
+                this.isDragging = false;
+                this.dragIndex = -1;
+            }
+        }
+    }
+
     bindEvents() {
+        // ... (keep Mouse for fallback)
         // We need to map Mouse Event to normalized device coordinates (-1 to +1)
         const getNDC = (e) => {
             const rect = this.canvas.getBoundingClientRect();
