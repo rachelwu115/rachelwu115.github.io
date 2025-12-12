@@ -604,30 +604,26 @@ class RubberButton {
      * Initializes the confetti particles for the explosion effect.
      */
     initConfetti() {
-        const count = 150;
-        // Larger particles for visibility
+        const count = 120;
+        this.confettiGroup = new THREE.Group();
+        this.scene.add(this.confettiGroup);
+
+        // Shared Geometry & Material
         const geo = new THREE.PlaneGeometry(8, 8);
-        const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-        this.particleMesh = new THREE.InstancedMesh(geo, mat, count);
-        this.particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-
-        // CRITICAL FIX: Disable culling because bounding sphere is initially off-screen
-        this.particleMesh.frustumCulled = false;
-
-        this.scene.add(this.particleMesh);
-
-        const dummy = new THREE.Object3D();
-        dummy.position.set(0, -9999, 0);
-        dummy.updateMatrix();
+        const mat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            side: THREE.DoubleSide
+        });
 
         for (let i = 0; i < count; i++) {
-            this.particleMesh.setMatrixAt(i, dummy.matrix);
+            const mesh = new THREE.Mesh(geo, mat.clone()); // Clone mat for individual colors
+            mesh.visible = false;
+            this.confettiGroup.add(mesh);
+
             this.particles.push({
-                pos: new THREE.Vector3(0, -9999, 0),
+                mesh: mesh,
                 vel: new THREE.Vector3(),
-                rot: new THREE.Vector3(),
                 rotVel: new THREE.Vector3(),
-                color: new THREE.Color(),
                 life: 0
             });
         }
@@ -664,7 +660,11 @@ class RubberButton {
         if (this.state.isExploded) return;
         this.state.isExploded = true;
         this.state.isDragging = false;
-        this.mesh.visible = false; // Hide Button
+        this.mesh.visible = false;
+
+        // Visual Debug: Flash
+        this.canvas.style.backgroundColor = 'rgba(255,255,255,0.1)';
+        setTimeout(() => this.canvas.style.backgroundColor = '', 100);
 
         // Reset Physics
         this.physics.dragOffset.set(0, 0, 0);
@@ -677,40 +677,37 @@ class RubberButton {
 
         // Spawn Logic
         const center = this.physics.grabPoint.clone();
-        // Fallback if grabPoint is invalid/zero
         if (center.lengthSq() < 1) center.set(0, 10, 0);
 
-        this.particles.forEach((p, i) => {
-            // Explode OUTWARDS from center
-            p.pos.copy(center).addScalar((Math.random() - 0.5) * 10);
+        this.particles.forEach((p) => {
+            p.mesh.visible = true;
+            p.mesh.position.copy(center).addScalar((Math.random() - 0.5) * 10);
+            p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
 
             p.vel.set(
-                (Math.random() - 0.5) * 20, // Wider Spread
-                (Math.random() * 15) + 10,  // Upward Pop
-                (Math.random() - 0.5) * 20
+                (Math.random() - 0.5) * 25,
+                (Math.random() * 20) + 10,
+                (Math.random() - 0.5) * 25
             );
-            p.rot.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
             p.rotVel.setRandom().multiplyScalar(0.2);
 
             // Random Colors
             const r = Math.random();
-            if (r < 0.33) p.color.setHex(0xff0000); // Red
-            else if (r < 0.66) p.color.setHex(0x880000); // Dark Red
-            else p.color.setHex(0xffaaaa); // Pink/White
+            if (r < 0.33) p.mesh.material.color.setHex(0xff0000);
+            else if (r < 0.66) p.mesh.material.color.setHex(0x880000);
+            else p.mesh.material.color.setHex(0xffaaaa);
 
-            this.particleMesh.setColorAt(i, p.color);
-            p.life = 1.0 + Math.random() * 0.5; // Life: 1.0s to 1.5s
+            p.life = 1.0 + Math.random() * 0.8;
+            p.mesh.scale.set(1, 1, 1);
         });
-        this.particleMesh.instanceColor.needsUpdate = true;
 
-        // REGENERATE after 2.5s
+        // REGENERATE
         setTimeout(() => {
             this.state.isExploded = false;
-            this.mesh.visible = true; // Show Button
+            this.mesh.visible = true;
             this.hideConfetti();
-            this.playTone(300, 'sine', 0.5, 0.2); // Reform Sound
+            this.playTone(300, 'sine', 0.5, 0.2);
 
-            // Reset Physics again just in case
             this.physics.dragOffset.set(0, 0, 0);
             this.physics.returnVelocity.set(0, 0, 0);
         }, 2500);
@@ -720,14 +717,10 @@ class RubberButton {
      * Hides all confetti particles.
      */
     hideConfetti() {
-        const dummy = new THREE.Object3D();
-        dummy.position.set(0, -9999, 0);
-        dummy.updateMatrix();
-        this.particles.forEach(p => p.life = 0);
-        for (let i = 0; i < this.particles.length; i++) {
-            this.particleMesh.setMatrixAt(i, dummy.matrix);
-        }
-        this.particleMesh.instanceMatrix.needsUpdate = true;
+        this.particles.forEach(p => {
+            p.life = 0;
+            p.mesh.visible = false;
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -915,41 +908,25 @@ class RubberButton {
      * Updates the position and rotation of confetti particles.
      */
     updateConfetti() {
-        const dummy = new THREE.Object3D();
-        let activeCount = 0;
-
-        this.particles.forEach((p, i) => {
+        this.particles.forEach((p) => {
             if (p.life > 0) {
-                activeCount++;
-                p.pos.add(p.vel);
-                p.vel.y -= this.config.gravity; // Gravity
-                p.vel.multiplyScalar(0.96); // Air Resistance
-                p.rot.add(p.rotVel);
+                p.mesh.position.add(p.vel);
+                p.vel.y -= this.config.gravity;
+                p.vel.multiplyScalar(0.96);
 
-                p.life -= 0.01; // Decay
+                p.mesh.rotation.x += p.rotVel.x;
+                p.mesh.rotation.y += p.rotVel.y;
+                p.mesh.rotation.z += p.rotVel.z;
 
-                if (p.life <= 0) {
-                    p.pos.set(0, -9999, 0); // Hide
-                }
+                p.life -= 0.01;
 
-                dummy.position.copy(p.pos);
-                dummy.rotation.set(p.rot.x, p.rot.y, p.rot.z);
+                if (p.life <= 0) p.mesh.visible = false;
 
-                // Scale matches life? Maybe pop out
-                const s = Math.min(1.0, p.life * 2.0);
-                dummy.scale.set(s, s, s);
-
-                dummy.updateMatrix();
-                this.particleMesh.setMatrixAt(i, dummy.matrix);
-            } else {
-                // Ensure hidden
-                dummy.position.set(0, -9999, 0);
-                dummy.updateMatrix();
-                this.particleMesh.setMatrixAt(i, dummy.matrix);
+                // Pop-out Scale effect
+                const s = Math.min(1.0, p.life * 3.0);
+                p.mesh.scale.set(s, s, s);
             }
         });
-
-        this.particleMesh.instanceMatrix.needsUpdate = true;
     }
 
     /**
