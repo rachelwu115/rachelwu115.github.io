@@ -454,12 +454,12 @@ class RubberButton {
         // Scene
         this.scene = new THREE.Scene();
 
-        // Camera (Orbiting)
+        // Camera (Orbiting) - ZOOMED IN
         const width = this.canvas.clientWidth;
         const height = this.canvas.clientHeight;
-        this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-        this.camera.position.set(0, 100, 200); // Initial View
-        this.camera.lookAt(0, 0, 0);
+        this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        this.camera.position.set(0, 120, 160); // Closer, more dramatic angle
+        this.camera.lookAt(0, 10, 0);
 
         // Renderer
         this.renderer = new THREE.WebGLRenderer({
@@ -469,57 +469,71 @@ class RubberButton {
         });
         this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.renderer.shadowMap.enabled = true; // Shadows enable depth perception
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        // Lights - STUDIO SETUP
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); // Dimmer ambient
         this.scene.add(ambientLight);
 
-        const spotLight = new THREE.SpotLight(0xffffff, 2);
-        spotLight.position.set(100, 200, 100);
-        spotLight.angle = Math.PI / 4;
+        // Key Light (Warm, Top-Right)
+        const spotLight = new THREE.SpotLight(0xffdddd, 2.5);
+        spotLight.position.set(80, 150, 80);
+        spotLight.angle = Math.PI / 5;
         spotLight.penumbra = 0.5;
         spotLight.castShadow = true;
+        spotLight.shadow.mapSize.width = 1024;
+        spotLight.shadow.mapSize.height = 1024;
+        spotLight.shadow.bias = -0.0001;
         this.scene.add(spotLight);
 
-        const rimLight = new THREE.PointLight(0xff0000, 1, 100);
-        rimLight.position.set(-50, 50, -50);
+        // Rim Light (Cool, Back-Left) - Creates the "Edge" 3D look
+        const rimLight = new THREE.SpotLight(0xccddff, 3);
+        rimLight.position.set(-60, 50, -80);
+        rimLight.lookAt(0, 0, 0);
         this.scene.add(rimLight);
 
-        // Materials
+        // Fill Light (Soft, Right)
+        const fillLight = new THREE.PointLight(0xffaaaa, 0.5);
+        fillLight.position.set(60, 20, 60);
+        this.scene.add(fillLight);
+
+        // Materials - HIGH GLOSS
         this.rubberMat = new THREE.MeshPhysicalMaterial({
-            color: 0xd32f2f, // Red
-            emissive: 0x330000,
-            roughness: 0.2,
+            color: 0xee0000, // Richer Red
+            emissive: 0x220000,
+            roughness: 0.15, // Smoother
             metalness: 0.1,
-            clearcoat: 0.8, // Glossy
+            clearcoat: 1.0, // Wet look
             clearcoatRoughness: 0.1,
+            reflectivity: 1.0,
             flatShading: false,
             side: THREE.DoubleSide
         });
 
         const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x222222,
-            roughness: 0.8,
-            metalness: 0.5
+            color: 0x111111, // Dark Metal
+            roughness: 0.4,
+            metalness: 0.8
         });
 
         // Group to Rotate
         this.pivot = new THREE.Group();
         this.scene.add(this.pivot);
 
-        // Geometry: Button
-        this.geometry = new THREE.CylinderGeometry(40, 45, 20, 32, 10, false);
+        // Geometry: Button (BIGGER)
+        // Top Radius 65, Bottom 70, Height 25
+        this.geometry = new THREE.CylinderGeometry(65, 70, 25, 64, 15, false);
         this.mesh = new THREE.Mesh(this.geometry, this.rubberMat);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
-        this.mesh.position.y = 10;
+        this.mesh.position.y = 12.5; // Half height
         this.pivot.add(this.mesh);
 
-        // Geometry: Base/Pedestal (To give context for rotation)
-        const baseGeo = new THREE.CylinderGeometry(50, 55, 10, 32);
+        // Geometry: Base/Pedestal (SMALLER - "Stem" look)
+        const baseGeo = new THREE.CylinderGeometry(30, 40, 15, 32);
         this.base = new THREE.Mesh(baseGeo, baseMat);
-        this.base.position.y = -5;
+        this.base.position.y = -7.5;
         this.base.receiveShadow = true;
         this.pivot.add(this.base);
 
