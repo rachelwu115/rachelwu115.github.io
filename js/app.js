@@ -798,15 +798,13 @@ class RubberButton {
                     // Y DEFORMATION
                     let newY = this.originalPositions[i * 3 + 1] + localDrag.y * w;
 
-                    // FLOOR CONSTRAINT
-                    // Ensure vertex Y doesn't go below -pressY (world 0)
-                    // Because mesh.position.y is pressY.
-                    // WorldY = mesh.y + vertex.y
-                    // We want WorldY >= 0.
-                    // pressY + newY >= 0
-                    // newY >= -pressY
+                    // FLOOR CONSTRAINT (Scale Corrected)
+                    // WorldY = (LocalY * ScaleY) + PressY >= 0
+                    // LocalY * ScaleY >= -PressY
+                    // LocalY >= -PressY / ScaleY
 
-                    newY = Math.max(-this.pressY, newY);
+                    const limitY = -this.pressY / this.mesh.scale.y;
+                    newY = Math.max(limitY, newY);
 
                     positions[i * 3 + 1] = newY;
 
