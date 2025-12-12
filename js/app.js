@@ -571,8 +571,12 @@ class RubberButton {
         this.grabPoint = new THREE.Vector3(); // World Space
         this.localGrabPoint = new THREE.Vector3(); // Local Space
 
-        this.softness = 50.0; // Broader influence
-        this.snapLimit = 150.0; // Increased limit for fun
+        this.snapLimit = 100.0; // Tighter limit
+        this.softness = 60.0; // Even broader for gummy feel
+
+        // Return Animation Physics
+        this.returnVelocity = new THREE.Vector3();
+        this.isReturning = false;
 
         // Interaction
         this.raycaster = new THREE.Raycaster();
@@ -623,48 +627,55 @@ class RubberButton {
         };
 
         const onDown = (e) => {
-            // Check if already stuck? If so, maybe nothing? Or re-grab?
-            // Let's allow re-grab from new point if currently snapping back?
-            // For now, always grab.
-
             const intersects = getIntersects(e);
 
             if (intersects.length > 0) {
                 this.isDragging = true;
+                this.isReturning = false;
+                this.returnVelocity.set(0, 0, 0); // Stop bouncing on grab
+
                 const hit = intersects[0];
                 this.grabPoint.copy(hit.point);
                 this.localGrabPoint.copy(this.mesh.worldToLocal(hit.point.clone()));
                 this.dragOffset.set(0, 0, 0);
 
-                // CALCULATE WEIGHTS (Gaussian Falloff)
+                // CALCULATE WEIGHTS
+                // Goal: 1:1 Tracking at Grab Point -> Weight = 1.0
+                // Goal: 0 Movement at Bottom -> Weight = 0.0
+
                 const positions = this.originalPositions;
                 const localGrab = this.localGrabPoint;
+                const grabY = Math.max(0.1, localGrab.y); // Prevent div by zero
 
-                // Pre-calc influence map
                 for (let i = 0; i < positions.length; i += 3) {
                     const dx = positions[i] - localGrab.x;
                     const dy = positions[i + 1] - localGrab.y;
                     const dz = positions[i + 2] - localGrab.z;
                     const distSq = dx * dx + dy * dy + dz * dz;
 
-                    // Gaussian: exp( -dist^2 / (2 * sigma^2) )
+                    // Gaussian
                     let weight = Math.exp(-distSq / (2 * this.softness * this.softness));
 
-                    // HEIGHT MASK (Pinning)
-                    // Ensure vertices at Y=0 (bottom) never move.
-                    // Scale is 1, 0.7, 1. Sphere radius 66.
-                    // Top is approx 66. Bottom is 0 (hemisphere base).
-
+                    // TAFFY PINNING
+                    // Scale weight based on height relative to grab point
                     const yVal = positions[i + 1];
-                    const normY = Math.max(0, yVal / 66.0); // 0 to 1
+                    let pinFactor = 1.0;
 
-                    // Relaxed pinning (Power 2 instead of 3) for gummier feel
-                    const pinFactor = Math.pow(normY, 2); // Softer gradient
+                    if (yVal < grabY) {
+                        // Below grab point: Scale down to 0 linearly
+                        pinFactor = Math.max(0, yVal / grabY);
+                        // Apply curve for taffy feel?
+                        // pinFactor = Math.pow(pinFactor, 0.5); // Square root makes it thicker at bottom
+                        pinFactor = Math.pow(pinFactor, 0.8);
+                    } else {
+                        // Above grab point: Full weight (move with cursor)
+                        pinFactor = 1.0;
+                    }
 
                     this.weights[i / 3] = weight * pinFactor;
                 }
 
-                // Squelch Sound (Sticky Grab)
+                // Squelch
                 this.playTone(100, 'sawtooth', 0.2, 0.4);
                 this.canvas.style.cursor = 'grabbing';
             }
@@ -692,32 +703,26 @@ class RubberButton {
 
             // CHECK LIMIT (Snap)
             if (this.dragOffset.length() > this.snapLimit) {
-                this.isDragging = false; // SNAP!
-                this.dragOffset.set(0, 0, 0);
+                this.isDragging = false;
+                this.isReturning = true; // Trigger bounce
                 this.playTone(300, 'square', 0.1, 0.5); // Snap Sound
                 this.canvas.style.cursor = 'grab';
             }
         };
 
         const onUp = () => {
-            // DO NOT RELEASE ON MOUSE UP!
-            // "Sticky Hand" Logic: It stays stuck.
-            // Just update cursor to show "still holding"
+            // Sticky Mode: No Release on Up
             if (this.isDragging) {
                 this.canvas.style.cursor = 'grabbing';
             }
         };
 
+        // Events
         this.canvas.addEventListener('mousedown', onDown);
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
-        // Remove blur listener because we WANT it to stick even if alt-tabbed (potentially)
-        // But for safety, tabs might force it. Let's keep blur but loose logic.
 
         this.canvas.addEventListener('touchstart', onDown, { passive: false });
-        // Touch interaction usually requires holding, but we can simulate sticky touch?
-        // Let's keep Touch as-is (standard drag) or it feels broken.
-        // Actually, user explicitly said cursor. Let's make Touch sticky too.
         window.addEventListener('touchmove', onMove, { passive: false });
         window.addEventListener('touchend', onUp);
         window.addEventListener('touchcancel', onUp);
@@ -731,12 +736,33 @@ class RubberButton {
             const positions = this.mesh.geometry.attributes.position.array;
 
             if (!this.isDragging) {
-                // Elastic Return (Damped Spring)
-                this.dragOffset.lerp(new THREE.Vector3(0, 0, 0), 0.2);
+                // Spring Physics for Return
+                // F = -kx - cv
+                const stiffness = 0.15;
+                const damping = 0.85;
+
+                // Force towards 0
+                const force = this.dragOffset.clone().multiplyScalar(-stiffness);
+
+                this.returnVelocity.add(force);
+                this.returnVelocity.multiplyScalar(damping);
+
+                this.dragOffset.add(this.returnVelocity);
+
+                // Stop if small
+                if (this.dragOffset.lengthSq() < 0.01 && this.returnVelocity.lengthSq() < 0.01) {
+                    this.dragOffset.set(0, 0, 0);
+                    this.returnVelocity.set(0, 0, 0);
+                    this.isReturning = false;
+                }
+            } else {
+                this.isReturning = false; // Manually controlled
             }
 
-            if (this.dragOffset.lengthSq() > 0.001 || this.isDragging) {
+            // Apply Deformation
+            if (this.dragOffset.lengthSq() > 0.001 || this.isDragging || this.isReturning) {
                 const localDrag = this.dragOffset.clone();
+                // Inverse Scale logic
                 localDrag.x /= this.mesh.scale.x;
                 localDrag.y /= this.mesh.scale.y;
                 localDrag.z /= this.mesh.scale.z;
@@ -749,10 +775,6 @@ class RubberButton {
                         positions[i * 3 + 2] = this.originalPositions[i * 3 + 2];
                         continue;
                     }
-
-                    // We only apply drag to X and Z freely. Y is restricted?
-                    // Actually, dragging Up/Down (Y) is cool, but we pinned Y=0.
-                    // The w factor handles the pinning.
 
                     positions[i * 3] = this.originalPositions[i * 3] + localDrag.x * w;
                     positions[i * 3 + 1] = this.originalPositions[i * 3 + 1] + localDrag.y * w;
