@@ -496,18 +496,18 @@ class RubberButton {
 
         // Red Cap (Glossy Plastic)
         this.rubberMat = new THREE.MeshPhysicalMaterial({
-            color: 0xff0000, // Pure Red
-            emissive: 0x330000, // Slight inner glow to prevent darkness
-            roughness: 0.15, // Smooth
-            metalness: 0.0, // PLASTIC (Not metal) - Critical fix
-            clearcoat: 1.0, // High gloss
+            color: 0xff0000,
+            emissive: 0x330000,
+            roughness: 0.15,
+            metalness: 0.0,
+            clearcoat: 1.0,
             clearcoatRoughness: 0.1,
             specularIntensity: 1.0,
         });
 
-        // Black Base (Matte/Satin)
+        // Black Base (Dark Grey Satin - Lighter to show 3D form)
         const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x111111,
+            color: 0x252525, // Lighter than 0x050505
             roughness: 0.4,
             metalness: 0.5
         });
@@ -541,15 +541,15 @@ class RubberButton {
         this.buttonGroup = new THREE.Group();
         this.pivot.add(this.buttonGroup);
 
-        // Dome: Hemisphere scaled down vertically
+        // Dome: Hemisphere scaled vertically
         const domeGeo = new THREE.SphereGeometry(66, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
         this.mesh = new THREE.Mesh(domeGeo, this.rubberMat);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
 
-        // Transform
-        this.mesh.scale.set(1, 0.4, 1); // Flatten it
-        this.mesh.position.y = 0; // Sit at base level
+        // Transform: TALLER (0.7 scale instead of 0.4)
+        this.mesh.scale.set(1, 0.7, 1);
+        this.mesh.position.y = 0;
 
         this.buttonGroup.add(this.mesh);
 
