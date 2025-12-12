@@ -377,6 +377,7 @@ class Mirror {
 class GalleryNav {
     constructor() {
         this.nextBtn = document.getElementById('navNext');
+        this.prevBtn = document.getElementById('navPrev');
         this.exhibits = {
             1: document.getElementById('exhibit-1'),
             2: document.getElementById('exhibit-2')
@@ -386,26 +387,8 @@ class GalleryNav {
     }
 
     init() {
-        if (this.nextBtn) {
-            this.nextBtn.addEventListener('click', () => {
-                this.goToNext();
-            });
-        }
-    }
-
-    goToNext() {
-        // Toggle Logic
-        if (this.currentExhibit === 1) {
-            this.switchExhibit(2);
-            this.currentExhibit = 2;
-            // Update arrow for "Previous" or "Loop"?
-            // For now, let's just rotate it or hide it?
-            // User said: "means we can only go to the next one not last one".
-            // So we stay at 2? Or loop back?
-            // "only have one trangle on the right for now"
-            // implying linear. Let's hide it at the end or reset.
-            this.nextBtn.style.display = 'none'; // Hide arrow at end
-        }
+        if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.switchExhibit(2));
+        if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.switchExhibit(1));
     }
 
     switchExhibit(id) {
@@ -416,12 +399,17 @@ class GalleryNav {
         const target = this.exhibits[id];
         if (target) {
             target.classList.add('active');
+            this.currentExhibit = id;
 
-            // Trigger specific Exhibit logic (Pause Mirror, Start Button Physics)
+            // Nav State
             if (id === 1) {
-                // Resume Mirror?
+                if (this.nextBtn) this.nextBtn.style.display = 'block';
+                if (this.prevBtn) this.prevBtn.style.display = 'none';
             } else if (id === 2) {
-                // Init Button if needed
+                if (this.nextBtn) this.nextBtn.style.display = 'none'; // Only go back
+                if (this.prevBtn) this.prevBtn.style.display = 'block';
+
+                // Start Physics
                 if (!window.rubberButton) {
                     window.rubberButton = new RubberButton();
                 } else {
@@ -444,17 +432,12 @@ class GlassCase {
 
     init() {
         if (!this.el) return;
-        this.el.addEventListener('click', () => this.toggle());
-    }
-
-    toggle() {
-        if (!this.isOpen) {
-            this.el.classList.add('open');
-            this.isOpen = true;
-        } else {
-            // Optional: Toggle closed? User said "flipps open, then you can interact"
-            // implying it stays open.
-        }
+        this.el.addEventListener('click', () => {
+            if (!this.isOpen) {
+                this.el.classList.add('open');
+                this.isOpen = true;
+            }
+        });
     }
 }
 
@@ -467,18 +450,21 @@ class RubberButton {
         if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
 
-        // Physics Params
-        this.points = [];
-        this.constraints = [];
-        this.rows = 4; // Grid density
-        this.cols = 6;
-        this.gap = 30; // Spacing
-        this.stiffness = 0.2;
-        this.friction = 0.9;
-        this.mouse = { x: 0, y: 0, down: false };
+        // Grid Config
+        this.rows = 5;
+        this.cols = 7;
+        this.gap = 25;
 
-        // Visuals
-        this.color = '#d32f2f'; // Red
+        // Physics Config
+        this.stiffness = 0.08; // VERY Gummy (was 0.15)
+        this.friction = 0.92; // More wobbling/oscillation (was 0.85)
+        this.maxStretch = 300; // "Really far", almost off screen (was 200)
+
+        this.points = [];
+        this.mouse = { x: 0, y: 0 };
+        this.dragPoint = null; // The single trapped vertex
+
+        this.color = '#ff0000'; // Bright Cartoon Red
 
         this.initMesh();
         this.bindEvents();
@@ -486,44 +472,102 @@ class RubberButton {
     }
 
     initMesh() {
-        this.canvas.width = 180;
-        this.canvas.height = 120;
+        this.canvas.width = 240; // Wider
+        this.canvas.height = 180; // Taller
 
-        // Create Grid of Points
-        const offsetX = 10;
-        const offsetY = 10;
+        const offsetX = 20;
+        const offsetY = 20;
 
         for (let y = 0; y < this.rows; y++) {
             for (let x = 0; x < this.cols; x++) {
                 this.points.push({
                     x: offsetX + x * this.gap,
                     y: offsetY + y * this.gap,
-                    ox: offsetX + x * this.gap, // Original/Pinned X
-                    oy: offsetY + y * this.gap, // Original/Pinned Y
+                    ox: offsetX + x * this.gap,
+                    oy: offsetY + y * this.gap,
                     vx: 0, vy: 0,
-                    pinned: (y === this.rows - 1) // Pin the bottom row to the "mount"
+                    pinned: (y === this.rows - 1) // Bottom row pinned
                 });
             }
         }
     }
 
     bindEvents() {
-        // Track mouse relative to canvas
-        const track = (e) => {
+        const getPos = (e) => {
             const rect = this.canvas.getBoundingClientRect();
-            this.mouse.x = e.clientX - rect.left;
-            this.mouse.y = e.clientY - rect.top;
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
         };
 
-        window.addEventListener('mousemove', track);
-        window.addEventListener('mousedown', () => this.mouse.down = true);
-        window.addEventListener('mouseup', () => this.mouse.down = false);
+        const onDown = (e) => {
+            const pos = getPos(e);
+            // Find closest Point
+            let closest = null;
+            let minDst = 9999;
+
+            this.points.forEach(p => {
+                const dx = pos.x - p.x;
+                const dy = pos.y - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < minDst) {
+                    minDst = dist;
+                    closest = p;
+                }
+            });
+
+            // Logic: Catch the vertex if clicked near it
+            if (closest && minDst < 30) {
+                this.dragPoint = closest;
+                this.canvas.style.cursor = 'grabbing';
+            }
+        };
+
+        const onMove = (e) => {
+            const pos = getPos(e);
+            this.mouse = pos;
+
+            if (this.dragPoint) {
+                // HARD LOCK to mouse
+                this.dragPoint.x = pos.x;
+                this.dragPoint.y = pos.y;
+
+                // CHECK BREAKING THRESHOLD
+                const dx = this.dragPoint.x - this.dragPoint.ox;
+                const dy = this.dragPoint.y - this.dragPoint.oy;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > this.maxStretch) {
+                    // SNAP!
+                    this.dragPoint = null;
+                    this.canvas.style.cursor = 'grab';
+                }
+            } else {
+                // Check if can grab
+                // (Optional hover effect could go here)
+            }
+        };
+
+        const onUp = () => {
+            if (this.dragPoint) {
+                this.dragPoint = null;
+                this.canvas.style.cursor = 'grab';
+            }
+        };
+
+        this.canvas.addEventListener('mousedown', onDown);
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+
+        // Initial Cursor
+        this.canvas.style.cursor = 'grab';
     }
 
     update() {
-        // 1. Verlet / Spring Logic
         this.points.forEach(p => {
             if (p.pinned) return;
+            if (p === this.dragPoint) return; // Handled by mouse
 
             // Spring Force (Return to Origin)
             const dx = p.ox - p.x;
@@ -531,20 +575,6 @@ class RubberButton {
 
             p.vx += dx * this.stiffness;
             p.vy += dy * this.stiffness;
-
-            // Mouse Interaction (Sticky Gum)
-            const mdx = this.mouse.x - p.x;
-            const mdy = this.mouse.y - p.y;
-            const dist = Math.sqrt(mdx * mdx + mdy * mdy);
-
-            // If near mouse, pull towards it
-            if (dist < 40) {
-                // Determine Pull Strength
-                // If clicked, VERY sticky. If just hover, slight nudge.
-                const force = this.mouse.down ? 0.3 : 0.05;
-                p.vx += mdx * force;
-                p.vy += mdy * force;
-            }
 
             // Apply Physics
             p.vx *= this.friction;
@@ -557,42 +587,77 @@ class RubberButton {
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Draw the fleshy button shape
-        this.ctx.fillStyle = this.color;
-        this.ctx.beginPath();
+        // 1. Draw Side Walls (3D Thickness)
+        // Creating a "skirt" from the main shape down to a base? 
+        // For now, let's keep it simple: The mesh IS the button surface.
 
-        // Draw Perimeter using the outer points
+        this.ctx.fillStyle = '#b71c1c'; // Dark Red (Shadows)
+        // Draw slightly offset copy for depth?
+
+        // 2. Main Surface
+        this.ctx.fillStyle = '#d32f2f'; // Primary Red
+        this.ctx.strokeStyle = '#c62828';
+        this.ctx.lineWidth = 2;
+
+        this.ctx.beginPath();
         // Top Edge
         this.ctx.moveTo(this.points[0].x, this.points[0].y);
-        for (let x = 1; x < this.cols; x++) {
-            const p = this.points[x];
-            this.ctx.lineTo(p.x, p.y);
+        // Right
+        for (let y = 0; y < this.rows; y++) {
+            // this.ctx.lineTo... (Simplifying Polygon drawing for grid)
         }
-        // Right Edge
-        for (let y = 1; y < this.rows; y++) {
-            const p = this.points[(y * this.cols) + (this.cols - 1)];
-            this.ctx.lineTo(p.x, p.y);
-        }
-        // Bottom Edge (Pinned)
-        for (let x = this.cols - 2; x >= 0; x--) {
-            const p = this.points[((this.rows - 1) * this.cols) + x];
-            this.ctx.lineTo(p.x, p.y);
-        }
-        // Left Edge
-        for (let y = this.rows - 2; y > 0; y--) {
-            const p = this.points[y * this.cols];
-            this.ctx.lineTo(p.x, p.y);
-        }
-        this.ctx.closePath();
-        this.ctx.fill();
 
-        // Internal Grid debug (optional, maybe make it look like rubber mesh?)
-        // Let's add a "Highlight" / Shine
-        this.ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        // Let's refine the shape drawing to be Smooth Curves?
+        // Or connect all perimeter points
+        const perimeter = [];
+
+        // Top Row
+        for (let x = 0; x < this.cols; x++) perimeter.push(this.points[x]);
+        // Right Col
+        for (let y = 1; y < this.rows; y++) perimeter.push(this.points[y * this.cols + (this.cols - 1)]);
+        // Bottom Row (reversed)
+        for (let x = this.cols - 2; x >= 0; x--) perimeter.push(this.points[(this.rows - 1) * this.cols + x]);
+        // Left Col (reversed)
+        for (let y = this.rows - 2; y > 0; y--) perimeter.push(this.points[y * this.cols]);
+
         this.ctx.beginPath();
-        const highlightP = this.points[1 + 1 * this.cols]; // Roughly top-left-center
-        this.ctx.arc(highlightP.x + 5, highlightP.y + 5, 10, 0, Math.PI * 2);
+        this.ctx.moveTo(perimeter[0].x, perimeter[0].y);
+        perimeter.forEach(p => this.ctx.lineTo(p.x, p.y));
+        this.ctx.closePath();
+
+        // Fill
+        const gradient = this.ctx.createRadialGradient(
+            this.canvas.width / 2, this.canvas.height / 3, 5,
+            this.canvas.width / 2, this.canvas.height / 2, 100
+        );
+        gradient.addColorStop(0, '#ff5252'); // Highlight
+        gradient.addColorStop(1, '#b71c1c'); // Shadow
+
+        this.ctx.fillStyle = gradient;
         this.ctx.fill();
+        this.ctx.stroke();
+
+        // 3. Grid Lines (Subtle) to show distortion
+        this.ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        // Horizontals
+        for (let y = 0; y < this.rows; y++) {
+            this.ctx.moveTo(this.points[y * this.cols].x, this.points[y * this.cols].y);
+            for (let x = 1; x < this.cols; x++) {
+                const p = this.points[y * this.cols + x];
+                this.ctx.lineTo(p.x, p.y);
+            }
+        }
+        // Verticals
+        for (let x = 0; x < this.cols; x++) {
+            this.ctx.moveTo(this.points[x].x, this.points[x].y);
+            for (let y = 1; y < this.rows; y++) {
+                const p = this.points[y * this.cols + x];
+                this.ctx.lineTo(p.x, p.y);
+            }
+        }
+        this.ctx.stroke();
     }
 
     start() {

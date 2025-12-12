@@ -142,81 +142,100 @@ body {
     border-color: transparent #1a1a1a transparent transparent;
 }
 
-/* --- EXHIBIT 2: THE PEDESTAL --- */
+/* --- EXHIBIT 2: THE PEDESTAL & MOUNT --- */
 .pedestal-container {
     position: relative;
     width: 300px;
-    /* Width of the pillar */
     height: 500px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-end;
-    /* Build from bottom up */
     perspective: 1200px;
-    /* Stronger 3D perspective */
 }
 
+/* The Pedestal Pillar */
 .pedestal-base {
-    width: 100%;
+    width: 260px;
     height: 300px;
-    background: linear-gradient(to right, #cfcfcf, #e0e0e0, #cfcfcf);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(to right, #e0e0e0, #f5f5f5, #e0e0e0);
+    /* Clean White/Grey Lab look */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     border-radius: 4px;
 }
 
+/* The Industrial Switch Base (Black Box) */
 .button-mount {
     width: 200px;
-    height: 40px;
-    /* Thicker mount */
-    background: linear-gradient(to bottom, #444, #222);
-    /* Metallic cylinder look */
-    border-radius: 50%;
-    /* Oval top perspective */
+    height: 60px;
+    background: #111;
+    /* Glossy Black */
+    border-radius: 10px 10px 4px 4px;
+    /* Slight bevel */
     position: relative;
-    bottom: 20px;
-    /* Sink into pedestal */
+    bottom: 0;
     z-index: 5;
-    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
+    box-shadow:
+        0 10px 20px rgba(0, 0, 0, 0.5),
+        inset 0 1px 1px rgba(255, 255, 255, 0.3);
     transform-style: preserve-3d;
+
+    /* Hazard Stripes on the "side" (simulated via gradient on bottom edge or separate div) */
+    border-bottom: 12px solid #1a1a1a;
+    /* Thick bottom lip */
+}
+
+/* Hazard Stripes Decoration */
+.button-mount::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 12px;
+    background: repeating-linear-gradient(-45deg,
+            #222,
+            #222 10px,
+            #333 10px,
+            #333 20px);
+    /* Subtle dark stripes */
+    border-radius: 0 0 4px 4px;
 }
 
 #buttonCanvas {
     position: absolute;
-    top: -40px;
-    /* Sit ON TOP of the cylinder */
+    top: -50px;
+    /* Floating above the black box */
     left: 10px;
     width: 180px;
     height: 120px;
-    /* We want the canvas to separate visually from the mount, handled by drawing context */
     z-index: 6;
     cursor: grab;
+    /* transition: top 0.1s; Hover effect? */
 }
 
-/* THE GLASS CASE */
+/* THE GLASS CASE (Rectangular Safety Cover) */
 .glass-case {
     position: absolute;
-    bottom: 340px;
-    width: 240px;
+    bottom: 350px;
+    /* Sitting above the mount */
+    width: 180px;
     height: 180px;
-    background: rgba(230, 245, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    box-shadow:
-        0 10px 30px rgba(0, 0, 0, 0.2),
-        inset 0 0 30px rgba(255, 255, 255, 0.1);
+    /* Taller, rectangular */
 
-    /* HINGE AT THE BACK (Top edge from perspective?)
-       User said "flips away from us".
-       In a 2D/3D hybrid, "Away" usually means rotating along the X axis so the top goes back.
-    */
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow:
+        0 5px 15px rgba(0, 0, 0, 0.1),
+        inset 0 0 10px rgba(255, 255, 255, 0.1);
+
+    /* Hinge at TOP-BACK */
     transform-origin: 50% 100%;
-    /* Hinge at bottom (back edge in implied 3D) */
-    transition: transform 1.0s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 20;
     cursor: pointer;
-    backdrop-filter: blur(3px);
-    border-radius: 10px 10px 0 0;
-    /* Dome shape */
+    backdrop-filter: blur(1px);
+    border-radius: 2px;
 }
 
 .glass-case:hover {
@@ -224,7 +243,8 @@ body {
 }
 
 .glass-case.open {
-    transform: translateY(-50%) scale(1.1);
+    /* Flip 100 degrees back */
+    transform: rotateX(-100deg) translateY(-10px);
 }
 
 .nav-next {
