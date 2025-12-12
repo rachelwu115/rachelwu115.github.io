@@ -392,30 +392,41 @@ class GalleryNav {
     }
 
     switchExhibit(id) {
-        // Hide all
-        Object.values(this.exhibits).forEach(el => el.classList.remove('active'));
+        // Hide all exhibits
+        Object.values(this.exhibits).forEach(el => {
+            if (el) el.classList.remove('active');
+        });
 
-        // Show Target
+        // Toggle Button Canvas
+        const btnCanvas = document.getElementById('buttonCanvas');
+        if (id === 2) {
+            btnCanvas.style.display = 'block';
+            // Init or Wake up
+            if (!window.rubberButton) {
+                window.rubberButton = new RubberButton();
+            } else {
+                window.rubberButton.start();
+                window.rubberButton.onResize(); // Force resize check
+            }
+        } else {
+            if (btnCanvas) btnCanvas.style.display = 'none';
+        }
+
+        // Show Target CSS Section
         const target = this.exhibits[id];
         if (target) {
             target.classList.add('active');
-            this.currentExhibit = id;
+        }
 
-            // Nav State
-            if (id === 1) {
-                if (this.nextBtn) this.nextBtn.style.display = 'block';
-                if (this.prevBtn) this.prevBtn.style.display = 'none';
-            } else if (id === 2) {
-                if (this.nextBtn) this.nextBtn.style.display = 'none'; // Only go back
-                if (this.prevBtn) this.prevBtn.style.display = 'block';
+        this.currentExhibit = id;
 
-                // Start Physics
-                if (!window.rubberButton) {
-                    window.rubberButton = new RubberButton();
-                } else {
-                    window.rubberButton.start();
-                }
-            }
+        // Nav State
+        if (id === 1) {
+            if (this.nextBtn) this.nextBtn.style.display = 'block';
+            if (this.prevBtn) this.prevBtn.style.display = 'none';
+        } else if (id === 2) {
+            if (this.nextBtn) this.nextBtn.style.display = 'none';
+            if (this.prevBtn) this.prevBtn.style.display = 'block';
         }
     }
 }
@@ -433,11 +444,11 @@ class RubberButton {
         // Scene
         this.scene = new THREE.Scene();
 
-        // Camera (Macro Lens)
-        const width = this.canvas.clientWidth;
-        const height = this.canvas.clientHeight;
+        // Camera
+        const width = window.innerWidth;
+        const height = window.innerHeight;
         this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-        this.camera.position.set(0, 100, 160); // Close up
+        this.camera.position.set(0, 100, 160);
         this.camera.lookAt(0, 0, 0);
 
         // Renderer
@@ -451,9 +462,13 @@ class RubberButton {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+        // Resize Listener
+        window.addEventListener('resize', () => this.onResize());
+
         // Lights
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
         this.scene.add(ambientLight);
+
 
         // Main Studio Light
         const spotLight = new THREE.SpotLight(0xffdddd, 2);
@@ -587,6 +602,16 @@ class RubberButton {
 
         this.bindEvents();
         this.start();
+    }
+
+    onResize() {
+        if (!this.camera || !this.renderer) return;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
     }
 
     bindEvents() {
