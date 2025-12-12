@@ -571,8 +571,8 @@ class RubberButton {
         this.grabPoint = new THREE.Vector3(); // World Space
         this.localGrabPoint = new THREE.Vector3(); // Local Space
 
-        this.softness = 40.0; // Radius of influence (Gaussian Sigma)
-        this.snapLimit = 120.0; // Max stretch distance
+        this.softness = 50.0; // Broader influence
+        this.snapLimit = 150.0; // Increased limit for fun
 
         // Interaction
         this.raycaster = new THREE.Raycaster();
@@ -623,6 +623,10 @@ class RubberButton {
         };
 
         const onDown = (e) => {
+            // Check if already stuck? If so, maybe nothing? Or re-grab?
+            // Let's allow re-grab from new point if currently snapping back?
+            // For now, always grab.
+
             const intersects = getIntersects(e);
 
             if (intersects.length > 0) {
@@ -654,13 +658,13 @@ class RubberButton {
                     const yVal = positions[i + 1];
                     const normY = Math.max(0, yVal / 66.0); // 0 to 1
 
-                    // Power curve to keep bottom stiff, top loose
-                    const pinFactor = Math.pow(normY, 3);
+                    // Relaxed pinning (Power 2 instead of 3) for gummier feel
+                    const pinFactor = Math.pow(normY, 2); // Softer gradient
 
                     this.weights[i / 3] = weight * pinFactor;
                 }
 
-                // Squelch Sound
+                // Squelch Sound (Sticky Grab)
                 this.playTone(100, 'sawtooth', 0.2, 0.4);
                 this.canvas.style.cursor = 'grabbing';
             }
@@ -686,8 +690,9 @@ class RubberButton {
             const worldOffset = targetPos.clone().sub(this.grabPoint);
             this.dragOffset.copy(worldOffset);
 
+            // CHECK LIMIT (Snap)
             if (this.dragOffset.length() > this.snapLimit) {
-                this.isDragging = false;
+                this.isDragging = false; // SNAP!
                 this.dragOffset.set(0, 0, 0);
                 this.playTone(300, 'square', 0.1, 0.5); // Snap Sound
                 this.canvas.style.cursor = 'grab';
@@ -695,20 +700,24 @@ class RubberButton {
         };
 
         const onUp = () => {
+            // DO NOT RELEASE ON MOUSE UP!
+            // "Sticky Hand" Logic: It stays stuck.
+            // Just update cursor to show "still holding"
             if (this.isDragging) {
-                this.isDragging = false; // RELEASE
-                // Snap Sound
-                this.playTone(200, 'square', 0.1, 0.3);
-                this.canvas.style.cursor = 'pointer';
+                this.canvas.style.cursor = 'grabbing';
             }
         };
 
         this.canvas.addEventListener('mousedown', onDown);
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
-        window.addEventListener('blur', onUp); // Safety: Release on tab switch
+        // Remove blur listener because we WANT it to stick even if alt-tabbed (potentially)
+        // But for safety, tabs might force it. Let's keep blur but loose logic.
 
         this.canvas.addEventListener('touchstart', onDown, { passive: false });
+        // Touch interaction usually requires holding, but we can simulate sticky touch?
+        // Let's keep Touch as-is (standard drag) or it feels broken.
+        // Actually, user explicitly said cursor. Let's make Touch sticky too.
         window.addEventListener('touchmove', onMove, { passive: false });
         window.addEventListener('touchend', onUp);
         window.addEventListener('touchcancel', onUp);
