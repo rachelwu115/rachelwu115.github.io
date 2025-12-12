@@ -222,27 +222,30 @@ body {
     position: absolute;
     left: 50%;
     top: 50%;
-    /*
-       Calculate Position:
-       Left: Center + Half Frame Width (225px) + Gap (30px) = 255px
-       Top:  Center + Half Frame Height (300px) - Label Height (approx 100px)
-             User wants "Lower Right Corner". Let's align it to the bottom edge.
-             Top: 300px (Bottom of frame relative to center) - Label Height.
-             Actually, let's use margin-top to push it down.
-    */
+    /* Default Positioning for Weeping Shadow (Side) */
     margin-left: 255px;
     margin-top: 180px;
-    /* Pushes it down towards bottom right */
 
-    width: 180px;
-    /* Smaller */
+    width: 200px;
     background: #e8e8e8;
-    /* Dimmer off-white */
-    padding: 15px;
+    padding: 20px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     color: #222;
-    z-index: 2;
+    z-index: 100;
+    /* Ensure on top of canvas */
+    border: 1px solid #ddd;
+    /* Subtle border */
+}
+
+/* Override for Button Exhibit (Centered on Pillar) */
+.button-label {
+    margin-left: 0;
+    margin-top: 150px;
+    /* Position below the button center */
+    transform: translateX(-50%);
+    text-align: center;
+    width: 220px;
 }
 
 .label-title {

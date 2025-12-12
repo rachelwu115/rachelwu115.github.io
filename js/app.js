@@ -392,7 +392,7 @@ class GalleryNav {
     }
 
     switchExhibit(id) {
-        // 1. UPDATE NAVIGATION & NAV STATE (Do this first so UI is responsive)
+        // 1. UPDATE NAVIGATION & NAV STATE
         this.currentExhibit = id;
 
         // Update Arrows
@@ -416,11 +416,9 @@ class GalleryNav {
         }
 
         // 2. EXHIBIT SPECIFIC LOGIC (3D ENGINE)
-        const btnCanvas = document.getElementById('buttonCanvas');
+        // Canvas visibility is now handled by the #exhibit-2 section wrap
 
         if (id === 2) {
-            if (btnCanvas) btnCanvas.style.display = 'block';
-
             // Safe Init
             try {
                 if (!window.rubberButton) {
@@ -431,10 +429,7 @@ class GalleryNav {
                 }
             } catch (err) {
                 console.error("Three.js Init Failed:", err);
-                // Fallback?
             }
-        } else {
-            if (btnCanvas) btnCanvas.style.display = 'none';
         }
     }
 }
@@ -515,12 +510,11 @@ class RubberButton {
 
         const w = window.innerWidth;
         const h = window.innerHeight;
-        // FOV 30: Telephoto effect to match the "Isometric/2D" illustration look
-        this.camera = new THREE.PerspectiveCamera(30, w / h, 0.1, 2000);
+        // FOV 15: Extreme Telephoto (Orthographic-like)
+        this.camera = new THREE.PerspectiveCamera(15, w / h, 0.1, 3000);
 
-        // VIEW ANGLE: Flattened Perspective (Reference Match)
-        // Further back (Z=550) + Lower Angle (Y=120) = Illustrative Isometric feel
-        this.camera.position.set(0, 120, 550);
+        // VIEW ANGLE: Flattened Illustration Perspective
+        this.camera.position.set(0, 150, 900);
         this.camera.lookAt(0, -60, 0);
 
         this.renderer = new THREE.WebGLRenderer({
@@ -555,7 +549,7 @@ class RubberButton {
         spotLight.shadow.bias = -0.00005;
         this.scene.add(spotLight);
 
-        // Fill Light (Subtle, just to stop pure black clipping)
+        // Fill Light (Subtle)
         const fill = new THREE.DirectionalLight(0xffffff, 0.2);
         fill.position.set(0, 0, 200);
         this.scene.add(fill);
@@ -605,52 +599,7 @@ class RubberButton {
         pillar.castShadow = true;
         baseGroup.add(pillar);
 
-        // MUSEUM LABEL CARD (Visual Consistency with 'Weeping Shadow')
-        // 1. The Physical Card
-        const card = new THREE.Mesh(
-            new THREE.BoxGeometry(140, 80, 4),
-            this.materials.card
-        );
-        card.position.set(0, -100, 75 + 2); // Sit on surface (75) + half depth (2)
-        card.castShadow = true;
-        card.receiveShadow = true;
-        baseGroup.add(card);
-
-        // 2. The Text Texture (Replicating styles.css)
-        const canvas = document.createElement('canvas');
-        canvas.width = 512; canvas.height = 256;
-        const ctx = canvas.getContext('2d');
-
-        // Background (Off-white)
-        ctx.fillStyle = '#e8e8e8';
-        ctx.fillRect(0, 0, 512, 256);
-
-        // Title: UPPERCASE Helvetica Bold
-        ctx.fillStyle = '#111';
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 40px "Helvetica Neue", Helvetica, Arial, sans-serif';
-        ctx.fillText('THE BUTTON', 256, 80);
-
-        // Border Bottom
-        ctx.strokeStyle = '#999';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(156, 100); // Indented
-        ctx.lineTo(356, 100);
-        ctx.stroke();
-
-        // Description: Grey, Regular
-        ctx.fillStyle = '#444';
-        ctx.font = '400 24px "Helvetica Neue", Helvetica, Arial, sans-serif';
-        ctx.fillText('Your actions have no consequences.', 256, 140);
-
-        const tex = new THREE.CanvasTexture(canvas);
-        const textMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(120, 60),
-            new THREE.MeshBasicMaterial({ map: tex, transparent: false }) // Opaque
-        );
-        textMesh.position.z = 2.1; // Slightly in front
-        card.add(textMesh);
+        // NOTE: Label is now handled via HTML Overlay in index.html for perfect consistency.
 
         this.pivot.add(baseGroup);
 
