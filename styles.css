@@ -47,43 +47,65 @@ body {
     overflow: hidden;
 }
 
-/* --- THE ART FRAME --- */
+/* --- THE ART FRAME (The Asset Container) --- */
 .art-frame {
     position: relative;
-    /* Stays in Flex Center */
-    width: 500px;
-    /* Slightly wider to accommodate frame thickness */
-    height: 600px;
+    /* Maintain Aspect Ratio of the provided image (looks roughly 4:3 or square).
+       Let's stick to a solid size for now. */
+    width: 650px;
+    height: 550px;
 
-    /* IMAGE BASED FRAME */
+    /* The Background Asset */
     background-image: url('images/antique-frame.png');
-    background-size: 100% 100%;
+    background-size: contain;
+    /* Ensure the whole frame is visible */
     background-repeat: no-repeat;
     background-position: center;
 
-    /* Remove CSS Border */
-    border: none;
-
-    /* Padding to push content inside the frame's "window" */
-    /* Estimated based on visual: Frame is roughly 15-20% of width */
-    padding: 85px 85px 85px 85px;
-
-    /* Box Shadow only for outer depth, not internal since image has it */
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
     z-index: 2;
-    /* overflow: hidden;  <-- Careful w/ overflow if image has transparent corners?
-       Actually, we want to clip the content (shadowman) to the inner rectangle.
-       We might need an inner-container for clipping if padding doesn't clip.
-       Flexbox content usually overflows if not handled.
-       Let's rely on the Canvas size matching the inner content box.
+    /* No border or shadow here, the image has it */
+}
+
+/* --- THE APERTURE (The Content Window) --- */
+/* This overlays the "hole" in the frame to hide the original content */
+.art-aperture {
+    position: absolute;
+    /* Fine-tuning these values to align with the visual frame window */
+    /* Based on estimation: Frame is thick. */
+    width: 38%;
+    height: 52%;
+    top: 24%;
+    /* Push down to align with hole */
+    /* left is auto-centered by flexbox if positioning is absolute? 
+       No, absolute ignores flexbox centering unless careful.
+       Let's use slight offsets if needed, or rely on flex centering if position is relative?
+       Let's try Relative positioning inside the flex container?
+       No, Absolute is safer for "Masking".
     */
+
+    background: #0f0f0f;
+    /* The dark void */
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9);
+    /* Deep inner shadow for realism */
     overflow: hidden;
-    box-sizing: border-box;
-    /* Crucial for padding to be part of width */
+    /* Clip the shadow man */
+    border-radius: 2px;
+    /* Slight softening */
+}
+
+/* --- COMPONENT: SHADOW CANVAS --- */
+/* Matches the aperture exactly */
+#shadowCanvas {
+    width: 100%;
+    height: 100%;
+    /* Fill the aperture */
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
 }
 
 /* --- THE MUSEUM LABEL --- */
