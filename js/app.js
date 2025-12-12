@@ -517,9 +517,9 @@ class RubberButton {
         const h = window.innerHeight;
         this.camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 2000);
 
-        // VIEW ANGLE: Focus on the Button (Art Piece)
-        // Looking down slightly, centered on the button but including the label.
-        this.camera.position.set(0, 60, 260);
+        // VIEW ANGLE: High Angle / Looking Down (Reference Match)
+        // High Y (200) + Medium Z (200) = ~45 degree look down
+        this.camera.position.set(0, 200, 200);
         this.camera.lookAt(0, -20, 0);
 
         this.renderer = new THREE.WebGLRenderer({
@@ -539,26 +539,27 @@ class RubberButton {
      * Configures the lighting for the scene.
      */
     initLighting() {
-        // Bright ambient for White Pillar validity
-        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        // Low Ambient for Contrast
+        const ambient = new THREE.AmbientLight(0xffffff, 0.2);
         this.scene.add(ambient);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(50, 200, 100);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.set(2048, 2048);
-        dirLight.shadow.bias = -0.0001;
-        this.scene.add(dirLight);
+        // DRAMATIC SPOTLIGHT (Reference Image Match)
+        // Creates a pool of light on the button/pillar
+        const spotLight = new THREE.SpotLight(0xffffff, 2.5);
+        spotLight.position.set(0, 300, 50); // Slightly front-biased
+        spotLight.angle = 0.35;
+        spotLight.penumbra = 0.2;
+        spotLight.castShadow = true;
+        spotLight.shadow.mapSize.set(2048, 2048);
+        spotLight.shadow.bias = -0.00005;
+        this.scene.add(spotLight);
 
-        const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        // Rim Light for Form Definition (Subtle)
+        const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
         rimLight.position.set(-50, 50, -100);
         this.scene.add(rimLight);
-
-        // Front Fill for Label Visibility
-        const frontLight = new THREE.DirectionalLight(0xffffff, 0.3);
-        frontLight.position.set(0, 0, 200);
-        this.scene.add(frontLight);
     }
+
     initGeometry() {
         // Shared Materials
         this.materials = {
@@ -571,20 +572,20 @@ class RubberButton {
                 color: 0x252525, roughness: 0.4, metalness: 0.5
             }),
             pillar: new THREE.MeshStandardMaterial({
-                color: 0xdddddd, // Light Grey (Contrast for white card)
-                roughness: 0.3,
-                metalness: 0.1
+                color: 0xffffff, // Pure White Plinth (Reference)
+                roughness: 0.2, // Slightly glossy/clean
+                metalness: 0.05
             }),
             card: new THREE.MeshStandardMaterial({
-                color: 0xffffff, // Bright White Card
-                roughness: 0.4
+                color: 0xe8e8e8, // Gallery Off-White (Matches .museum-label)
+                roughness: 0.5
             })
         };
 
         this.pivot = new THREE.Group();
         this.scene.add(this.pivot);
 
-        // Base & Bezel
+        // Base Group
         const baseGroup = new THREE.Group();
         const puck = new THREE.Mesh(new THREE.CylinderGeometry(70, 75, 20, 64), this.materials.base);
         puck.position.y = -10; puck.receiveShadow = true;
@@ -604,43 +605,51 @@ class RubberButton {
         pillar.castShadow = true;
         baseGroup.add(pillar);
 
-        // MUSEUM LABEL CARD
+        // MUSEUM LABEL CARD (Visual Consistency with 'Weeping Shadow')
         // 1. The Physical Card
         const card = new THREE.Mesh(
-            new THREE.BoxGeometry(130, 70, 4),
+            new THREE.BoxGeometry(140, 80, 4),
             this.materials.card
         );
-        card.position.set(0, -90, 75 + 2); // Sit on surface (75) + half depth (2)
+        card.position.set(0, -100, 75 + 2); // Sit on surface (75) + half depth (2)
         card.castShadow = true;
         card.receiveShadow = true;
         baseGroup.add(card);
 
-        // 2. The Text Texture
+        // 2. The Text Texture (Replicating styles.css)
         const canvas = document.createElement('canvas');
         canvas.width = 512; canvas.height = 256;
         const ctx = canvas.getContext('2d');
 
-        // Pure White Background (Matches card, handles AA)
-        ctx.fillStyle = '#ffffff';
+        // Background (Off-white)
+        ctx.fillStyle = '#e8e8e8';
         ctx.fillRect(0, 0, 512, 256);
 
-        ctx.fillStyle = '#111'; // Black Text
+        // Title: UPPERCASE Helvetica Bold
+        ctx.fillStyle = '#111';
         ctx.textAlign = 'center';
+        ctx.font = 'bold 40px "Helvetica Neue", Helvetica, Arial, sans-serif';
+        ctx.fillText('THE BUTTON', 256, 80);
 
-        // Title
-        ctx.font = 'bold 70px "Playfair Display", "Times New Roman", serif';
-        ctx.fillText('The Button', 256, 90);
+        // Border Bottom
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(156, 100); // Indented
+        ctx.lineTo(356, 100);
+        ctx.stroke();
 
-        // Subtitle
-        ctx.font = '300 32px "Inter", "Arial", sans-serif';
+        // Description: Grey, Regular
+        ctx.fillStyle = '#444';
+        ctx.font = '400 24px "Helvetica Neue", Helvetica, Arial, sans-serif';
         ctx.fillText('Your actions have no consequences.', 256, 150);
 
         const tex = new THREE.CanvasTexture(canvas);
         const textMesh = new THREE.Mesh(
             new THREE.PlaneGeometry(120, 60),
-            new THREE.MeshBasicMaterial({ map: tex, transparent: true }) // Blend edges
+            new THREE.MeshBasicMaterial({ map: tex, transparent: false }) // Opaque
         );
-        textMesh.position.z = 2.1; // Slightly in front of card face (2)
+        textMesh.position.z = 2.1; // Slightly in front
         card.add(textMesh);
 
         this.pivot.add(baseGroup);
@@ -656,10 +665,10 @@ class RubberButton {
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // Floor Shadow
+        // Floor Shadow (Updated position/opacity for Spotlight)
         const shadowPlane = new THREE.Mesh(
             new THREE.PlaneGeometry(2000, 2000),
-            new THREE.ShadowMaterial({ opacity: 0.1, color: 0x000000 }) // Softer shadow for white pillar
+            new THREE.ShadowMaterial({ opacity: 0.4, color: 0x000000 })
         );
         shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.position.y = -420;
         this.pivot.add(shadowPlane);
