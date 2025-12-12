@@ -562,120 +562,123 @@ class RubberButton {
 
         // Initial Cursor
         this.canvas.style.cursor = 'grab';
-
-        update() {
-            this.points.forEach(p => {
-                if (p.pinned) return;
-                if (p === this.dragPoint) return; // Handled by mouse
-
-                // Spring Force (Return to Origin)
-                const dx = p.ox - p.x;
-                const dy = p.oy - p.y;
-
-                p.vx += dx * this.stiffness;
-                p.vy += dy * this.stiffness;
-
-                // Apply Physics
-                p.vx *= this.friction;
-                p.vy *= this.friction;
-                p.x += p.vx;
-                p.y += p.vy;
-            });
-        }
-
-        draw() {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-            // --- 1. THE BASE (The Hole) --- 
-            // We assume the pinned points form the base perimeter
-            // But since we have a grid, let's just draw a dark ellipse at the bottom
-            // to represent where the rubber enters the casing.
-            this.ctx.fillStyle = '#0a0000';
-            this.ctx.beginPath();
-            this.ctx.ellipse(this.canvas.width / 2, this.canvas.height - 20, 70, 20, 0, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            // --- 2. CALCULATE PERIMETER ---
-            // We need the outer boundary of the mesh to draw the "Sides"
-            const perimeter = [];
-            // Walk the edge points
-            // Top Row
-            for (let x = 0; x < this.cols; x++) perimeter.push(this.points[x]);
-            // Right Col
-            for (let y = 1; y < this.rows; y++) perimeter.push(this.points[y * this.cols + (this.cols - 1)]);
-            // Bottom Row (reversed)
-            for (let x = this.cols - 2; x >= 0; x--) perimeter.push(this.points[(this.rows - 1) * this.cols + x]);
-            // Left Col (reversed)
-            for (let y = this.rows - 2; y > 0; y--) perimeter.push(this.points[y * this.cols]);
-
-            // --- 3. DRAW SIDES (Extrusion) ---
-            // Connect perimeter to the "Center Base" or vertically down?
-            // Let's connect them to a fictitious base at (ox, oy + depth)
-            // Or simpler: Draw the hull.
-
-            this.ctx.fillStyle = '#8e0000'; // Darker Red Side
-            this.ctx.beginPath();
-            this.ctx.moveTo(perimeter[0].x, perimeter[0].y);
-            perimeter.forEach(p => this.ctx.lineTo(p.x, p.y));
-            // Close shape? No, this is just the top.
-            // We need to fill the area between this shape and the base ellipse.
-            // This is hard to get perfect in 2D without z-sorting.
-            // Hack: Fill the whole shape, then overlay top?
-            this.ctx.fill();
-
-            // --- 4. DRAW TOP SURFACE (Mesh) ---
-            // Create a radial gradient relative to the "Apex" (highest point)
-            // Find center-ish point
-            const apex = this.points[Math.floor(this.rows / 2) * this.cols + Math.floor(this.cols / 2)];
-
-            // 3D Shading Gradient
-            const gradient = this.ctx.createRadialGradient(
-                apex.x - 10, apex.y - 10, 5, // Highlight offset
-                apex.x, apex.y, 80
-            );
-            gradient.addColorStop(0, '#ffcfcf'); // Specular Highlight (Shiny Plastic)
-            gradient.addColorStop(0.2, '#ff0000'); // Main Color
-            gradient.addColorStop(1, '#660000'); // Shadow Edge
-
-            this.ctx.fillStyle = gradient;
-            this.ctx.beginPath();
-            this.ctx.moveTo(perimeter[0].x, perimeter[0].y);
-            perimeter.forEach(p => this.ctx.lineTo(p.x, p.y));
-            this.ctx.closePath();
-            this.ctx.fill();
-
-            // --- 5. WIREFRAME (Subtle) ---
-            this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-            this.ctx.lineWidth = 1;
-            this.ctx.beginPath();
-            // Horizontals
-            for (let y = 0; y < this.rows; y++) {
-                this.ctx.moveTo(this.points[y * this.cols].x, this.points[y * this.cols].y);
-                for (let x = 1; x < this.cols; x++) {
-                    const p = this.points[y * this.cols + x];
-                    this.ctx.lineTo(p.x, p.y);
-                }
-            }
-            // Verticals
-            for (let x = 0; x < this.cols; x++) {
-                this.ctx.moveTo(this.points[x].x, this.points[x].y);
-                for (let y = 1; y < this.rows; y++) {
-                    const p = this.points[y * this.cols + x];
-                    this.ctx.lineTo(p.x, p.y);
-                }
-            }
-            this.ctx.stroke();
-        }
-
-        start() {
-            const loop = () => {
-                this.update();
-                this.draw();
-                requestAnimationFrame(loop);
-            };
-            loop();
-        }
     }
+
+    update() {
+        this.points.forEach(p => {
+            if (p.pinned) return;
+            if (p === this.dragPoint) return; // Handled by mouse
+
+            // Spring Force (Return to Origin)
+            const dx = p.ox - p.x;
+            const dy = p.oy - p.y;
+
+            p.vx += dx * this.stiffness;
+            p.vy += dy * this.stiffness;
+
+            // Apply Physics
+            p.vx *= this.friction;
+            p.vy *= this.friction;
+            p.x += p.vx;
+            p.y += p.vy;
+        });
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // --- 1. THE BASE (The Hole) --- 
+        // We assume the pinned points form the base perimeter
+        // But since we have a grid, let's just draw a dark ellipse at the bottom
+        // to represent where the rubber enters the casing.
+        this.ctx.fillStyle = '#0a0000';
+        this.ctx.beginPath();
+        this.ctx.ellipse(this.canvas.width / 2, this.canvas.height - 20, 70, 20, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // --- 2. CALCULATE PERIMETER ---
+        // We need the outer boundary of the mesh to draw the "Sides"
+        const perimeter = [];
+        // Walk the edge points
+        // Top Row
+        for (let x = 0; x < this.cols; x++) perimeter.push(this.points[x]);
+        // Right Col
+        for (let y = 1; y < this.rows; y++) perimeter.push(this.points[y * this.cols + (this.cols - 1)]);
+        // Bottom Row (reversed)
+        for (let x = this.cols - 2; x >= 0; x--) perimeter.push(this.points[(this.rows - 1) * this.cols + x]);
+        // Left Col (reversed)
+        for (let y = this.rows - 2; y > 0; y--) perimeter.push(this.points[y * this.cols]);
+
+        // --- 3. DRAW SIDES (Extrusion) ---
+        // Connect perimeter to the "Center Base" or vertically down?
+        // Let's connect them to a fictitious base at (ox, oy + depth)
+        // Or simpler: Draw the hull.
+
+        this.ctx.fillStyle = '#8e0000'; // Darker Red Side
+        this.ctx.beginPath();
+        this.ctx.moveTo(perimeter[0].x, perimeter[0].y);
+        perimeter.forEach(p => this.ctx.lineTo(p.x, p.y));
+        // Close shape? No, this is just the top.
+        // We need to fill the area between this shape and the base ellipse.
+        // This is hard to get perfect in 2D without z-sorting.
+        // Hack: Fill the whole shape, then overlay top?
+        this.ctx.fill();
+
+        // --- 4. DRAW TOP SURFACE (Mesh) ---
+        // Create a radial gradient relative to the "Apex" (highest point)
+        // Find center-ish point
+        const apex = this.points[Math.floor(this.rows / 2) * this.cols + Math.floor(this.cols / 2)];
+
+        // 3D Shading Gradient
+        const gradient = this.ctx.createRadialGradient(
+            apex.x - 10, apex.y - 10, 5, // Highlight offset
+            apex.x, apex.y, 80
+        );
+        gradient.addColorStop(0, '#ffcfcf'); // Specular Highlight (Shiny Plastic)
+        gradient.addColorStop(0.2, '#ff0000'); // Main Color
+        gradient.addColorStop(1, '#660000'); // Shadow Edge
+
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.moveTo(perimeter[0].x, perimeter[0].y);
+        perimeter.forEach(p => this.ctx.lineTo(p.x, p.y));
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // --- 5. WIREFRAME (Subtle) ---
+        this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        // Horizontals
+        for (let y = 0; y < this.rows; y++) {
+            this.ctx.moveTo(this.points[y * this.cols].x, this.points[y * this.cols].y);
+            for (let x = 1; x < this.cols; x++) {
+                const p = this.points[y * this.cols + x];
+                this.ctx.lineTo(p.x, p.y);
+            }
+        }
+        // Verticals
+        for (let x = 0; x < this.cols; x++) {
+            this.ctx.moveTo(this.points[x].x, this.points[x].y);
+            for (let y = 1; y < this.rows; y++) {
+                const p = this.points[y * this.cols + x];
+                this.ctx.lineTo(p.x, p.y);
+            }
+        }
+        this.ctx.stroke();
+    }
+
+    start() {
+        const loop = () => {
+            this.update();
+            this.draw();
+            requestAnimationFrame(loop);
+        };
+        loop();
+    }
+}
+
+
 
 // MAIN ENTRY POINT
 document.addEventListener('DOMContentLoaded', () => {
