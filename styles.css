@@ -72,32 +72,44 @@ body {
 
 /* --- THE MUSEUM LABEL --- */
 .museum-label {
-    width: 200px;
+    width: 260px;
     background: #fdfdfd;
-    padding: 24px;
-    box-shadow: 2px 5px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    /* Soft diffuse shadow like the reference photo */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    /* Clean sans-serif for label */
-    border-left: 4px solid #e0e0e0;
-    /* Subtle detail */
+    color: #000;
     transform: rotate(0.5deg);
-    /* Tiny impurity for realism? Maybe unnecessary */
 }
 
 .label-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #333;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 20px;
+    font-weight: 800;
+    /* Extra Bold like reference */
+    color: #000;
+    margin-bottom: 5px;
+    text-transform: none;
+    /* Reference is not all caps */
+    letter-spacing: -0.5px;
+    line-height: 1.1;
 }
 
 .label-desc {
-    font-size: 14px;
-    color: #666;
+    font-size: 16px;
+    color: #333;
+    font-weight: 400;
+    margin-top: 10px;
     font-style: italic;
+    /* "Your secrets..." feels better in italic */
     line-height: 1.4;
+}
+
+.label-meta {
+    display: block;
+    margin-top: 20px;
+    font-size: 12px;
+    color: #666;
+    font-weight: 400;
 }
 
 
