@@ -392,25 +392,22 @@ class GalleryNav {
     }
 
     switchExhibit(id) {
+        // 1. UPDATE NAVIGATION & NAV STATE (Do this first so UI is responsive)
+        this.currentExhibit = id;
+
+        // Update Arrows
+        if (id === 1) {
+            if (this.nextBtn) this.nextBtn.style.display = 'block';
+            if (this.prevBtn) this.prevBtn.style.display = 'none';
+        } else if (id === 2) {
+            if (this.nextBtn) this.nextBtn.style.display = 'none';
+            if (this.prevBtn) this.prevBtn.style.display = 'block';
+        }
+
         // Hide all exhibits
         Object.values(this.exhibits).forEach(el => {
             if (el) el.classList.remove('active');
         });
-
-        // Toggle Button Canvas
-        const btnCanvas = document.getElementById('buttonCanvas');
-        if (id === 2) {
-            btnCanvas.style.display = 'block';
-            // Init or Wake up
-            if (!window.rubberButton) {
-                window.rubberButton = new RubberButton();
-            } else {
-                window.rubberButton.start();
-                window.rubberButton.onResize(); // Force resize check
-            }
-        } else {
-            if (btnCanvas) btnCanvas.style.display = 'none';
-        }
 
         // Show Target CSS Section
         const target = this.exhibits[id];
@@ -418,15 +415,26 @@ class GalleryNav {
             target.classList.add('active');
         }
 
-        this.currentExhibit = id;
+        // 2. EXHIBIT SPECIFIC LOGIC (3D ENGINE)
+        const btnCanvas = document.getElementById('buttonCanvas');
 
-        // Nav State
-        if (id === 1) {
-            if (this.nextBtn) this.nextBtn.style.display = 'block';
-            if (this.prevBtn) this.prevBtn.style.display = 'none';
-        } else if (id === 2) {
-            if (this.nextBtn) this.nextBtn.style.display = 'none';
-            if (this.prevBtn) this.prevBtn.style.display = 'block';
+        if (id === 2) {
+            if (btnCanvas) btnCanvas.style.display = 'block';
+
+            // Safe Init
+            try {
+                if (!window.rubberButton) {
+                    window.rubberButton = new RubberButton();
+                } else {
+                    window.rubberButton.start();
+                    window.rubberButton.onResize();
+                }
+            } catch (err) {
+                console.error("Three.js Init Failed:", err);
+                // Fallback?
+            }
+        } else {
+            if (btnCanvas) btnCanvas.style.display = 'none';
         }
     }
 }
@@ -735,11 +743,6 @@ class RubberButton {
 
             this.geometry.attributes.position.needsUpdate = true;
             this.geometry.computeVertexNormals();
-
-            this.renderer.render(this.scene, this.camera);
-
-            this.geometry.attributes.position.needsUpdate = true;
-            this.geometry.computeVertexNormals(); // Recalc for lighting
 
             this.renderer.render(this.scene, this.camera);
         };
