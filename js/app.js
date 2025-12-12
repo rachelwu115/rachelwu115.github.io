@@ -921,49 +921,46 @@ class RubberButton {
 
         // --- ORGANIC REGROWTH LOGIC ---
         if (this.state.isRegenerating) {
-            this.state.regrowthProgress += 0.005; // 3x Slower
+            this.state.regrowthProgress += 0.008; // Crisp Speed
 
             if (this.state.regrowthProgress >= 1.0) {
                 this.state.regrowthProgress = 1.0;
                 this.state.isRegenerating = false;
-                // Final snap to clean state
+                // Final clean snap
                 this.mesh.position.set(0, this.physics.pressY, 0);
                 this.mesh.rotation.set(0, 0, 0);
+                this.mesh.scale.set(1, 0.7, 1);
             } else {
                 const t = this.state.regrowthProgress;
-                const undo = 1.0 - t;
                 const origin = this.state.regrowthOrigin || { x: 0, y: -20, z: 0 };
 
-                // 1. POSITION: Eased slide to center
-                // Cushion out cubic
-                const easePos = 1 - Math.pow(1 - t, 3);
-                this.mesh.position.x = origin.x * (1 - easePos);
-                this.mesh.position.z = origin.z * (1 - easePos);
-                this.mesh.position.y = origin.y * (1 - easePos) + this.physics.pressY;
+                // 1. POSITION: Quartic Ease Out (Crisp arrival)
+                // Starts fast, breaks hard, stops cleanly.
+                const ease = 1 - Math.pow(1 - t, 4);
 
-                // 2. SCALE: "BackOut" / Gentle Bounce
-                // Overshoots slightly and returns
-                // t=1 -> 1.0. t=0.8 -> >1.0.
-                const s = 1.70158;
-                let scaleT = t - 1;
-                const backOut = scaleT * scaleT * ((s + 1) * scaleT + s) + 1;
+                this.mesh.position.x = origin.x * (1 - ease);
+                this.mesh.position.z = origin.z * (1 - ease);
+                this.mesh.position.y = origin.y * (1 - ease) + this.physics.pressY;
 
-                // Muted bounce logic: blend between linear growth (0->1) and BackOut
-                const currentScale = t < 0.2 ? (t * 5) : backOut; // Fast start, then settle
+                // 2. SCALE: Breathing Growth (No violent bounce)
+                // Grows to 1.0 with a small "inhale" overshoot (max ~1.05)
+                const scaleBase = 1 - Math.pow(1 - t, 3); // Cubic growth
+                const gentleHump = Math.sin(t * Math.PI) * 0.1 * (1.0 - t); // Decaying sine
+                const s = scaleBase + gentleHump;
 
-                // 3. SQUISHY NOISE (Reduced by 60%)
-                // Subtle organic metabolic wobble
-                const noiseX = Math.sin(now * 0.01) * 0.1 * undo;
-                const noiseY = Math.cos(now * 0.015) * 0.1 * undo;
+                // 3. MICRO-NOISE (Subtle biological shivering)
+                const noise = 0.03 * (1 - ease);
+                const nx = Math.sin(now * 0.05) * noise;
+                const ny = Math.cos(now * 0.05) * noise;
 
                 // Apply
                 this.mesh.scale.set(
-                    currentScale + noiseX,
-                    currentScale * 0.7 + noiseY, // 0.7 base aspect
-                    currentScale - noiseX
+                    s + nx,
+                    s * 0.7 + ny, // Maintains button flatness
+                    s - nx
                 );
 
-                // 4. TUMBLE (Reduced)
+                // 4. TUMBLE (Minimal)
                 this.mesh.rotation.z = Math.sin(t * Math.PI) * 0.05;
                 this.mesh.rotation.x = Math.cos(t * Math.PI) * 0.05;
 
