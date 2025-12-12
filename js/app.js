@@ -582,6 +582,10 @@ class RubberButton {
         this.drips = [];
         this.isDripping = false;
 
+        // Heartbeat
+        this.pulseTime = 0;
+        this.beatState = 0; // 0=Wait, 1=Bed, 2=Dub
+
         // "Press" State
         this.pressY = 0;
         this.targetPressY = 0;
@@ -760,11 +764,41 @@ class RubberButton {
         const animate = () => {
             requestAnimationFrame(animate);
 
-            // 1. UPDATE PRESS STATE
+            // 1. HEARTBEAT LOGIC (Visual + Audio)
+            const now = Date.now();
+            const beatLen = 1500; // 1.5s per cycle (Slow, calm heart)
+            const phase = now % beatLen;
+
+            // Visual Pulse (Math.pow for sharp contraction)
+            // Normalized 0-1 pulse based on phase
+            let pulseScale = 1.0;
+            if (phase < 200) { // Lub
+                pulseScale = 1.0 + Math.sin((phase / 200) * Math.PI) * 0.03;
+            } else if (phase > 300 && phase < 500) { // Dub
+                pulseScale = 1.0 + Math.sin(((phase - 300) / 200) * Math.PI) * 0.04;
+            }
+
+            // Apply scale (Respecting Y=0.7 base)
+            this.mesh.scale.set(pulseScale, 0.7 * pulseScale, pulseScale);
+
+            // Audio Triggers
+            if (phase < 50 && this.beatState === 0) {
+                this.playTone(60, 'sine', 0.1, 0.2); // Lub (Low)
+                this.beatState = 1;
+            }
+            if (phase > 300 && phase < 350 && this.beatState === 1) {
+                this.playTone(50, 'sine', 0.15, 0.3); // Dub (Lower, Stronger)
+                this.beatState = 2;
+            }
+            if (phase > 1000) {
+                this.beatState = 0; // Reset
+            }
+
+            // 2. UPDATE PRESS STATE
             this.pressY += (this.targetPressY - this.pressY) * 0.6;
             this.mesh.position.y = this.pressY;
 
-            // 2. UPDATE DRIPS
+            // 3. UPDATE DRIPS
             if (this.isDripping) {
                 let active = false;
                 for (let d of this.drips) {
@@ -798,7 +832,7 @@ class RubberButton {
             // Apply Deformation
             if (this.dragOffset.lengthSq() > 0.001 || this.isDragging || this.isReturning || this.isDripping) {
                 const localDrag = this.dragOffset.clone();
-                // Inverse Scale logic
+                // Inverse Scale logic (MUST USE CURRENT DYNAMIC SCALE)
                 localDrag.x /= this.mesh.scale.x;
                 localDrag.y /= this.mesh.scale.y;
                 localDrag.z /= this.mesh.scale.z;
@@ -849,11 +883,9 @@ class RubberButton {
 
                             if (dripW > 0.1) {
                                 let fall = d.time * d.speed * 0.1;
-                                // Elastic Retract at end of life?
                                 if (d.time > d.life * 0.8) {
-                                    fall *= (d.life - d.time) / (d.life * 0.2); // Fade out
+                                    fall *= (d.life - d.time) / (d.life * 0.2);
                                 }
-
                                 dripY -= fall * dripW;
                                 isDrop = true;
                             }
@@ -865,10 +897,9 @@ class RubberButton {
                     // Y DEFORMATION + DRIP
                     let newY = this.originalPositions[i * 3 + 1] + dy + dripY;
 
-                    // FLOOR CONSTRAINT (Scale Corrected)
-                    // If it's a drop, we ALLOW it to go lower (Drip off)
-                    // But maybe limit it to -20?
+                    // FLOOR CONSTRAINT (Scale Corrected - DYNAMIC SCALE)
                     if (!isDrop) {
+                        // Now uses animated mesh.scale.y automaticall
                         const limitY = (2.0 - this.pressY) / this.mesh.scale.y;
                         newY = Math.max(limitY, newY);
                     }
