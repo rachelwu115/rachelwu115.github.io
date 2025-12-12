@@ -698,15 +698,16 @@ class RubberButton {
                 (Math.random() - 0.5) * 0.1
             );
 
-            // Aesthetic Colors
+            // Aesthetic Colors (Rusty Lake Theme)
+            // Muted, surreal, vintage, uncanny
             const r = Math.random();
-            if (r < 0.25) p.mesh.material.color.setHex(0xFFD700); // Gold
-            else if (r < 0.5) p.mesh.material.color.setHex(0xFF69B4); // Hot Pink
-            else if (r < 0.75) p.mesh.material.color.setHex(0x00FFFF); // Cyan
-            else p.mesh.material.color.setHex(0xFFFFFF); // White
+            if (r < 0.4) p.mesh.material.color.setHex(0x8a0303); // Deep Blood Red
+            else if (r < 0.6) p.mesh.material.color.setHex(0x111111); // Void Black
+            else if (r < 0.8) p.mesh.material.color.setHex(0xe3dac9); // Bone/Paper White
+            else p.mesh.material.color.setHex(0x2f4f4f); // Muted Dark Teal
 
             // Long Life (for slow fall)
-            p.life = 2.0 + Math.random() * 1.0;
+            p.life = 2.0 + Math.random() * 1.5;
             p.mesh.scale.set(0.1, 0.1, 0.1); // Start small, pop in
         });
 
@@ -718,10 +719,15 @@ class RubberButton {
             this.state.isExploded = false;
             this.mesh.visible = true;
 
+            // Trigger Organic Regrowth
+            this.state.isRegenerating = true;
+            this.state.regrowthProgress = 0.0;
+
             // Hard Reset Physics (Factory State)
             this.resetPhysics();
 
-            this.playTone(300, 'sine', 0.5, 0.2);
+            // Squishy reform sound
+            this.playTone(100, 'sine', 0.3, 0.2);
         }, 200);
     }
 
@@ -880,6 +886,13 @@ class RubberButton {
                 this.physics.pressY += (this.physics.targetPressY - this.physics.pressY) * 0.6;
                 this.mesh.position.y = this.physics.pressY; // Overrides Shiver Y, preserves press
 
+                // ORGANIC REGROWTH (Rise from depths)
+                if (this.state.isRegenerating) {
+                    const g = this.state.regrowthProgress; // 0.0 to 1.0
+                    // Offset Y: Starts at -30, moves to 0
+                    this.mesh.position.y += (1.0 - g) * -30;
+                }
+
                 // DEFORMATION PHYSICS
                 this.updateDeformation();
             }
@@ -896,21 +909,40 @@ class RubberButton {
         const now = Date.now();
         const phase = now % this.config.beatRate;
 
+        // Regrowth State Logic
+        if (this.state.isRegenerating) {
+            // Growth speed
+            this.state.regrowthProgress += 0.02;
+            if (this.state.regrowthProgress >= 1.0) {
+                this.state.regrowthProgress = 1.0;
+                this.state.isRegenerating = false;
+            }
+        }
+
+        // Base Pulse
         let pulse = 1.0;
         if (phase < 300) {
             pulse = 1.0 + Math.sin((phase / 300) * Math.PI) * 0.008;
         }
 
-        // Apply Pulse
-        this.mesh.scale.set(pulse, 0.7 * pulse, pulse);
+        // Apply Growth Scale
+        const g = (this.state.isRegenerating) ?
+            Math.pow(this.state.regrowthProgress, 0.5) : // EaseOut 
+            1.0;
+
+        const scale = pulse * g;
+
+        this.mesh.scale.set(scale, 0.7 * scale, scale);
 
         // Apply Shiver (Idle Jitter)
         this.mesh.position.x = (Math.random() - 0.5) * 0.2;
         this.mesh.position.z = (Math.random() - 0.5) * 0.2;
 
-        // Audio Trigger
+        // Audio Trigger (Heartbeat)
         if (phase < 50 && this.state.beatPhase === 0) {
-            this.playTone(55, 'sine', 0.2, 0.2);
+            // Quieter heartbeat if regenerating
+            const vol = this.state.isRegenerating ? 0.1 : 0.2;
+            this.playTone(55, 'sine', 0.2, vol);
             this.state.beatPhase = 1;
         }
         if (phase > 500) this.state.beatPhase = 0;
@@ -1056,6 +1088,9 @@ class RubberButton {
         this.mesh.geometry.attributes.position.array.set(this.originalPositions);
         this.mesh.geometry.attributes.position.needsUpdate = true;
         this.mesh.position.y = 0;
+
+        // FIX: Recompute normals to ensure lighting/shading is consistent
+        this.mesh.geometry.computeVertexNormals();
     }
 
     /**
