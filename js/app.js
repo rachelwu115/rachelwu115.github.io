@@ -578,6 +578,10 @@ class RubberButton {
         this.returnVelocity = new THREE.Vector3();
         this.isReturning = false;
 
+        // "Press" State
+        this.pressY = 0;
+        this.targetPressY = 0;
+
         // Interaction
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
@@ -634,6 +638,9 @@ class RubberButton {
                 this.isReturning = false;
                 this.returnVelocity.set(0, 0, 0); // Stop bouncing on grab
 
+                // PRESS EFFECT
+                this.targetPressY = -12.0; // Push down
+
                 const hit = intersects[0];
                 this.grabPoint.copy(hit.point);
                 this.localGrabPoint.copy(this.mesh.worldToLocal(hit.point.clone()));
@@ -676,7 +683,7 @@ class RubberButton {
                 }
 
                 // Squelch
-                this.playTone(100, 'sawtooth', 0.2, 0.4);
+                this.playTone(150, 'square', 0.1, 0.3); // Mechanical Click Sound
                 this.canvas.style.cursor = 'grabbing';
             }
         };
@@ -701,10 +708,17 @@ class RubberButton {
             const worldOffset = targetPos.clone().sub(this.grabPoint);
             this.dragOffset.copy(worldOffset);
 
+            // Releasing Press if stretched
+            // If we pull UP, release the press immediately
+            if (this.dragOffset.y > 5) {
+                this.targetPressY = 0;
+            }
+
             // CHECK LIMIT (Snap)
             if (this.dragOffset.length() > this.snapLimit) {
                 this.isDragging = false;
                 this.isReturning = true; // Trigger bounce
+                this.targetPressY = 0; // Release press
                 this.playTone(300, 'square', 0.1, 0.5); // Snap Sound
                 this.canvas.style.cursor = 'grab';
             }
@@ -731,6 +745,10 @@ class RubberButton {
     start() {
         const animate = () => {
             requestAnimationFrame(animate);
+
+            // 1. UPDATE PRESS STATE
+            this.pressY += (this.targetPressY - this.pressY) * 0.2;
+            this.mesh.position.y = this.pressY;
 
             // PHYSICS LOOP
             const positions = this.mesh.geometry.attributes.position.array;
@@ -777,7 +795,21 @@ class RubberButton {
                     }
 
                     positions[i * 3] = this.originalPositions[i * 3] + localDrag.x * w;
-                    positions[i * 3 + 1] = this.originalPositions[i * 3 + 1] + localDrag.y * w;
+                    // Y DEFORMATION
+                    let newY = this.originalPositions[i * 3 + 1] + localDrag.y * w;
+
+                    // FLOOR CONSTRAINT
+                    // Ensure vertex Y doesn't go below -pressY (world 0)
+                    // Because mesh.position.y is pressY.
+                    // WorldY = mesh.y + vertex.y
+                    // We want WorldY >= 0.
+                    // pressY + newY >= 0
+                    // newY >= -pressY
+
+                    newY = Math.max(-this.pressY, newY);
+
+                    positions[i * 3 + 1] = newY;
+
                     positions[i * 3 + 2] = this.originalPositions[i * 3 + 2] + localDrag.z * w;
                 }
                 this.mesh.geometry.attributes.position.needsUpdate = true;
