@@ -571,7 +571,7 @@ class RubberButton {
         this.grabPoint = new THREE.Vector3(); // World Space
         this.localGrabPoint = new THREE.Vector3(); // Local Space
 
-        this.snapLimit = 60.0;
+        this.snapLimit = 45.0; // Easier to trigger burst
         this.softness = 80.0;
 
         // Return Animation Physics
