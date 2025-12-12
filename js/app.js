@@ -644,8 +644,20 @@ class RubberButton {
                     const distSq = dx * dx + dy * dy + dz * dz;
 
                     // Gaussian: exp( -dist^2 / (2 * sigma^2) )
-                    const weight = Math.exp(-distSq / (2 * this.softness * this.softness));
-                    this.weights[i / 3] = weight;
+                    let weight = Math.exp(-distSq / (2 * this.softness * this.softness));
+
+                    // HEIGHT MASK (Pinning)
+                    // Ensure vertices at Y=0 (bottom) never move.
+                    // Scale is 1, 0.7, 1. Sphere radius 66.
+                    // Top is approx 66. Bottom is 0 (hemisphere base).
+
+                    const yVal = positions[i + 1];
+                    const normY = Math.max(0, yVal / 66.0); // 0 to 1
+
+                    // Power curve to keep bottom stiff, top loose
+                    const pinFactor = Math.pow(normY, 3);
+
+                    this.weights[i / 3] = weight * pinFactor;
                 }
 
                 // Squelch Sound
@@ -658,32 +670,25 @@ class RubberButton {
             if (!this.isDragging) return;
 
             const rect = this.canvas.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-            const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-            // Project mouse ray onto a plane at the grab depth
-            // Plane normal facing camera? Or facing Y up?
-            // Let's use a plane facing camera for intuitive 2D screen-drag
+            const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
             const ray = new THREE.Ray();
             ray.origin.setFromMatrixPosition(this.camera.matrixWorld);
             ray.direction.set(x, y, 0.5).unproject(this.camera).sub(ray.origin).normalize();
 
-            const targetDist = this.grabPoint.distanceTo(this.camera.position); // Approx depth
+            const targetDist = this.grabPoint.distanceTo(this.camera.position);
             const targetPos = ray.origin.clone().add(ray.direction.multiplyScalar(targetDist));
 
-            // Calculate Drag Offset in Local Space (simplification)
-            // World Offset
             const worldOffset = targetPos.clone().sub(this.grabPoint);
-
-            // Transform to Local Offset if mesh rotated (it's not rotated much)
             this.dragOffset.copy(worldOffset);
 
-            // CHECK LIMIT (Snap)
             if (this.dragOffset.length() > this.snapLimit) {
                 this.isDragging = false;
-                this.dragOffset.set(0, 0, 0); // Reset immediately? Or elastic bounce?
-                // Elastic bounce handled by animation loop if we just release
-                // But user wants "Stuck till limit", then snap.
+                this.dragOffset.set(0, 0, 0);
                 this.playTone(300, 'square', 0.1, 0.5); // Snap Sound
                 this.canvas.style.cursor = 'grab';
             }
@@ -701,10 +706,12 @@ class RubberButton {
         this.canvas.addEventListener('mousedown', onDown);
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
+        window.addEventListener('blur', onUp); // Safety: Release on tab switch
 
         this.canvas.addEventListener('touchstart', onDown, { passive: false });
         window.addEventListener('touchmove', onMove, { passive: false });
         window.addEventListener('touchend', onUp);
+        window.addEventListener('touchcancel', onUp);
     }
 
     start() {
@@ -714,50 +721,36 @@ class RubberButton {
             // PHYSICS LOOP
             const positions = this.mesh.geometry.attributes.position.array;
 
-            // If dragging, apply offset * weights
-            // If released, elastically return offset to 0?
-
             if (!this.isDragging) {
                 // Elastic Return (Damped Spring)
                 this.dragOffset.lerp(new THREE.Vector3(0, 0, 0), 0.2);
             }
 
-            // Apply Deformation
-            // We transform the ORIGINAL positions
-            // P_current = P_orig + (DragVector * Weight)
-
-            // Optimization: Only update if dragOffset > epsilon
             if (this.dragOffset.lengthSq() > 0.001 || this.isDragging) {
-                // Convert Drag Offset to Local Space for application? 
-                // Assuming Mesh scale/rotation identity or handled.
-                // Mesh scale is (1, 0.7, 1). Local offset logic holds.
-
-                // Apply local inverse scale to drag offset?
-                // If mesh is squashed 0.7Y, a 1 unit drag in Y should move vertex 1/0.7 local units?
-                // Let's keep it simple: apply in geometry space.
-
                 const localDrag = this.dragOffset.clone();
-                // Inverse Scale for local deformation (so it feels 1:1 with mouse)
                 localDrag.x /= this.mesh.scale.x;
                 localDrag.y /= this.mesh.scale.y;
                 localDrag.z /= this.mesh.scale.z;
 
                 for (let i = 0; i < this.weights.length; i++) {
                     const w = this.weights[i];
-                    if (w < 0.01) {
-                        // Reset to original if almost no weight
+                    if (w < 0.001) {
                         positions[i * 3] = this.originalPositions[i * 3];
                         positions[i * 3 + 1] = this.originalPositions[i * 3 + 1];
                         positions[i * 3 + 2] = this.originalPositions[i * 3 + 2];
                         continue;
                     }
 
+                    // We only apply drag to X and Z freely. Y is restricted?
+                    // Actually, dragging Up/Down (Y) is cool, but we pinned Y=0.
+                    // The w factor handles the pinning.
+
                     positions[i * 3] = this.originalPositions[i * 3] + localDrag.x * w;
                     positions[i * 3 + 1] = this.originalPositions[i * 3 + 1] + localDrag.y * w;
                     positions[i * 3 + 2] = this.originalPositions[i * 3 + 2] + localDrag.z * w;
                 }
                 this.mesh.geometry.attributes.position.needsUpdate = true;
-                this.mesh.geometry.computeVertexNormals(); // Re-calc lighting!
+                this.mesh.geometry.computeVertexNormals();
             }
 
             this.renderer.render(this.scene, this.camera);
