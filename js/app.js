@@ -571,8 +571,8 @@ class RubberButton {
         this.grabPoint = new THREE.Vector3(); // World Space
         this.localGrabPoint = new THREE.Vector3(); // Local Space
 
-        this.snapLimit = 100.0; // Tighter limit
-        this.softness = 60.0; // Even broader for gummy feel
+        this.snapLimit = 60.0; // Reduced limit (Quick snap)
+        this.softness = 80.0; // Very soft/gooey
 
         // Return Animation Physics
         this.returnVelocity = new THREE.Vector3();
@@ -636,10 +636,10 @@ class RubberButton {
             if (intersects.length > 0) {
                 this.isDragging = true;
                 this.isReturning = false;
-                this.returnVelocity.set(0, 0, 0); // Stop bouncing on grab
+                this.returnVelocity.set(0, 0, 0);
 
                 // PRESS EFFECT
-                this.targetPressY = -10.0; // Reduced depth for safety
+                this.targetPressY = -8.0; // Shallow press
 
                 const hit = intersects[0];
                 this.grabPoint.copy(hit.point);
@@ -647,12 +647,9 @@ class RubberButton {
                 this.dragOffset.set(0, 0, 0);
 
                 // CALCULATE WEIGHTS
-                // Goal: 1:1 Tracking at Grab Point -> Weight = 1.0
-                // Goal: 0 Movement at Bottom -> Weight = 0.0
-
                 const positions = this.originalPositions;
                 const localGrab = this.localGrabPoint;
-                const grabY = Math.max(0.1, localGrab.y); // Prevent div by zero
+                const grabY = Math.max(0.1, localGrab.y);
 
                 for (let i = 0; i < positions.length; i += 3) {
                     const dx = positions[i] - localGrab.x;
@@ -660,30 +657,22 @@ class RubberButton {
                     const dz = positions[i + 2] - localGrab.z;
                     const distSq = dx * dx + dy * dy + dz * dz;
 
-                    // Gaussian
                     let weight = Math.exp(-distSq / (2 * this.softness * this.softness));
 
                     // TAFFY PINNING
-                    // Scale weight based on height relative to grab point
                     const yVal = positions[i + 1];
                     let pinFactor = 1.0;
 
                     if (yVal < grabY) {
-                        // Below grab point: Scale down to 0 linearly
                         pinFactor = Math.max(0, yVal / grabY);
-                        // Apply curve for taffy feel?
-                        // pinFactor = Math.pow(pinFactor, 0.5); // Square root makes it thicker at bottom
-                        pinFactor = Math.pow(pinFactor, 0.8);
-                    } else {
-                        // Above grab point: Full weight (move with cursor)
-                        pinFactor = 1.0;
+                        pinFactor = Math.pow(pinFactor, 0.6); // Softer curve (gooey)
                     }
 
                     this.weights[i / 3] = weight * pinFactor;
                 }
 
-                // Squelch
-                this.playTone(150, 'square', 0.1, 0.3); // Mechanical Click Sound
+                // Squelch (Gooey Sound)
+                this.playTone(80, 'sine', 0.2, 0.4);
                 this.canvas.style.cursor = 'grabbing';
             }
         };
@@ -708,8 +697,7 @@ class RubberButton {
             const worldOffset = targetPos.clone().sub(this.grabPoint);
             this.dragOffset.copy(worldOffset);
 
-            // Releasing Press if stretched
-            // If we pull UP, release the press immediately
+            // Stickiness: If going UP, Release Press
             if (this.dragOffset.y > 5) {
                 this.targetPressY = 0;
             }
@@ -717,15 +705,15 @@ class RubberButton {
             // CHECK LIMIT (Snap)
             if (this.dragOffset.length() > this.snapLimit) {
                 this.isDragging = false;
-                this.isReturning = true; // Trigger bounce
-                this.targetPressY = 0; // Release press
-                this.playTone(300, 'square', 0.1, 0.5); // Snap Sound
+                this.isReturning = true;
+                this.targetPressY = 0;
+                this.playTone(250, 'sine', 0.15, 0.5); // Bloop Sound
                 this.canvas.style.cursor = 'grab';
             }
         };
 
         const onUp = () => {
-            // Sticky Mode: No Release on Up
+            // Sticky Mode
             if (this.isDragging) {
                 this.canvas.style.cursor = 'grabbing';
             }
@@ -754,36 +742,40 @@ class RubberButton {
             const positions = this.mesh.geometry.attributes.position.array;
 
             if (!this.isDragging) {
-                // Spring Physics for Return
-                // F = -kx - cv
-                const stiffness = 0.15;
-                const damping = 0.85;
-
-                // Force towards 0
+                // Jelly Wobble Return
+                const stiffness = 0.1;
+                const damping = 0.9; // Lower damping for more wobble
                 const force = this.dragOffset.clone().multiplyScalar(-stiffness);
-
                 this.returnVelocity.add(force);
                 this.returnVelocity.multiplyScalar(damping);
-
                 this.dragOffset.add(this.returnVelocity);
 
-                // Stop if small
                 if (this.dragOffset.lengthSq() < 0.01 && this.returnVelocity.lengthSq() < 0.01) {
                     this.dragOffset.set(0, 0, 0);
                     this.returnVelocity.set(0, 0, 0);
                     this.isReturning = false;
                 }
             } else {
-                this.isReturning = false; // Manually controlled
+                this.isReturning = false;
             }
 
             // Apply Deformation
             if (this.dragOffset.lengthSq() > 0.001 || this.isDragging || this.isReturning) {
                 const localDrag = this.dragOffset.clone();
-                // Inverse Scale logic
+                // Inverse Scale for local physics
                 localDrag.x /= this.mesh.scale.x;
                 localDrag.y /= this.mesh.scale.y;
                 localDrag.z /= this.mesh.scale.z;
+
+                // DIRECTIONAL PHYSICS (Gooey Squash)
+                let effDragY = localDrag.y;
+                let radialSquash = 0;
+
+                if (localDrag.y < 0) {
+                    // Pushing Down: SQUEEZE
+                    effDragY *= 0.1; // Limit downward movement (prevents clip)
+                    radialSquash = -localDrag.y * 0.4; // Expand outwards
+                }
 
                 for (let i = 0; i < this.weights.length; i++) {
                     const w = this.weights[i];
@@ -794,21 +786,22 @@ class RubberButton {
                         continue;
                     }
 
-                    positions[i * 3] = this.originalPositions[i * 3] + localDrag.x * w;
+                    // Radial Expansion (normalized x/z)
+                    const ox = this.originalPositions[i * 3];
+                    const oz = this.originalPositions[i * 3 + 2];
+
+                    positions[i * 3] = ox + (localDrag.x * w) + (ox * radialSquash * 0.01 * w);
+
                     // Y DEFORMATION
-                    let newY = this.originalPositions[i * 3 + 1] + localDrag.y * w;
+                    let newY = this.originalPositions[i * 3 + 1] + effDragY * w;
 
                     // FLOOR CONSTRAINT (Scale Corrected)
-                    // WorldY = (LocalY * ScaleY) + PressY >= 0
-                    // LocalY * ScaleY >= -PressY
-                    // LocalY >= -PressY / ScaleY
-
                     const limitY = (2.0 - this.pressY) / this.mesh.scale.y;
                     newY = Math.max(limitY, newY);
 
                     positions[i * 3 + 1] = newY;
 
-                    positions[i * 3 + 2] = this.originalPositions[i * 3 + 2] + localDrag.z * w;
+                    positions[i * 3 + 2] = oz + (localDrag.z * w) + (oz * radialSquash * 0.01 * w);
                 }
                 this.mesh.geometry.attributes.position.needsUpdate = true;
                 this.mesh.geometry.computeVertexNormals();
