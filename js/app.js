@@ -723,8 +723,22 @@ class RubberButton {
             this.state.isRegenerating = true;
             this.state.regrowthProgress = 0.0;
 
+            // Randomize Spawn Location (Organic Mutation)
+            this.state.regrowthOrigin = {
+                x: (Math.random() - 0.5) * 30, // Off-center
+                y: -15,
+                z: (Math.random() - 0.5) * 30
+            };
+
             // Hard Reset Physics (Factory State)
             this.resetPhysics();
+
+            // Force Mesh to start at origin (prevent 1-frame jump)
+            this.mesh.position.set(
+                this.state.regrowthOrigin.x,
+                this.state.regrowthOrigin.y,
+                this.state.regrowthOrigin.z
+            );
 
             // Squishy reform sound
             this.playTone(100, 'sine', 0.3, 0.2);
@@ -884,13 +898,9 @@ class RubberButton {
                 // PRESS PHYSICS
                 // Smooth lerp for mechanical press
                 this.physics.pressY += (this.physics.targetPressY - this.physics.pressY) * 0.6;
-                this.mesh.position.y = this.physics.pressY; // Overrides Shiver Y, preserves press
-
-                // ORGANIC REGROWTH (Rise from depths)
-                if (this.state.isRegenerating) {
-                    const g = this.state.regrowthProgress; // 0.0 to 1.0
-                    // Offset Y: Starts at -30, moves to 0
-                    this.mesh.position.y += (1.0 - g) * -30;
+                // Note: mesh.position.y is handled by updateHeartbeat or overridden here
+                if (!this.state.isRegenerating) {
+                    this.mesh.position.y = this.physics.pressY;
                 }
 
                 // DEFORMATION PHYSICS
@@ -909,40 +919,72 @@ class RubberButton {
         const now = Date.now();
         const phase = now % this.config.beatRate;
 
-        // Regrowth State Logic
+        // --- ORGANIC REGROWTH LOGIC ---
         if (this.state.isRegenerating) {
-            // Growth speed
-            this.state.regrowthProgress += 0.02;
+            this.state.regrowthProgress += 0.015; // Speed
+
             if (this.state.regrowthProgress >= 1.0) {
                 this.state.regrowthProgress = 1.0;
                 this.state.isRegenerating = false;
+                // Final snap to clean state
+                this.mesh.position.set(0, this.physics.pressY, 0);
+                this.mesh.rotation.set(0, 0, 0);
+            } else {
+                const t = this.state.regrowthProgress;
+                const undo = 1.0 - t;
+                const origin = this.state.regrowthOrigin || { x: 0, y: -20, z: 0 };
+
+                // 1. POSITION: Slide from offset to center
+                // Uses EaseOutQuad for smooth arrival
+                const easePos = 1 - undo * undo;
+                this.mesh.position.x = origin.x * (1 - easePos);
+                this.mesh.position.z = origin.z * (1 - easePos);
+                this.mesh.position.y = origin.y * (1 - easePos) + this.physics.pressY;
+
+                // 2. SCALE: Elastic Bouncing (Overshoot)
+                // "BounceOut" feel
+                const elastic = 1.0 + Math.pow(2, -10 * t) * Math.sin((t - 0.1) * 5 * Math.PI);
+
+                // 3. SQUISHY NOISE (Metabolizing)
+                // Random wobbles that decrease as t approaches 1
+                const noiseX = Math.sin(now * 0.02) * 0.3 * undo;
+                const noiseY = Math.cos(now * 0.023) * 0.3 * undo;
+
+                // Apply
+                this.mesh.scale.set(
+                    elastic + noiseX,
+                    elastic * 0.7 + noiseY, // 0.7 is natural button aspect
+                    elastic - noiseX
+                );
+
+                // 4. TUMBLE
+                // Rotate slightly as it grows
+                this.mesh.rotation.z = Math.sin(t * Math.PI) * 0.1;
+                this.mesh.rotation.x = Math.cos(t * Math.PI) * 0.1;
+
+                return; // SKIP normal heartbeat while growing
             }
         }
 
-        // Base Pulse
+        // --- NORMAL HEARTBEAT ---
+
         let pulse = 1.0;
         if (phase < 300) {
             pulse = 1.0 + Math.sin((phase / 300) * Math.PI) * 0.008;
         }
 
-        // Apply Growth Scale
-        const g = (this.state.isRegenerating) ?
-            Math.pow(this.state.regrowthProgress, 0.5) : // EaseOut 
-            1.0;
-
-        const scale = pulse * g;
-
-        this.mesh.scale.set(scale, 0.7 * scale, scale);
+        // Apply Pulse
+        this.mesh.scale.set(pulse, 0.7 * pulse, pulse);
 
         // Apply Shiver (Idle Jitter)
         this.mesh.position.x = (Math.random() - 0.5) * 0.2;
         this.mesh.position.z = (Math.random() - 0.5) * 0.2;
+        // Keep Y pinned to physics
+        this.mesh.position.y = this.physics.pressY;
 
-        // Audio Trigger (Heartbeat)
+        // Audio Trigger
         if (phase < 50 && this.state.beatPhase === 0) {
-            // Quieter heartbeat if regenerating
-            const vol = this.state.isRegenerating ? 0.1 : 0.2;
-            this.playTone(55, 'sine', 0.2, vol);
+            this.playTone(55, 'sine', 0.2, 0.2);
             this.state.beatPhase = 1;
         }
         if (phase > 500) this.state.beatPhase = 0;
