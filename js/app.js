@@ -731,13 +731,9 @@ class RubberButton {
                 this.targetPressY = 0;
             }
 
-            // CHECK LIMIT (Snap)
+            // BURST (Explode)
             if (this.dragOffset.length() > this.snapLimit) {
-                this.isDragging = false;
-                this.isReturning = true; // Trigger bounce
-                this.triggerDrips(); // TRIGGER DRIPS
-                this.targetPressY = 0; // Release press
-                this.playTone(300, 'square', 0.1, 0.5); // Snap Sound
+                this.explode(); // BURST INTO CONFETTI
                 this.canvas.style.cursor = 'grab';
             }
         };
@@ -764,16 +760,39 @@ class RubberButton {
         const animate = () => {
             requestAnimationFrame(animate);
 
+            // CONFETTI LOOP
+            if (this.isExploded) {
+                const dummy = new THREE.Object3D();
+                for (let i = 0; i < this.particleCount; i++) {
+                    const p = this.particles[i];
+                    if (p.life > 0) {
+                        p.pos.add(p.vel);
+                        p.vel.y -= 0.5; // Gravity
+                        p.vel.multiplyScalar(0.98); // Drag
+
+                        p.rot.add(p.rotVel);
+
+                        dummy.position.copy(p.pos);
+                        dummy.rotation.set(p.rot.x, p.rot.y, p.rot.z);
+                        dummy.scale.set(1, 1, 1);
+                        dummy.updateMatrix();
+                        this.particleMesh.setMatrixAt(i, dummy.matrix);
+                    }
+                }
+                this.particleMesh.instanceMatrix.needsUpdate = true;
+                this.renderer.render(this.scene, this.camera);
+                return; // SKIP BUTTON RENDER
+            }
+
             // 1. HEARTBEAT LOGIC (Visual + Audio)
             const now = Date.now();
-            const beatLen = 2000; // 2.0s per cycle (Steady Single Beat)
+            const beatLen = 1200; // 1.2s (Faster, normal rate)
             const phase = now % beatLen;
 
             // Visual Pulse (Single Beat)
             let pulseScale = 1.0;
-            if (phase < 300) {
-                // Single steady contraction
-                pulseScale = 1.0 + Math.sin((phase / 300) * Math.PI) * 0.008;
+            if (phase < 200) {
+                pulseScale = 1.0 + Math.sin((phase / 200) * Math.PI) * 0.008;
             }
 
             // Apply scale (Respecting Y=0.7 base)
@@ -786,7 +805,7 @@ class RubberButton {
 
             // Audio Triggers
             if (phase < 50 && this.beatState === 0) {
-                this.playTone(55, 'sine', 0.2, 0.2); // Single reliable beat
+                this.playTone(55, 'sine', 0.2, 0.2);
                 this.beatState = 1;
             }
             if (phase > 500) {
@@ -798,7 +817,7 @@ class RubberButton {
             // this.mesh.position.y = this.pressY + (Math.random() * 0.02); // Add jitter to Y too? No, keep press clean.
             // Actually, adding jitter to Y might fight the press logic.
             // Let's keep Y clean for press.
-            this.mesh.position.y = this.pressY;
+            this.mesh.position.y = this.pressY; // Shiver applied above overrides this? No, above is X/Z.
 
             // 3. UPDATE DRIPS
             if (this.isDripping) {
