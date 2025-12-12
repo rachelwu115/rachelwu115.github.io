@@ -458,9 +458,9 @@ class RubberButton {
 
         // Configuration
         this.config = {
-            snapLimit: 25.0, // Burst Threshold (Lowered for easier trigger)
+            snapLimit: 50.0, // Restored Sticky Feel
             softness: 80.0,  // Gaussian Blob Width
-            gravity: 0.5,    // Confetti Gravity
+            gravity: 0.15,   // Floatier Confetti
             beatRate: 1200,  // Heartbeat ms
         };
 
@@ -605,14 +605,15 @@ class RubberButton {
      */
     initConfetti() {
         const count = 150;
-        const geo = new THREE.PlaneGeometry(4, 4);
+        // Larger particles for visibility
+        const geo = new THREE.PlaneGeometry(6, 6);
         const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
         this.particleMesh = new THREE.InstancedMesh(geo, mat, count);
         this.particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         this.scene.add(this.particleMesh);
 
         const dummy = new THREE.Object3D();
-        dummy.position.set(0, -1000, 0);
+        dummy.position.set(0, -9999, 0);
         dummy.updateMatrix();
 
         for (let i = 0; i < count; i++) {
@@ -659,7 +660,7 @@ class RubberButton {
         if (this.state.isExploded) return;
         this.state.isExploded = true;
         this.state.isDragging = false;
-        this.mesh.visible = false;
+        this.mesh.visible = false; // Hide Button
 
         // Reset Physics
         this.physics.dragOffset.set(0, 0, 0);
@@ -670,38 +671,45 @@ class RubberButton {
         this.playTone(100, 'sawtooth', 0.1, 0.5);
         setTimeout(() => this.playTone(200, 'square', 0.2, 0.3), 50);
 
-        // Spawn
+        // Spawn Logic
         const center = this.physics.grabPoint.clone();
+        // Fallback if grabPoint is invalid/zero
         if (center.lengthSq() < 1) center.set(0, 10, 0);
 
         this.particles.forEach((p, i) => {
+            // Explode OUTWARDS from center
             p.pos.copy(center).addScalar((Math.random() - 0.5) * 10);
-            p.vel.set(
-                (Math.random() - 0.5) * 15,
-                (Math.random() * 25) + 10, // Higher Upward Bias
-                (Math.random() - 0.5) * 15
-            );
-            p.rot.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
-            p.rotVel.setRandom().multiplyScalar(0.5);
 
-            // Colors
+            p.vel.set(
+                (Math.random() - 0.5) * 20, // Wider Spread
+                (Math.random() * 15) + 10,  // Upward Pop
+                (Math.random() - 0.5) * 20
+            );
+            p.rot.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+            p.rotVel.setRandom().multiplyScalar(0.2);
+
+            // Random Colors
             const r = Math.random();
-            if (r < 0.6) p.color.setHex(0xff0000); // Red
-            else if (r < 0.8) p.color.setHex(0x880000); // Dark
-            else p.color.setHex(0xffaaaa); // Pale
+            if (r < 0.33) p.color.setHex(0xff0000); // Red
+            else if (r < 0.66) p.color.setHex(0x880000); // Dark Red
+            else p.color.setHex(0xffaaaa); // Pink/White
 
             this.particleMesh.setColorAt(i, p.color);
-            p.life = 1.0;
+            p.life = 1.0 + Math.random() * 0.5; // Life: 1.0s to 1.5s
         });
         this.particleMesh.instanceColor.needsUpdate = true;
 
-        // Reset Timer
+        // REGENERATE after 2.5s
         setTimeout(() => {
             this.state.isExploded = false;
-            this.mesh.visible = true;
+            this.mesh.visible = true; // Show Button
             this.hideConfetti();
-            this.playTone(300, 'sine', 0.5, 0.2); // Reform
-        }, 2000);
+            this.playTone(300, 'sine', 0.5, 0.2); // Reform Sound
+
+            // Reset Physics again just in case
+            this.physics.dragOffset.set(0, 0, 0);
+            this.physics.returnVelocity.set(0, 0, 0);
+        }, 2500);
     }
 
     /**
@@ -904,20 +912,39 @@ class RubberButton {
      */
     updateConfetti() {
         const dummy = new THREE.Object3D();
+        let activeCount = 0;
+
         this.particles.forEach((p, i) => {
             if (p.life > 0) {
+                activeCount++;
                 p.pos.add(p.vel);
-                p.vel.y -= this.config.gravity;
-                p.vel.multiplyScalar(0.98);
+                p.vel.y -= this.config.gravity; // Gravity
+                p.vel.multiplyScalar(0.96); // Air Resistance
                 p.rot.add(p.rotVel);
+
+                p.life -= 0.01; // Decay
+
+                if (p.life <= 0) {
+                    p.pos.set(0, -9999, 0); // Hide
+                }
 
                 dummy.position.copy(p.pos);
                 dummy.rotation.set(p.rot.x, p.rot.y, p.rot.z);
-                dummy.scale.set(1, 1, 1);
+
+                // Scale matches life? Maybe pop out
+                const s = Math.min(1.0, p.life * 2.0);
+                dummy.scale.set(s, s, s);
+
+                dummy.updateMatrix();
+                this.particleMesh.setMatrixAt(i, dummy.matrix);
+            } else {
+                // Ensure hidden
+                dummy.position.set(0, -9999, 0);
                 dummy.updateMatrix();
                 this.particleMesh.setMatrixAt(i, dummy.matrix);
             }
         });
+
         this.particleMesh.instanceMatrix.needsUpdate = true;
     }
 
