@@ -766,35 +766,30 @@ class RubberButton {
 
             // 1. HEARTBEAT LOGIC (Visual + Audio)
             const now = Date.now();
-            const beatLen = 2500; // 2.5s per cycle (Super Calm)
+            const beatLen = 2000; // 2.0s per cycle (Steady Single Beat)
             const phase = now % beatLen;
 
-            // Visual Pulse (Subtle)
+            // Visual Pulse (Single Beat)
             let pulseScale = 1.0;
-            if (phase < 200) { // Lub
-                pulseScale = 1.0 + Math.sin((phase / 200) * Math.PI) * 0.005;
-            } else if (phase > 300 && phase < 500) { // Dub
-                pulseScale = 1.0 + Math.sin(((phase - 300) / 200) * Math.PI) * 0.008;
+            if (phase < 300) {
+                // Single steady contraction
+                pulseScale = 1.0 + Math.sin((phase / 300) * Math.PI) * 0.008;
             }
 
             // Apply scale (Respecting Y=0.7 base)
             this.mesh.scale.set(pulseScale, 0.7 * pulseScale, pulseScale);
 
-            // Alive Shiver (Micro-vibration)
-            // It's nervous/alive, never perfectly still
-            this.mesh.position.x = (Math.random() - 0.5) * 0.04;
-            this.mesh.position.z = (Math.random() - 0.5) * 0.04;
+            // Alive Shiver (Visible Vibration)
+            // Increased amplitude so it's clearly shaking
+            this.mesh.position.x = (Math.random() - 0.5) * 0.2;
+            this.mesh.position.z = (Math.random() - 0.5) * 0.2;
 
             // Audio Triggers
             if (phase < 50 && this.beatState === 0) {
-                this.playTone(60, 'sine', 0.1, 0.1); // Lub (Quieter)
+                this.playTone(55, 'sine', 0.2, 0.2); // Single reliable beat
                 this.beatState = 1;
             }
-            if (phase > 300 && phase < 350 && this.beatState === 1) {
-                this.playTone(50, 'sine', 0.15, 0.15); // Dub (Quieter)
-                this.beatState = 2;
-            }
-            if (phase > 1000) {
+            if (phase > 500) {
                 this.beatState = 0; // Reset
             }
 
