@@ -716,16 +716,30 @@ class RubberButton {
             p.mesh.scale.set(1, 1, 1);
         });
 
-        // Regen
+        // REGENERATE
         setTimeout(() => {
+            if (!this.state.isExploded) return; // Already reset?
+
             this.state.isExploded = false;
             this.mesh.visible = true;
             this.hideConfetti();
             this.playTone(300, 'sine', 0.5, 0.2);
 
+            // FULL PHYSICS RESET
             this.physics.dragOffset.set(0, 0, 0);
             this.physics.returnVelocity.set(0, 0, 0);
-        }, 3000); // 3s before return
+            this.physics.grabPoint.set(0, 0, 0);
+            this.physics.localGrabPoint.set(0, 0, 0);
+            this.physics.pressY = 0;
+            this.physics.targetPressY = 0;
+
+            // Recalculate weights to zero out any residual deformation
+            this.calculateWeights();
+            this.mesh.geometry.attributes.position.array.set(this.originalPositions);
+            this.mesh.geometry.attributes.position.needsUpdate = true;
+            this.mesh.position.y = 0;
+
+        }, 2500); // 3s before return
     }
 
     /**
@@ -923,25 +937,50 @@ class RubberButton {
      * Updates the position and rotation of confetti particles.
      */
     updateConfetti() {
+        const now = Date.now();
+        let activeCount = 0;
+
         this.particles.forEach((p) => {
             if (p.life > 0) {
+                // Physics: Velocity
                 p.mesh.position.add(p.vel);
-                p.vel.y -= this.config.gravity;
-                p.vel.multiplyScalar(0.96);
 
+                // Gravity & Drag
+                p.vel.y -= 0.25; // Gravity
+                p.vel.multiplyScalar(0.97); // Air resistance
+
+                // Flower Petal Flutter (Sine wave sway)
+                // We added swaySpeed/swayOffset in init, but if they don't exist, default them
+                const sSpeed = p.swaySpeed || 0.01;
+                const sOffset = p.swayOffset || 0;
+
+                const sway = Math.sin(now * sSpeed + sOffset) * 0.2;
+                p.mesh.position.x += sway;
+                p.mesh.position.z += sway;
+
+                // Rotation
                 p.mesh.rotation.x += p.rotVel.x;
                 p.mesh.rotation.y += p.rotVel.y;
                 p.mesh.rotation.z += p.rotVel.z;
 
+                // Decay
                 p.life -= 0.01;
 
-                if (p.life <= 0) p.mesh.visible = false;
+                if (p.life <= 0 || p.mesh.position.y < -100) {
+                    p.mesh.visible = false;
+                    p.life = 0;
+                } else {
+                    activeCount++;
+                }
 
                 // Pop-out Scale effect
                 const s = Math.min(1.0, p.life * 3.0);
                 p.mesh.scale.set(s, s, s);
             }
         });
+
+        // If no particles left and clean-up time passed, ensure state is reset?
+        // (Handled by explode timeout)
     }
 
     /**
