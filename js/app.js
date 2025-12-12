@@ -569,15 +569,32 @@ class RubberButton {
         this.pivot = new THREE.Group();
         this.scene.add(this.pivot);
 
-        // Base & Bezel
+        // Base Group (Puck + Bezel + Pillar)
         const baseGroup = new THREE.Group();
+
+        // 1. Puck (The immediate base)
         const puck = new THREE.Mesh(new THREE.CylinderGeometry(70, 75, 20, 64), this.materials.base);
-        puck.position.y = -10; puck.receiveShadow = true;
+        puck.position.y = -10;
+        puck.receiveShadow = true;
         baseGroup.add(puck);
 
+        // 2. Bezel (The ring around)
         const bezel = new THREE.Mesh(new THREE.TorusGeometry(68, 6, 16, 100), this.materials.base);
-        bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
+        bezel.rotation.x = -Math.PI / 2;
+        bezel.receiveShadow = true;
         baseGroup.add(bezel);
+
+        // 3. Rectangular Pillar Stand (Art Piece Pedestal)
+        // Sits under the puck (Puck bottom is -20)
+        // Height 400. Center = -20 - 200 = -220.
+        const pillar = new THREE.Mesh(
+            new THREE.BoxGeometry(150, 400, 150),
+            this.materials.base
+        );
+        pillar.position.y = -220;
+        pillar.receiveShadow = true;
+        baseGroup.add(pillar);
+
         this.pivot.add(baseGroup);
 
         // Button Mesh (Soft Body)
@@ -591,12 +608,13 @@ class RubberButton {
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // Floor Shadow
+        // Floor Shadow (At bottom of pillar)
         const shadowPlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(500, 500),
+            new THREE.PlaneGeometry(2000, 2000),
             new THREE.ShadowMaterial({ opacity: 0.3, color: 0x000000 })
         );
-        shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.position.y = -20;
+        shadowPlane.rotation.x = -Math.PI / 2;
+        shadowPlane.position.y = -420; // Floor level
         this.pivot.add(shadowPlane);
     }
 
