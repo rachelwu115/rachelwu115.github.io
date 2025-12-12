@@ -201,7 +201,7 @@ class Mirror {
 
         // --- TEXT INPUT HANDLING ---
         this.input.addEventListener('input', (e) => {
-            const char = e.data || this.input.value.slice(-1);ut the
+            const char = e.data || this.input.value.slice(-1);
 
             if (char) {
                 this.spawnTear(char);
