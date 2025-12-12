@@ -201,7 +201,7 @@ class Mirror {
 
         // --- TEXT INPUT HANDLING ---
         this.input.addEventListener('input', (e) => {
-            const char = e.data || this.input.value.slice(-1);
+            const char = e.data || this.input.value.slice(-1);ut the
 
             if (char) {
                 this.spawnTear(char);
@@ -371,8 +371,45 @@ class Mirror {
     }
 }
 
+/**
+ * COMPONENT: Gallery Navigation
+ */
+class GalleryNav {
+    constructor() {
+        this.nextBtn = document.getElementById('navNext');
+        this.init();
+    }
+
+    init() {
+        if (this.nextBtn) {
+            this.nextBtn.addEventListener('click', () => {
+                this.goToNext();
+            });
+        }
+    }
+
+    goToNext() {
+        // For now, this just reloads or logs. 
+        // In Phase 2, this will route to "The Button".
+        console.log("Navigating to Exhibit 2: The Button");
+
+        // Use a query param to simulate state change for now (or distinct URL)
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('exhibit', 'button');
+        window.history.pushState({}, '', currentUrl);
+
+        // Force reload to trigger "New Page" feeling for now? 
+        // Or keep it SPA. Let's just log and maybe alert user we are ready for Phase 2.
+        alert("Proceeding to Exhibit 2: THE BUTTON");
+    }
+}
+
 // MAIN ENTRY POINT
 document.addEventListener('DOMContentLoaded', () => {
+    // Determine which exhibit to load based on URL?
+    // For now, default is Weeping Shadow.
+
     new MagneticButton({ area: '.magnetic-area', button: '.magnetic-content' });
     new Mirror();
+    new GalleryNav();
 });
