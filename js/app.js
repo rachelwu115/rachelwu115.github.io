@@ -735,7 +735,7 @@ class RubberButton {
             requestAnimationFrame(animate);
 
             // 1. UPDATE PRESS STATE
-            this.pressY += (this.targetPressY - this.pressY) * 0.2;
+            this.pressY += (this.targetPressY - this.pressY) * 0.6; // Faster, crispier press
             this.mesh.position.y = this.pressY;
 
             // PHYSICS LOOP
