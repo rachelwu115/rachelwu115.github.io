@@ -454,12 +454,12 @@ class RubberButton {
         // Scene
         this.scene = new THREE.Scene();
 
-        // Camera (Orbiting) - ZOOMED IN
+        // Camera (Macro Lens)
         const width = this.canvas.clientWidth;
         const height = this.canvas.clientHeight;
-        this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        this.camera.position.set(0, 120, 160); // Closer, more dramatic angle
-        this.camera.lookAt(0, 10, 0);
+        this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+        this.camera.position.set(0, 100, 160); // Close up
+        this.camera.lookAt(0, 0, 0);
 
         // Renderer
         this.renderer = new THREE.WebGLRenderer({
@@ -470,94 +470,127 @@ class RubberButton {
         this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-        // Lights - STUDIO SETUP
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); // Dimmer ambient
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
         this.scene.add(ambientLight);
 
-        // Key Light (Warm, Top-Right)
-        const spotLight = new THREE.SpotLight(0xffdddd, 2.5);
-        spotLight.position.set(80, 150, 80);
-        spotLight.angle = Math.PI / 5;
+        // Main Studio Light
+        const spotLight = new THREE.SpotLight(0xffdddd, 2);
+        spotLight.position.set(100, 200, 100);
+        spotLight.angle = Math.PI / 4;
         spotLight.penumbra = 0.5;
         spotLight.castShadow = true;
-        spotLight.shadow.mapSize.width = 1024;
-        spotLight.shadow.mapSize.height = 1024;
-        spotLight.shadow.bias = -0.0001;
+        spotLight.shadow.mapSize.width = 2048;
+        spotLight.shadow.mapSize.height = 2048;
         this.scene.add(spotLight);
 
-        // Rim Light (Cool, Back-Left) - Creates the "Edge" 3D look
-        const rimLight = new THREE.SpotLight(0xccddff, 3);
-        rimLight.position.set(-60, 50, -80);
+        // Rim Light (Edge definition)
+        const rimLight = new THREE.SpotLight(0x4455ff, 5); // Blue Rim
+        rimLight.position.set(-100, 20, -100);
         rimLight.lookAt(0, 0, 0);
         this.scene.add(rimLight);
 
-        // Fill Light (Soft, Right)
-        const fillLight = new THREE.PointLight(0xffaaaa, 0.5);
-        fillLight.position.set(60, 20, 60);
-        this.scene.add(fillLight);
+        // INTERACTIVE LIGHT (Follows Mouse)
+        // This makes reflections move, proving 3D
+        this.cursorLight = new THREE.PointLight(0xffffff, 1, 300);
+        this.cursorLight.position.set(0, 50, 100);
+        this.scene.add(this.cursorLight);
 
-        // Materials - HIGH GLOSS
+        // Materials
         this.rubberMat = new THREE.MeshPhysicalMaterial({
-            color: 0xee0000, // Richer Red
-            emissive: 0x220000,
-            roughness: 0.15, // Smoother
+            color: 0xcc0000,
+            emissive: 0x110000,
+            roughness: 0.15,
             metalness: 0.1,
-            clearcoat: 1.0, // Wet look
+            clearcoat: 1.0,
             clearcoatRoughness: 0.1,
-            reflectivity: 1.0,
-            flatShading: false,
+            flatShading: false, // Smooth
             side: THREE.DoubleSide
         });
 
         const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x111111, // Dark Metal
-            roughness: 0.4,
-            metalness: 0.8
+            color: 0x050505, // Almost black
+            roughness: 0.3,
+            metalness: 0.9 // Chrome stand
         });
 
-        // Group to Rotate
+        // Group
         this.pivot = new THREE.Group();
         this.scene.add(this.pivot);
 
-        // Geometry: Button (BIGGER)
-        // Top Radius 65, Bottom 70, Height 25
-        this.geometry = new THREE.CylinderGeometry(65, 70, 25, 64, 15, false);
+        // GEOMETRY: The "Massive" Button
+        // We construct a "Beveled" shape using multiple cylinders to get distinct faces that catch light
+        this.buttonGroup = new THREE.Group();
+        this.pivot.add(this.buttonGroup);
+
+        // 1. Top Face (Cap)
+        const topGeo = new THREE.CylinderGeometry(85, 90, 5, 64);
+        const topMesh = new THREE.Mesh(topGeo, this.rubberMat);
+        topMesh.position.y = 12.5;
+        topMesh.castShadow = true;
+        topMesh.receiveShadow = true;
+        this.buttonGroup.add(topMesh);
+
+        // 2. Main Body (Side)
+        const bodyGeo = new THREE.CylinderGeometry(90, 90, 20, 64);
+        const bodyMesh = new THREE.Mesh(bodyGeo, this.rubberMat);
+        bodyMesh.position.y = 0;
+        bodyMesh.castShadow = true;
+        bodyMesh.receiveShadow = true;
+        this.buttonGroup.add(bodyMesh);
+
+        // 3. Bottom Bevel
+        const botGeo = new THREE.CylinderGeometry(90, 80, 5, 64);
+        const botMesh = new THREE.Mesh(botGeo, this.rubberMat);
+        botMesh.position.y = -12.5;
+        botMesh.castShadow = true;
+        botMesh.receiveShadow = true;
+        this.buttonGroup.add(botMesh);
+
+        // Store Vertices for Physics (We'll animate the Group scale/pos or main body vertices?)
+        // Complex to animate 3 meshes. 
+        // Let's MERGE them or just use one highly segmented cylinder with manual vertex manipulation for shape.
+        // Actually, let's use a single LatheGeometry or just a high-res Cylinder and accept smooth edges.
+        // The user wants "Faces reflect differently". A beveled cylinder (Cylinder with 3 height segments) works best.
+
+        // RE-DO GEOMETRY AS SINGLE MESH for Physics Compatibility
+        this.buttonGroup.clear();
+
+        // Cylinder with radiusTop, radiusBottom, height, radialSegments, heightSegments
+        // heightSegments = 5 allows us to bulge/bevel it manually or just have resolution for physics
+        this.geometry = new THREE.CylinderGeometry(90, 90, 30, 64, 10, false);
         this.mesh = new THREE.Mesh(this.geometry, this.rubberMat);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
-        this.mesh.position.y = 12.5; // Half height
+        this.mesh.position.y = 15;
         this.pivot.add(this.mesh);
 
-        // Geometry: Base/Pedestal (SMALLER - "Stem" look)
-        const baseGeo = new THREE.CylinderGeometry(30, 40, 15, 32);
+        // GEOMETRY: The "Tiny" Stand
+        const baseGeo = new THREE.CylinderGeometry(20, 30, 40, 32); // Narrow stem
         this.base = new THREE.Mesh(baseGeo, baseMat);
-        this.base.position.y = -7.5;
+        this.base.position.y = -20; // Underneath
         this.base.receiveShadow = true;
         this.pivot.add(this.base);
 
-        // Save Original Positions for Physics
+        // Save Original Positions
         this.originalPositions = Float32Array.from(this.geometry.attributes.position.array);
         this.velocities = new Float32Array(this.originalPositions.length);
 
-        // Interaction State
+        // Interaction
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
-
-        // Mode: 'drag' (Button Physics) or 'rotate' (View Orbit)
         this.interactionMode = null;
         this.dragIndex = -1;
 
-        // Rotation State
         this.targetRotation = { x: 0, y: 0 };
         this.currentRotation = { x: 0, y: 0 };
         this.lastMouse = { x: 0, y: 0 };
 
-        // Physics Params
         this.stiffness = 0.05;
         this.friction = 0.90;
-        this.maxStretch = 120;
+        this.maxStretch = 150;
 
         this.bindEvents();
         this.start();
@@ -571,29 +604,54 @@ class RubberButton {
             return { x, y };
         };
 
+        this.canvas.addEventListener('mousemove', (e) => {
+            const ndc = getNDC(e);
+
+            // MOVE LIGHT WITH MOUSE
+            // Map NDC (-1 to 1) to Light Pos (-100 to 100)
+            this.cursorLight.position.x = ndc.x * 100;
+            this.cursorLight.position.y = 50 + (ndc.y * 50);
+
+            // Dragging Logic
+            if (this.interactionMode === 'drag' && this.dragIndex !== -1) {
+                this.mouse.set(ndc.x, ndc.y);
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+
+                const target = new THREE.Vector3();
+                const p = new THREE.Plane(new THREE.Vector3(0, 1, 0), -20);
+                this.raycaster.ray.intersectPlane(p, target);
+
+                if (target) {
+                    const localTarget = this.mesh.worldToLocal(target.clone());
+                    const positions = this.geometry.attributes.position.array;
+
+                    // Vertex Manipulation
+                    positions[this.dragIndex] = localTarget.x;
+                    positions[this.dragIndex + 1] = Math.max(0, localTarget.y);
+                    positions[this.dragIndex + 2] = localTarget.z;
+
+                    this.geometry.attributes.position.needsUpdate = true;
+                }
+            } else if (this.interactionMode === 'rotate') {
+                const deltaX = e.clientX - this.lastMouse.x;
+                const deltaY = e.clientY - this.lastMouse.y;
+                this.targetRotation.y += deltaX * 0.01;
+                this.targetRotation.x += deltaY * 0.01;
+                this.lastMouse = { x: e.clientX, y: e.clientY };
+            }
+        });
+
         this.canvas.addEventListener('mousedown', (e) => {
             const ndc = getNDC(e);
             this.mouse.set(ndc.x, ndc.y);
             this.raycaster.setFromCamera(this.mouse, this.camera);
 
-            // 1. Check if clicking the Rubber Button
             const intersects = this.raycaster.intersectObject(this.mesh);
 
             if (intersects.length > 0) {
-                // BUTTON INTERACTION (Physics)
                 this.interactionMode = 'drag';
-
-                // Find closest vertex
                 const hit = intersects[0];
-                const point = hit.point;
-                // Convert world point to local space (relative to mesh)
-                // Mesh is inside pivot, so we need inverse world matrix?
-                // Simplification for now: Assume identity rotation during check or use world positions
-                // We'll update world positions in physics loop.
-
-                // Actually, `hit.point` is world space. The geometry positions are local space.
-                // We need to inverse transform the hit point to local space of the mesh.
-                const localPoint = this.mesh.worldToLocal(point.clone());
+                const localPoint = this.mesh.worldToLocal(hit.point.clone());
 
                 const positions = this.geometry.attributes.position.array;
                 let minDst = Infinity;
@@ -615,65 +673,9 @@ class RubberButton {
                     this.canvas.style.cursor = 'grabbing';
                 }
             } else {
-                // BACKGROUND INTERACTION (Rotate)
                 this.interactionMode = 'rotate';
                 this.lastMouse = { x: e.clientX, y: e.clientY };
                 this.canvas.style.cursor = 'move';
-            }
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (this.interactionMode === 'drag' && this.dragIndex !== -1) {
-                // Dragging Logic
-                const ndc = getNDC(e);
-                this.mouse.set(ndc.x, ndc.y);
-                this.raycaster.setFromCamera(this.mouse, this.camera);
-
-                // Plane at button height
-                // Need to rotate plane to match pivot?
-                // Complex constraint. Let's just project ray to a plane facing camera?
-                // Or plane at y=20
-
-                // Simplified: Raycast to a plane perpendicular to camera?
-                const distance = this.camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
-                const plane = new THREE.Plane(this.camera.getWorldDirection(new THREE.Vector3()), -distance);
-                // Actually easier: Plane at button Y (local 10), transformed to world.
-
-                // Let's use camera-facing plane at target depth
-                const target = new THREE.Vector3();
-                // Just use a dummy plane at 0,0,0 facing Y
-                // We want to drag the point in 3D.
-
-                // Raycast to invisible plane at Y=20 (World space approx)
-                // If pivot is rotated, this is hard.
-                // Approach: Unproject mouse to a line, find closest point on line to original vertex?
-
-                // Simple approach: Assume button is mostly facing up.
-                // Raycast to Plane(Normal(0,1,0), Constant(20))
-                const p = new THREE.Plane(new THREE.Vector3(0, 1, 0), -20);
-                this.raycaster.ray.intersectPlane(p, target);
-
-                if (target) {
-                    // Convert World Target back to Local Space
-                    const localTarget = this.mesh.worldToLocal(target.clone());
-
-                    const positions = this.geometry.attributes.position.array;
-                    positions[this.dragIndex] = localTarget.x;
-                    positions[this.dragIndex + 1] = Math.max(10, localTarget.y + 10); // Pull Up
-                    positions[this.dragIndex + 2] = localTarget.z;
-
-                    this.geometry.attributes.position.needsUpdate = true;
-                }
-
-            } else if (this.interactionMode === 'rotate') {
-                // Rotating Logic
-                const deltaX = e.clientX - this.lastMouse.x;
-                const deltaY = e.clientY - this.lastMouse.y;
-
-                this.targetRotation.y += deltaX * 0.01;
-                this.targetRotation.x += deltaY * 0.01;
-
-                this.lastMouse = { x: e.clientX, y: e.clientY };
             }
         });
 
@@ -688,17 +690,16 @@ class RubberButton {
         const animate = () => {
             requestAnimationFrame(animate);
 
-            // 1. Smooth Rotation (Lerp)
+            // Rotation
             this.pivot.rotation.y += (this.targetRotation.y - this.pivot.rotation.y) * 0.1;
             this.pivot.rotation.x += (this.targetRotation.x - this.pivot.rotation.x) * 0.1;
 
-            // 2. Physics (Springs)
+            // Physics
             const positions = this.geometry.attributes.position.array;
 
             for (let i = 0; i < positions.length; i++) {
-                if (this.isDragging && (i >= this.dragIndex && i <= this.dragIndex + 2)) continue;
+                if (this.interactionMode === 'drag' && (i >= this.dragIndex && i <= this.dragIndex + 2)) continue;
 
-                // Spring
                 const home = this.originalPositions[i];
                 const current = positions[i];
                 const diff = home - current;
@@ -707,45 +708,34 @@ class RubberButton {
                 this.velocities[i] *= this.friction;
                 positions[i] += this.velocities[i];
             }
+            const dy = positions[this.dragIndex + 1];
+            const dz = positions[this.dragIndex + 2];
 
-            // Area of Effect (Pull neighbors)
-            if (this.isDragging) {
-                // Cheap Soft-body: Iterate and pull nearby vertices towards dragged one
-                // This is O(N^2) potentially, be careful. 
-                // Just do trivial distance check? 
-                // Optimization: Just rely on spring web if we had one.
-                // Since we don't have constraints, vertices are independent springs.
-                // To make it look "Gooey", we should pull neighbors.
+            for (let i = 0; i < positions.length; i += 3) {
+                if (i === this.dragIndex) continue;
 
-                const dx = positions[this.dragIndex];
-                const dy = positions[this.dragIndex + 1];
-                const dz = positions[this.dragIndex + 2];
+                const vx = positions[i];
+                const vy = positions[i + 1];
+                const vz = positions[i + 2];
 
-                for (let i = 0; i < positions.length; i += 3) {
-                    if (i === this.dragIndex) continue;
-
-                    const vx = positions[i];
-                    const vy = positions[i + 1];
-                    const vz = positions[i + 2];
-
-                    const d2 = (dx - vx) ** 2 + (dy - vy) ** 2 + (dz - vz) ** 2;
-                    if (d2 < 400) { // Influence Radius
-                        // Pull factor
-                        const factor = 0.05 * (400 - d2) / 400;
-                        positions[i] += (dx - vx) * factor;
-                        positions[i + 1] += (dy - vy) * factor;
-                        positions[i + 2] += (dz - vz) * factor;
-                    }
+                const d2 = (dx - vx) ** 2 + (dy - vy) ** 2 + (dz - vz) ** 2;
+                if (d2 < 400) { // Influence Radius
+                    // Pull factor
+                    const factor = 0.05 * (400 - d2) / 400;
+                    positions[i] += (dx - vx) * factor;
+                    positions[i + 1] += (dy - vy) * factor;
+                    positions[i + 2] += (dz - vz) * factor;
                 }
             }
+        }
 
-            this.geometry.attributes.position.needsUpdate = true;
-            this.geometry.computeVertexNormals(); // Recalc for lighting
+        this.geometry.attributes.position.needsUpdate = true;
+        this.geometry.computeVertexNormals(); // Recalc for lighting
 
-            this.renderer.render(this.scene, this.camera);
-        };
-        animate();
-    }
+        this.renderer.render(this.scene, this.camera);
+    };
+    animate();
+}
 }
 
 
