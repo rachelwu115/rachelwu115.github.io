@@ -667,42 +667,35 @@ class RubberButton {
         this.canvas.style.backgroundColor = 'rgba(255,255,255,0.2)';
         setTimeout(() => this.canvas.style.backgroundColor = '', 150);
 
-        // Reset Physics
-        this.physics.dragOffset.set(0, 0, 0);
-        this.physics.targetPressY = 0;
-        this.physics.pressY = 0;
-
         // Sound: "Pop"
         this.playTone(150, 'sawtooth', 0.1, 0.5);
         setTimeout(() => this.playTone(300, 'square', 0.1, 0.3), 80);
 
         // Spawn Logic
-        // Use mesh center if grabPoint is weird, otherwise grabPoint (tip of stretch)
         let center = this.physics.grabPoint.clone();
         if (center.lengthSq() < 1) center = this.mesh.position.clone();
-
-        // Lift start point slightly so it doesn't clip floor
-        center.y += 5;
+        center.y += 5; // Lift slightly
 
         this.particles.forEach((p) => {
             p.mesh.visible = true;
 
-            // Start at burst point with slight spread
+            // Start at burst point
             p.mesh.position.copy(center).addScalar((Math.random() - 0.5) * 5);
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
-            // "Shoot into air": High Y velocity
+            // LOGIC FIX: Velocities must be small for per-frame updates
+            // Previous was 50 (Instant teleport). New is 2-4.
             p.vel.set(
-                (Math.random() - 0.5) * 40,   // Wide spread X
-                30 + Math.random() * 40,    // SHOOT UP (30-70 units)
-                (Math.random() - 0.5) * 40    // Wide spread Z
+                (Math.random() - 0.5) * 3.0,   // Spread X
+                2.0 + Math.random() * 3.0,     // Shoot UP (Petal drift start)
+                (Math.random() - 0.5) * 3.0    // Spread Z
             );
 
-            // Fast tumbling
+            // Gentle tumbling
             p.rotVel.set(
-                (Math.random() - 0.5) * 0.5,
-                (Math.random() - 0.5) * 0.5,
-                (Math.random() - 0.5) * 0.5
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1
             );
 
             // Aesthetic Colors
@@ -712,34 +705,24 @@ class RubberButton {
             else if (r < 0.75) p.mesh.material.color.setHex(0x00FFFF); // Cyan
             else p.mesh.material.color.setHex(0xFFFFFF); // White
 
-            p.life = 1.0; // Normalized life (will last ~2-3s based on decay)
-            p.mesh.scale.set(1, 1, 1);
+            // Long Life (for slow fall)
+            p.life = 2.0 + Math.random() * 1.0;
+            p.mesh.scale.set(0.1, 0.1, 0.1); // Start small, pop in
         });
 
-        // REGENERATE
+        // REGENERATE FAST (200ms)
         setTimeout(() => {
-            if (!this.state.isExploded) return; // Already reset?
+            // Check if we are still in exploded state (safety)
+            if (!this.state.isExploded) return;
 
             this.state.isExploded = false;
             this.mesh.visible = true;
-            this.hideConfetti();
+
+            // Hard Reset Physics (Factory State)
+            this.resetPhysics();
+
             this.playTone(300, 'sine', 0.5, 0.2);
-
-            // FULL PHYSICS RESET
-            this.physics.dragOffset.set(0, 0, 0);
-            this.physics.returnVelocity.set(0, 0, 0);
-            this.physics.grabPoint.set(0, 0, 0);
-            this.physics.localGrabPoint.set(0, 0, 0);
-            this.physics.pressY = 0;
-            this.physics.targetPressY = 0;
-
-            // Recalculate weights to zero out any residual deformation
-            this.calculateWeights();
-            this.mesh.geometry.attributes.position.array.set(this.originalPositions);
-            this.mesh.geometry.attributes.position.needsUpdate = true;
-            this.mesh.position.y = 0;
-
-        }, 2500); // 3s before return
+        }, 200);
     }
 
     /**
