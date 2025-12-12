@@ -561,10 +561,18 @@ class RubberButton {
         plane.position.y = -20;
         this.pivot.add(plane);
 
-        // State
-        this.isPressed = false;
-        this.currentY = 0;
-        this.targetY = 0;
+        // Initialize State
+        this.originalPositions = Float32Array.from(this.mesh.geometry.attributes.position.array);
+        this.weights = new Float32Array(this.originalPositions.length / 3);
+
+        // Physics Parameters
+        this.isDragging = false;
+        this.dragOffset = new THREE.Vector3();
+        this.grabPoint = new THREE.Vector3(); // World Space
+        this.localGrabPoint = new THREE.Vector3(); // Local Space
+
+        this.softness = 40.0; // Radius of influence (Gaussian Sigma)
+        this.snapLimit = 120.0; // Max stretch distance
 
         // Interaction
         this.raycaster = new THREE.Raycaster();
@@ -580,7 +588,7 @@ class RubberButton {
             osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
 
             gain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + duration);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
 
             osc.connect(gain);
             gain.connect(this.audioCtx.destination);
@@ -602,8 +610,7 @@ class RubberButton {
     }
 
     bindEvents() {
-        const onDown = (e) => {
-            // Raycast check
+        const getIntersects = (e) => {
             const rect = this.canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -612,31 +619,91 @@ class RubberButton {
             const y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
             this.raycaster.setFromCamera({ x, y }, this.camera);
-            const intersects = this.raycaster.intersectObject(this.mesh);
+            return this.raycaster.intersectObject(this.mesh);
+        };
+
+        const onDown = (e) => {
+            const intersects = getIntersects(e);
 
             if (intersects.length > 0) {
-                this.isPressed = true;
-                this.targetY = -8; // Press down amount
-                // Click Sound
-                this.playTone(600, 'square', 0.1, 0.3);
+                this.isDragging = true;
+                const hit = intersects[0];
+                this.grabPoint.copy(hit.point);
+                this.localGrabPoint.copy(this.mesh.worldToLocal(hit.point.clone()));
+                this.dragOffset.set(0, 0, 0);
+
+                // CALCULATE WEIGHTS (Gaussian Falloff)
+                const positions = this.originalPositions;
+                const localGrab = this.localGrabPoint;
+
+                // Pre-calc influence map
+                for (let i = 0; i < positions.length; i += 3) {
+                    const dx = positions[i] - localGrab.x;
+                    const dy = positions[i + 1] - localGrab.y;
+                    const dz = positions[i + 2] - localGrab.z;
+                    const distSq = dx * dx + dy * dy + dz * dz;
+
+                    // Gaussian: exp( -dist^2 / (2 * sigma^2) )
+                    const weight = Math.exp(-distSq / (2 * this.softness * this.softness));
+                    this.weights[i / 3] = weight;
+                }
+
+                // Squelch Sound
+                this.playTone(100, 'sawtooth', 0.2, 0.4);
                 this.canvas.style.cursor = 'grabbing';
             }
         };
 
+        const onMove = (e) => {
+            if (!this.isDragging) return;
+
+            const rect = this.canvas.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            // Project mouse ray onto a plane at the grab depth
+            // Plane normal facing camera? Or facing Y up?
+            // Let's use a plane facing camera for intuitive 2D screen-drag
+            const ray = new THREE.Ray();
+            ray.origin.setFromMatrixPosition(this.camera.matrixWorld);
+            ray.direction.set(x, y, 0.5).unproject(this.camera).sub(ray.origin).normalize();
+
+            const targetDist = this.grabPoint.distanceTo(this.camera.position); // Approx depth
+            const targetPos = ray.origin.clone().add(ray.direction.multiplyScalar(targetDist));
+
+            // Calculate Drag Offset in Local Space (simplification)
+            // World Offset
+            const worldOffset = targetPos.clone().sub(this.grabPoint);
+
+            // Transform to Local Offset if mesh rotated (it's not rotated much)
+            this.dragOffset.copy(worldOffset);
+
+            // CHECK LIMIT (Snap)
+            if (this.dragOffset.length() > this.snapLimit) {
+                this.isDragging = false;
+                this.dragOffset.set(0, 0, 0); // Reset immediately? Or elastic bounce?
+                // Elastic bounce handled by animation loop if we just release
+                // But user wants "Stuck till limit", then snap.
+                this.playTone(300, 'square', 0.1, 0.5); // Snap Sound
+                this.canvas.style.cursor = 'grab';
+            }
+        };
+
         const onUp = () => {
-            if (this.isPressed) {
-                this.isPressed = false;
-                this.targetY = 0; // Return to origin
-                // Release Sound (Clack)
-                this.playTone(400, 'sawtooth', 0.15, 0.3);
+            if (this.isDragging) {
+                this.isDragging = false; // RELEASE
+                // Snap Sound
+                this.playTone(200, 'square', 0.1, 0.3);
                 this.canvas.style.cursor = 'pointer';
             }
         };
 
         this.canvas.addEventListener('mousedown', onDown);
+        window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
 
         this.canvas.addEventListener('touchstart', onDown, { passive: false });
+        window.addEventListener('touchmove', onMove, { passive: false });
         window.addEventListener('touchend', onUp);
     }
 
@@ -644,12 +711,54 @@ class RubberButton {
         const animate = () => {
             requestAnimationFrame(animate);
 
-            // Simple Spring Physics for Button vertical movement
-            // Lerp currentY to targetY
-            const speed = 0.4;
-            this.currentY += (this.targetY - this.currentY) * speed;
+            // PHYSICS LOOP
+            const positions = this.mesh.geometry.attributes.position.array;
 
-            this.buttonGroup.position.y = this.currentY;
+            // If dragging, apply offset * weights
+            // If released, elastically return offset to 0?
+
+            if (!this.isDragging) {
+                // Elastic Return (Damped Spring)
+                this.dragOffset.lerp(new THREE.Vector3(0, 0, 0), 0.2);
+            }
+
+            // Apply Deformation
+            // We transform the ORIGINAL positions
+            // P_current = P_orig + (DragVector * Weight)
+
+            // Optimization: Only update if dragOffset > epsilon
+            if (this.dragOffset.lengthSq() > 0.001 || this.isDragging) {
+                // Convert Drag Offset to Local Space for application? 
+                // Assuming Mesh scale/rotation identity or handled.
+                // Mesh scale is (1, 0.7, 1). Local offset logic holds.
+
+                // Apply local inverse scale to drag offset?
+                // If mesh is squashed 0.7Y, a 1 unit drag in Y should move vertex 1/0.7 local units?
+                // Let's keep it simple: apply in geometry space.
+
+                const localDrag = this.dragOffset.clone();
+                // Inverse Scale for local deformation (so it feels 1:1 with mouse)
+                localDrag.x /= this.mesh.scale.x;
+                localDrag.y /= this.mesh.scale.y;
+                localDrag.z /= this.mesh.scale.z;
+
+                for (let i = 0; i < this.weights.length; i++) {
+                    const w = this.weights[i];
+                    if (w < 0.01) {
+                        // Reset to original if almost no weight
+                        positions[i * 3] = this.originalPositions[i * 3];
+                        positions[i * 3 + 1] = this.originalPositions[i * 3 + 1];
+                        positions[i * 3 + 2] = this.originalPositions[i * 3 + 2];
+                        continue;
+                    }
+
+                    positions[i * 3] = this.originalPositions[i * 3] + localDrag.x * w;
+                    positions[i * 3 + 1] = this.originalPositions[i * 3 + 1] + localDrag.y * w;
+                    positions[i * 3 + 2] = this.originalPositions[i * 3 + 2] + localDrag.z * w;
+                }
+                this.mesh.geometry.attributes.position.needsUpdate = true;
+                this.mesh.geometry.computeVertexNormals(); // Re-calc lighting!
+            }
 
             this.renderer.render(this.scene, this.camera);
         };
