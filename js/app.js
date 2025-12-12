@@ -606,10 +606,14 @@ class RubberButton {
     initConfetti() {
         const count = 150;
         // Larger particles for visibility
-        const geo = new THREE.PlaneGeometry(6, 6);
+        const geo = new THREE.PlaneGeometry(8, 8);
         const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
         this.particleMesh = new THREE.InstancedMesh(geo, mat, count);
         this.particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+        // CRITICAL FIX: Disable culling because bounding sphere is initially off-screen
+        this.particleMesh.frustumCulled = false;
+
         this.scene.add(this.particleMesh);
 
         const dummy = new THREE.Object3D();
