@@ -571,12 +571,16 @@ class RubberButton {
         this.grabPoint = new THREE.Vector3(); // World Space
         this.localGrabPoint = new THREE.Vector3(); // Local Space
 
-        this.snapLimit = 60.0; // Reduced limit (Quick snap)
-        this.softness = 80.0; // Very soft/gooey
+        this.snapLimit = 60.0;
+        this.softness = 80.0;
 
         // Return Animation Physics
         this.returnVelocity = new THREE.Vector3();
         this.isReturning = false;
+
+        // Drip Physics
+        this.drips = [];
+        this.isDripping = false;
 
         // "Press" State
         this.pressY = 0;
@@ -608,6 +612,24 @@ class RubberButton {
         this.start();
     }
 
+    triggerDrips() {
+        this.drips = [];
+        const count = 3 + Math.floor(Math.random() * 3); // 3-5 drips
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = 25; // Drip from rim
+            this.drips.push({
+                x: Math.cos(angle) * r,
+                z: Math.sin(angle) * r,
+                time: 0,
+                speed: 1.0 + Math.random() * 2.0,
+                width: 30.0 + Math.random() * 20.0,
+                life: 60 + Math.random() * 40
+            });
+        }
+        this.isDripping = true;
+    }
+
     onResize() {
         if (!this.camera || !this.renderer) return;
         const width = window.innerWidth;
@@ -636,10 +658,12 @@ class RubberButton {
             if (intersects.length > 0) {
                 this.isDragging = true;
                 this.isReturning = false;
+                this.drips = []; // Clear old drips
+                this.isDripping = false;
                 this.returnVelocity.set(0, 0, 0);
 
                 // PRESS EFFECT
-                this.targetPressY = -8.0; // Shallow press
+                this.targetPressY = -10.0; // Reduced depth for safety
 
                 const hit = intersects[0];
                 this.grabPoint.copy(hit.point);
@@ -665,14 +689,14 @@ class RubberButton {
 
                     if (yVal < grabY) {
                         pinFactor = Math.max(0, yVal / grabY);
-                        pinFactor = Math.pow(pinFactor, 0.6); // Softer curve (gooey)
+                        pinFactor = Math.pow(pinFactor, 0.8);
                     }
 
                     this.weights[i / 3] = weight * pinFactor;
                 }
 
-                // Squelch (Gooey Sound)
-                this.playTone(80, 'sine', 0.2, 0.4);
+                // Squelch
+                this.playTone(150, 'square', 0.1, 0.3); // Mechanical Click Sound
                 this.canvas.style.cursor = 'grabbing';
             }
         };
@@ -697,7 +721,8 @@ class RubberButton {
             const worldOffset = targetPos.clone().sub(this.grabPoint);
             this.dragOffset.copy(worldOffset);
 
-            // Stickiness: If going UP, Release Press
+            // Releasing Press if stretched
+            // If we pull UP, release the press immediately
             if (this.dragOffset.y > 5) {
                 this.targetPressY = 0;
             }
@@ -705,15 +730,16 @@ class RubberButton {
             // CHECK LIMIT (Snap)
             if (this.dragOffset.length() > this.snapLimit) {
                 this.isDragging = false;
-                this.isReturning = true;
-                this.targetPressY = 0;
-                this.playTone(250, 'sine', 0.15, 0.5); // Bloop Sound
+                this.isReturning = true; // Trigger bounce
+                this.triggerDrips(); // TRIGGER DRIPS
+                this.targetPressY = 0; // Release press
+                this.playTone(300, 'square', 0.1, 0.5); // Snap Sound
                 this.canvas.style.cursor = 'grab';
             }
         };
 
         const onUp = () => {
-            // Sticky Mode
+            // Sticky Mode: No Release on Up
             if (this.isDragging) {
                 this.canvas.style.cursor = 'grabbing';
             }
@@ -735,16 +761,26 @@ class RubberButton {
             requestAnimationFrame(animate);
 
             // 1. UPDATE PRESS STATE
-            this.pressY += (this.targetPressY - this.pressY) * 0.6; // Faster, crispier press
+            this.pressY += (this.targetPressY - this.pressY) * 0.6;
             this.mesh.position.y = this.pressY;
+
+            // 2. UPDATE DRIPS
+            if (this.isDripping) {
+                let active = false;
+                for (let d of this.drips) {
+                    d.time += 1.0;
+                    if (d.time < d.life) active = true;
+                }
+                if (!active) this.isDripping = false;
+            }
 
             // PHYSICS LOOP
             const positions = this.mesh.geometry.attributes.position.array;
 
             if (!this.isDragging) {
-                // Jelly Wobble Return
-                const stiffness = 0.1;
-                const damping = 0.9; // Lower damping for more wobble
+                // Return Logic
+                const stiffness = 0.15;
+                const damping = 0.85;
                 const force = this.dragOffset.clone().multiplyScalar(-stiffness);
                 this.returnVelocity.add(force);
                 this.returnVelocity.multiplyScalar(damping);
@@ -756,13 +792,13 @@ class RubberButton {
                     this.isReturning = false;
                 }
             } else {
-                this.isReturning = false;
+                this.isReturning = false; // Manually controlled
             }
 
             // Apply Deformation
-            if (this.dragOffset.lengthSq() > 0.001 || this.isDragging || this.isReturning) {
+            if (this.dragOffset.lengthSq() > 0.001 || this.isDragging || this.isReturning || this.isDripping) {
                 const localDrag = this.dragOffset.clone();
-                // Inverse Scale for local physics
+                // Inverse Scale logic
                 localDrag.x /= this.mesh.scale.x;
                 localDrag.y /= this.mesh.scale.y;
                 localDrag.z /= this.mesh.scale.z;
@@ -779,29 +815,66 @@ class RubberButton {
 
                 for (let i = 0; i < this.weights.length; i++) {
                     const w = this.weights[i];
-                    if (w < 0.001) {
-                        positions[i * 3] = this.originalPositions[i * 3];
-                        positions[i * 3 + 1] = this.originalPositions[i * 3 + 1];
-                        positions[i * 3 + 2] = this.originalPositions[i * 3 + 2];
-                        continue;
+                    // Drag Deformation
+                    let dx = 0, dy = 0, dz = 0;
+                    if (w > 0.001) {
+                        const ox = this.originalPositions[i * 3];
+                        const oz = this.originalPositions[i * 3 + 2];
+                        const rS = ox * radialSquash * 0.01 * w;
+                        const rSz = oz * radialSquash * 0.01 * w;
+
+                        dx = localDrag.x * w + rS;
+                        dy = effDragY * w;
+                        dz = localDrag.z * w + rSz;
                     }
 
-                    // Radial Expansion (normalized x/z)
-                    const ox = this.originalPositions[i * 3];
-                    const oz = this.originalPositions[i * 3 + 2];
+                    // Drip Deformation
+                    let dripY = 0;
+                    let isDrop = false;
+                    if (this.isDripping) {
+                        const ox = this.originalPositions[i * 3];
+                        const oz = this.originalPositions[i * 3 + 2];
 
-                    positions[i * 3] = ox + (localDrag.x * w) + (ox * radialSquash * 0.01 * w);
+                        for (let d of this.drips) {
+                            if (d.time >= d.life) continue;
 
-                    // Y DEFORMATION
-                    let newY = this.originalPositions[i * 3 + 1] + effDragY * w;
+                            const distX = ox - d.x;
+                            const distZ = oz - d.z;
+                            const distSq = distX * distX + distZ * distZ;
+
+                            // Check Y height (only bottom drips)
+                            if (this.originalPositions[i * 3 + 1] > 10.0) continue;
+
+                            const dripW = Math.exp(-distSq / d.width);
+
+                            if (dripW > 0.1) {
+                                let fall = d.time * d.speed * 0.1;
+                                // Elastic Retract at end of life?
+                                if (d.time > d.life * 0.8) {
+                                    fall *= (d.life - d.time) / (d.life * 0.2); // Fade out
+                                }
+
+                                dripY -= fall * dripW;
+                                isDrop = true;
+                            }
+                        }
+                    }
+
+                    positions[i * 3] = this.originalPositions[i * 3] + dx;
+
+                    // Y DEFORMATION + DRIP
+                    let newY = this.originalPositions[i * 3 + 1] + dy + dripY;
 
                     // FLOOR CONSTRAINT (Scale Corrected)
-                    const limitY = (2.0 - this.pressY) / this.mesh.scale.y;
-                    newY = Math.max(limitY, newY);
+                    // If it's a drop, we ALLOW it to go lower (Drip off)
+                    // But maybe limit it to -20?
+                    if (!isDrop) {
+                        const limitY = (2.0 - this.pressY) / this.mesh.scale.y;
+                        newY = Math.max(limitY, newY);
+                    }
 
                     positions[i * 3 + 1] = newY;
-
-                    positions[i * 3 + 2] = oz + (localDrag.z * w) + (oz * radialSquash * 0.01 * w);
+                    positions[i * 3 + 2] = this.originalPositions[i * 3 + 2] + dz;
                 }
                 this.mesh.geometry.attributes.position.needsUpdate = true;
                 this.mesh.geometry.computeVertexNormals();
