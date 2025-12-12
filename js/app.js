@@ -708,34 +708,19 @@ class RubberButton {
                 this.velocities[i] *= this.friction;
                 positions[i] += this.velocities[i];
             }
-            const dy = positions[this.dragIndex + 1];
-            const dz = positions[this.dragIndex + 2];
 
-            for (let i = 0; i < positions.length; i += 3) {
-                if (i === this.dragIndex) continue;
+            this.geometry.attributes.position.needsUpdate = true;
+            this.geometry.computeVertexNormals();
 
-                const vx = positions[i];
-                const vy = positions[i + 1];
-                const vz = positions[i + 2];
+            this.renderer.render(this.scene, this.camera);
 
-                const d2 = (dx - vx) ** 2 + (dy - vy) ** 2 + (dz - vz) ** 2;
-                if (d2 < 400) { // Influence Radius
-                    // Pull factor
-                    const factor = 0.05 * (400 - d2) / 400;
-                    positions[i] += (dx - vx) * factor;
-                    positions[i + 1] += (dy - vy) * factor;
-                    positions[i + 2] += (dz - vz) * factor;
-                }
-            }
-        }
+            this.geometry.attributes.position.needsUpdate = true;
+            this.geometry.computeVertexNormals(); // Recalc for lighting
 
-        this.geometry.attributes.position.needsUpdate = true;
-        this.geometry.computeVertexNormals(); // Recalc for lighting
-
-        this.renderer.render(this.scene, this.camera);
-    };
-    animate();
-}
+            this.renderer.render(this.scene, this.camera);
+        };
+        animate();
+    }
 }
 
 
