@@ -517,11 +517,10 @@ class RubberButton {
         const h = window.innerHeight;
         this.camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 2000);
 
-        // VIEW ANGLE: Profile view of Pillar + Label
-        // Y=-50 puts eye level between button and label
-        // Z=320 pulls back to see the monumentality
-        this.camera.position.set(0, -50, 320);
-        this.camera.lookAt(0, -90, 0);
+        // VIEW ANGLE: Focus on the Button (Art Piece)
+        // Looking down slightly, centered on the button but including the label.
+        this.camera.position.set(0, 60, 260);
+        this.camera.lookAt(0, -20, 0);
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -572,9 +571,13 @@ class RubberButton {
                 color: 0x252525, roughness: 0.4, metalness: 0.5
             }),
             pillar: new THREE.MeshStandardMaterial({
-                color: 0xffffff, // White
+                color: 0xdddddd, // Light Grey (Contrast for white card)
                 roughness: 0.3,
                 metalness: 0.1
+            }),
+            card: new THREE.MeshStandardMaterial({
+                color: 0xffffff, // Bright White Card
+                roughness: 0.4
             })
         };
 
@@ -591,43 +594,54 @@ class RubberButton {
         bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
         baseGroup.add(bezel);
 
-        // MUSEUM PILLAR (White, Rectangular)
+        // MUSEUM PILLAR
         const pillar = new THREE.Mesh(
             new THREE.BoxGeometry(150, 400, 150),
             this.materials.pillar
         );
-        pillar.position.y = -220; // Center
+        pillar.position.y = -220;
         pillar.receiveShadow = true;
-        pillar.castShadow = true; // Cast shadow on floor
+        pillar.castShadow = true;
         baseGroup.add(pillar);
 
-        // MUSEUM LABEL
+        // MUSEUM LABEL CARD
+        // 1. The Physical Card
+        const card = new THREE.Mesh(
+            new THREE.BoxGeometry(130, 70, 4),
+            this.materials.card
+        );
+        card.position.set(0, -90, 75 + 2); // Sit on surface (75) + half depth (2)
+        card.castShadow = true;
+        card.receiveShadow = true;
+        baseGroup.add(card);
+
+        // 2. The Text Texture
         const canvas = document.createElement('canvas');
         canvas.width = 512; canvas.height = 256;
         const ctx = canvas.getContext('2d');
 
-        // Transparent BG (Text on Pillar)
-        ctx.fillStyle = 'rgba(255,255,255,0)';
+        // Pure White Background (Matches card, handles AA)
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, 512, 256);
 
         ctx.fillStyle = '#111'; // Black Text
         ctx.textAlign = 'center';
 
-        // Title: "The Button" (Serif, Classy)
+        // Title
         ctx.font = 'bold 70px "Playfair Display", "Times New Roman", serif';
         ctx.fillText('The Button', 256, 90);
 
-        // Subtitle: "Your actions..." (Sans, Modern)
+        // Subtitle
         ctx.font = '300 32px "Inter", "Arial", sans-serif';
         ctx.fillText('Your actions have no consequences.', 256, 150);
 
         const tex = new THREE.CanvasTexture(canvas);
-        const label = new THREE.Mesh(
+        const textMesh = new THREE.Mesh(
             new THREE.PlaneGeometry(120, 60),
-            new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+            new THREE.MeshBasicMaterial({ map: tex, transparent: true }) // Blend edges
         );
-        label.position.set(0, -90, 75.5); // Slightly protruding from z=75 face, slightly down
-        baseGroup.add(label);
+        textMesh.position.z = 2.1; // Slightly in front of card face (2)
+        card.add(textMesh);
 
         this.pivot.add(baseGroup);
 
