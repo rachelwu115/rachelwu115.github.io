@@ -515,12 +515,13 @@ class RubberButton {
 
         const w = window.innerWidth;
         const h = window.innerHeight;
-        this.camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 2000);
+        // FOV 30: Telephoto effect to match the "Isometric/2D" illustration look
+        this.camera = new THREE.PerspectiveCamera(30, w / h, 0.1, 2000);
 
-        // VIEW ANGLE: High Angle / Looking Down (Reference Match)
-        // High Y (200) + Medium Z (200) = ~45 degree look down
-        this.camera.position.set(0, 200, 200);
-        this.camera.lookAt(0, -20, 0);
+        // VIEW ANGLE: Flattened Perspective (Reference Match)
+        // Further back (Z=550) + Lower Angle (Y=120) = Illustrative Isometric feel
+        this.camera.position.set(0, 120, 550);
+        this.camera.lookAt(0, -60, 0);
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -539,46 +540,45 @@ class RubberButton {
      * Configures the lighting for the scene.
      */
     initLighting() {
-        // Low Ambient for Contrast
-        const ambient = new THREE.AmbientLight(0xffffff, 0.2);
+        // Very Low Ambient for maximum Drama
+        const ambient = new THREE.AmbientLight(0xffffff, 0.1);
         this.scene.add(ambient);
 
-        // DRAMATIC SPOTLIGHT (Reference Image Match)
-        // Creates a pool of light on the button/pillar
-        const spotLight = new THREE.SpotLight(0xffffff, 2.5);
-        spotLight.position.set(0, 300, 50); // Slightly front-biased
-        spotLight.angle = 0.35;
-        spotLight.penumbra = 0.2;
+        // ILLUSTRATION SPOTLIGHT
+        // Narrow beam, high intensity, directly overhead
+        const spotLight = new THREE.SpotLight(0xffffff, 4.0);
+        spotLight.position.set(0, 500, 0);
+        spotLight.angle = 0.25; // Narrow Cone
+        spotLight.penumbra = 0.3; // Soft edge
         spotLight.castShadow = true;
         spotLight.shadow.mapSize.set(2048, 2048);
         spotLight.shadow.bias = -0.00005;
         this.scene.add(spotLight);
 
-        // Rim Light for Form Definition (Subtle)
-        const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
-        rimLight.position.set(-50, 50, -100);
-        this.scene.add(rimLight);
+        // Fill Light (Subtle, just to stop pure black clipping)
+        const fill = new THREE.DirectionalLight(0xffffff, 0.2);
+        fill.position.set(0, 0, 200);
+        this.scene.add(fill);
     }
 
     initGeometry() {
         // Shared Materials
         this.materials = {
+            // Keep the Juicy Rubber Button (User requested)
             rubber: new THREE.MeshPhysicalMaterial({
                 color: 0xff0000, emissive: 0x330000,
                 roughness: 0.15, metalness: 0.0,
                 clearcoat: 1.0, clearcoatRoughness: 0.1,
             }),
-            base: new THREE.MeshStandardMaterial({
-                color: 0x252525, roughness: 0.4, metalness: 0.5
+            // Matte / Paper-like Materials for the "Illustration" Look
+            base: new THREE.MeshLambertMaterial({
+                color: 0x222222 // Dark Grey Matte
             }),
-            pillar: new THREE.MeshStandardMaterial({
-                color: 0xffffff, // Pure White Plinth (Reference)
-                roughness: 0.2, // Slightly glossy/clean
-                metalness: 0.05
+            pillar: new THREE.MeshLambertMaterial({
+                color: 0xffffff // Pure White Matte Paper
             }),
-            card: new THREE.MeshStandardMaterial({
-                color: 0xe8e8e8, // Gallery Off-White (Matches .museum-label)
-                roughness: 0.5
+            card: new THREE.MeshBasicMaterial({
+                color: 0xe8e8e8 // Completely Flat/2D Card
             })
         };
 
@@ -642,7 +642,7 @@ class RubberButton {
         // Description: Grey, Regular
         ctx.fillStyle = '#444';
         ctx.font = '400 24px "Helvetica Neue", Helvetica, Arial, sans-serif';
-        ctx.fillText('Your actions have no consequences.', 256, 150);
+        ctx.fillText('Your actions have no consequences.', 256, 140);
 
         const tex = new THREE.CanvasTexture(canvas);
         const textMesh = new THREE.Mesh(
@@ -665,10 +665,13 @@ class RubberButton {
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // Floor Shadow (Updated position/opacity for Spotlight)
+        // FOCUSED SPOTLIGHT SHADOW PLANE
+        // Small plane just to catch the circle of light?
+        // Or keep the infinite floor but let the spotlight culling handle it?
+        // Spotlight has penumbra, so it will look like a circle on the floor naturally.
         const shadowPlane = new THREE.Mesh(
             new THREE.PlaneGeometry(2000, 2000),
-            new THREE.ShadowMaterial({ opacity: 0.4, color: 0x000000 })
+            new THREE.ShadowMaterial({ opacity: 0.5, color: 0x000000 })
         );
         shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.position.y = -420;
         this.pivot.add(shadowPlane);
