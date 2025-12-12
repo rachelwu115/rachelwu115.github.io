@@ -473,104 +473,83 @@ class RubberButton {
         // Resize Listener
         window.addEventListener('resize', () => this.onResize());
 
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
-        this.scene.add(ambientLight);
+        // LIGHTING SETUP (Studio)
 
-        // Key Light (Crisp White Highlight from top-right)
-        const spotLight = new THREE.SpotLight(0xffffff, 2.0);
-        spotLight.position.set(50, 80, 50);
-        spotLight.angle = Math.PI / 6;
-        spotLight.penumbra = 0.2; // Sharp edge for glossy look
-        spotLight.castShadow = true;
-        this.scene.add(spotLight);
+        // 1. Hemisphere Light (Base illumination - prevents black shadows)
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        this.scene.add(hemiLight);
 
-        // Fill Light (Softer, from left)
-        const fillLight = new THREE.PointLight(0xffddee, 0.5);
-        fillLight.position.set(-50, 50, 50);
-        this.scene.add(fillLight);
+        // 2. Key Light (Main Highlight)
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(50, 100, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        this.scene.add(dirLight);
 
-        // Rim Light (Backlight to separate from darkness)
-        const rimLight = new THREE.SpotLight(0x4444ff, 3.0);
-        rimLight.position.set(0, 10, -50);
-        rimLight.lookAt(0, 0, 0);
+        // 3. Rim Light (Back highlight for 3D shape)
+        const rimLight = new THREE.DirectionalLight(0x4455ff, 1.0);
+        rimLight.position.set(-50, 20, -100);
         this.scene.add(rimLight);
 
         // MATERIALS
-        // 1. Red Cap (High Gloss Plastic)
+
+        // Red Cap (Glossy Plastic)
         this.rubberMat = new THREE.MeshPhysicalMaterial({
-            color: 0xd80000, // Deep Red
-            emissive: 0x110000,
-            roughness: 0.1, // Very smooth
-            metalness: 0.1,
-            clearcoat: 1.0, // Wet look
-            clearcoatRoughness: 0.05,
+            color: 0xff0000, // Pure Red
+            emissive: 0x330000, // Slight inner glow to prevent darkness
+            roughness: 0.15, // Smooth
+            metalness: 0.0, // PLASTIC (Not metal) - Critical fix
+            clearcoat: 1.0, // High gloss
+            clearcoatRoughness: 0.1,
             specularIntensity: 1.0,
         });
 
-        // 2. Black Base (Piano Black)
-        const baseMat = new THREE.MeshPhysicalMaterial({
-            color: 0x050505,
-            roughness: 0.2,
-            metalness: 0.2,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.1
+        // Black Base (Matte/Satin)
+        const baseMat = new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            roughness: 0.4,
+            metalness: 0.5
         });
 
         // Group
         this.pivot = new THREE.Group();
         this.scene.add(this.pivot);
 
-        // GEOMETRY: "Game Show" Button
+        // GEOMETRY
 
-        // 1. The Casing (Black Ring)
-        // A cylinder with a hole? Or just a bigger cylinder.
-        // Let's use a Cylinder for the main body and a Torus for the rounded bezel lip.
+        // 1. Base (Casing)
         this.baseGroup = new THREE.Group();
         this.pivot.add(this.baseGroup);
 
-        // Main Puck
+        // Puck Body
         const puckGeo = new THREE.CylinderGeometry(70, 75, 20, 64);
         const puckMesh = new THREE.Mesh(puckGeo, baseMat);
         puckMesh.position.y = -10;
         puckMesh.receiveShadow = true;
         this.baseGroup.add(puckMesh);
 
-        // Bezel Ring (The rounded lip around the red button)
-        const bezelGeo = new THREE.TorusGeometry(68, 5, 16, 100);
+        // Bezel (Rounded Edge) - Torus
+        const bezelGeo = new THREE.TorusGeometry(68, 6, 16, 100);
         const bezelMesh = new THREE.Mesh(bezelGeo, baseMat);
         bezelMesh.rotation.x = -Math.PI / 2;
-        bezelMesh.position.y = 0; // Sit on top of puck
+        bezelMesh.position.y = 0;
         bezelMesh.receiveShadow = true;
         this.baseGroup.add(bezelMesh);
 
-        // 2. The Button Cap (Red Dome)
+        // 2. Button Cap (Dome)
         this.buttonGroup = new THREE.Group();
         this.pivot.add(this.buttonGroup);
 
-        // A Hemisphere (Sphere cut in half)
-        // radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength
-        const capRadius = 65;
-        const capGeo = new THREE.SphereGeometry(capRadius, 64, 32, 0, Math.PI * 2, 0, Math.PI * 0.35);
-        // thetaLength 0.35 * PI is a shallow dome (not full hemisphere)
-
-        this.mesh = new THREE.Mesh(capGeo, this.rubberMat);
+        // Dome: Hemisphere scaled down vertically
+        const domeGeo = new THREE.SphereGeometry(66, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        this.mesh = new THREE.Mesh(domeGeo, this.rubberMat);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
 
-        // Position it "inside" the bezel
-        this.mesh.position.y = -10; // Center of sphere lower, so top peaks out
-        // Actually, SphereGeometry center is at 0,0,0.
-        // If we use thetaStart 0, it starts at top pole (0, radius, 0)? No.
-        // SphereGeometry generates around origin.
-        // Let's just use a full sphere and scale it.
-
-        // BETTER DOME: Cylinder with rounded top? 
-        // or just Squash a sphere.
-        const domeGeo = new THREE.SphereGeometry(65, 64, 32, 0, Math.PI / 2); // Hemisphere
-        this.mesh.geometry = domeGeo;
-        this.mesh.scale.set(1, 0.4, 1); // Squashed vertically
-        this.mesh.position.y = 0; // Base of hemisphere at 0
+        // Transform
+        this.mesh.scale.set(1, 0.4, 1); // Flatten it
+        this.mesh.position.y = 0; // Sit at base level
 
         this.buttonGroup.add(this.mesh);
 
