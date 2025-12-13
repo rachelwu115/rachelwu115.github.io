@@ -239,7 +239,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                4.0 + Math.random() * 4.0, // TUNED: Very low hop
+                18.0 + Math.random() * 6.0, // TUNED: High burst to fill screen (vs High Gravity)
                 (Math.random() - 0.5) * 12.0
             );
 

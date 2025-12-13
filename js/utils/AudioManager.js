@@ -9,12 +9,14 @@ export class AudioManager {
         this.masterGain.gain.value = 0.3; // safe master volume
         this.masterGain.connect(this.ctx.destination);
 
-        // Scale: E Minor Pentatonic (Sad/Melancholy) - Lower Octave (Deep)
-        this.scale = [
-            82.41, 98.00, 110.00, 123.47, // Octave 2
-            146.83, 164.81, 196.00, 220.00, // Octave 3
-            246.94, 293.66                  // Octave 4
+        // Melody: Fur Elise (Recurring Theme)
+        this.melody = [
+            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
+            261.63, 329.63, 440.00, 493.88, // C E A B
+            329.63, 415.30, 493.88, 523.25, // E G# B C
+            329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00 // E E D# E D# E B D C A
         ];
+        this.melodyIndex = 0;
 
         // Echo / Delay System
         this.delayNode = this.ctx.createDelay();
@@ -68,15 +70,17 @@ export class AudioManager {
     }
 
     /**
-     * Plays a random note from the defined scale.
+     * Plays the next note in the Fur Elise melody.
      * Used for typing feedback.
      */
-    playRandomNote() {
-        const freq = this.scale[Math.floor(Math.random() * this.scale.length)];
-        // Add slight random detune for organic feel
-        const detune = (Math.random() - 0.5) * 2;
+    playNextNote() {
+        const freq = this.melody[this.melodyIndex % this.melody.length];
+        this.melodyIndex++;
 
-        this.playTone(freq + detune, 'sine', 0.8, 0.1); // TUNED: Longer duration (0.8), Quieter (0.1)
+        // Slight organic variation, but keeping tune recognizable
+        // const detune = (Math.random() - 0.5) * 1; 
+
+        this.playTone(freq, 'sine', 0.8, 0.1);
     }
 }
 

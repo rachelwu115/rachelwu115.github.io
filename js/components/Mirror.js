@@ -203,7 +203,7 @@ export class Mirror {
             onFace: true
         });
 
-        audioManager.playRandomNote();
+        audioManager.playNextNote();
     }
 
     update() {
