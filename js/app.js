@@ -515,12 +515,12 @@ class RubberButton {
 
         const w = window.innerWidth;
         const h = window.innerHeight;
-        // FOV 15: Extreme Telephoto
-        this.camera = new THREE.PerspectiveCamera(15, w / h, 0.1, 5000);
+        // FOV 18: Balanced Telephoto to fit Shorter Pillar
+        this.camera = new THREE.PerspectiveCamera(18, w / h, 0.1, 4000);
 
-        // VIEW ANGLE: Zoomed Out to fit Full Pillar
-        this.camera.position.set(0, 50, 3500);
-        this.camera.lookAt(0, 0, 0);
+        // VIEW ANGLE: Zoomed In
+        this.camera.position.set(0, 60, 1600);
+        this.camera.lookAt(0, -20, 0);
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -605,10 +605,10 @@ class RubberButton {
         bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
         baseGroup.add(bezel);
 
-        // MUSEUM PILLAR
-        const pillarGeo = new THREE.BoxGeometry(150, 400, 150);
+        // MUSEUM PILLAR (Shortened for Framing)
+        const pillarGeo = new THREE.BoxGeometry(150, 250, 150);
         const pillar = new THREE.Mesh(pillarGeo, this.materials.pillar);
-        pillar.position.y = -220;
+        pillar.position.y = -145; // Top at -20 (Base of button)
         pillar.receiveShadow = true;
         pillar.castShadow = true;
         baseGroup.add(pillar);
@@ -618,7 +618,7 @@ class RubberButton {
             new THREE.EdgesGeometry(pillarGeo),
             new THREE.LineBasicMaterial({ color: 0x000000 })
         );
-        pillarEdges.position.y = -220; // Match pillar
+        pillarEdges.position.y = -145;
         baseGroup.add(pillarEdges);
 
         this.pivot.add(baseGroup);
@@ -643,23 +643,22 @@ class RubberButton {
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // ILLUMINATED FLOOR POOL (Vector Style)
-        // A lighter disc to represent the light hitting the floor
+        // ILLUMINATED FLOOR POOL
         const lightPool = new THREE.Mesh(
             new THREE.CircleGeometry(190, 64),
             new THREE.MeshBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.3 })
         );
         lightPool.rotation.x = -Math.PI / 2;
-        lightPool.position.y = -419; // Just above floor mesh
+        lightPool.position.y = -269; // Just above floor mesh (-270)
         this.pivot.add(lightPool);
 
-        // VISIBLE FLOOR (Dark Grey Match)
+        // VISIBLE FLOOR
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(3000, 3000),
-            new THREE.MeshLambertMaterial({ color: 0x444444 }) // Match BG
+            new THREE.MeshLambertMaterial({ color: 0x444444 })
         );
         floor.rotation.x = -Math.PI / 2;
-        floor.position.y = -420;
+        floor.position.y = -270; // Bottom of new pillar
         floor.receiveShadow = true;
         this.pivot.add(floor);
     }
