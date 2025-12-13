@@ -395,6 +395,13 @@ class GalleryNav {
         // 1. UPDATE NAVIGATION & NAV STATE
         this.currentExhibit = id;
 
+        // BACKGROUND COLOR TRANSITION (Force Strict Match)
+        if (id === 1) {
+            document.body.style.background = ''; // Revert to CSS (Rusty Lake Sage)
+        } else if (id === 2) {
+            document.body.style.background = '#444444'; // Illustration Dark Grey
+        }
+
         // Update Arrows
         if (id === 1) {
             if (this.nextBtn) this.nextBtn.style.display = 'block';
