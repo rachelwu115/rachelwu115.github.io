@@ -100,19 +100,19 @@ class Mirror {
     }
 
     async init() {
+        // Init Custom Cursor (UI First)
+        if (this.ghostContainer) {
+            this.cursor = document.createElement('span');
+            this.cursor.className = 'ghost-cursor';
+            this.ghostContainer.appendChild(this.cursor);
+        }
+        this.bind();
+        this.resize();
+
         try {
             const raw = await this.loadImage(APP_CONFIG.IMAGE_URL);
             this.img = await this.processImage(raw);
-
-            // Init Custom Cursor
-            if (this.ghostContainer) {
-                this.cursor = document.createElement('span');
-                this.cursor.className = 'ghost-cursor';
-                this.ghostContainer.appendChild(this.cursor);
-            }
-
-            this.bind();
-            this.resize();
+            this.resize(); // Resize again with loaded image
             this.startLoop();
 
             if (this.input) this.input.value = "";
@@ -1029,10 +1029,9 @@ class RubberButton {
 
         const onUp = () => {
             if (this.state.isDragging) {
-                this.state.isDragging = false;
-                this.state.isReturning = true;
-                this.canvas.style.cursor = 'grab';
-                this.physics.targetPressY = 0; // Release press
+                // STICKY HAND MODE: Do NOT release drag.
+                // Just update cursor visual.
+                this.canvas.style.cursor = 'grabbing';
             }
         };
 
