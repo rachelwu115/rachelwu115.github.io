@@ -842,7 +842,7 @@ class RubberButton {
 
             // Squishy reform sound
             this.playTone(100, 'sine', 0.3, 0.2);
-        }, 200);
+        }, 50);
     }
 
 
@@ -1044,7 +1044,7 @@ class RubberButton {
 
         // --- ORGANIC REGROWTH LOGIC ---
         if (this.state.isRegenerating) {
-            this.state.regrowthProgress += 0.008; // Crisp Speed
+            this.state.regrowthProgress += 0.025; // Crisp Speed
 
             if (this.state.regrowthProgress >= 1.0) {
                 this.state.regrowthProgress = 1.0;
