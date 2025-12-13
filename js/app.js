@@ -427,8 +427,8 @@ class GalleryNav {
                 if (!window.rubberButton) {
                     window.rubberButton = new RubberButton();
                 } else {
-                    window.rubberButton.start();
-                    window.rubberButton.onResize();
+                    // Animation loop is always running
+                    if (window.rubberButton.onResize) window.rubberButton.onResize();
                 }
             } catch (err) {
                 console.error("Three.js Init Failed:", err);
@@ -1358,7 +1358,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     new MagneticButton({ area: '.magnetic-area', button: '.magnetic-content' });
     new Mirror();
-    new RubberButton();
+    window.rubberButton = new RubberButton();
     new GalleryNav();
     new GlassCase();
 });
