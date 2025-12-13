@@ -177,6 +177,15 @@ export class RubberButton {
 
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
+
+        // Drip Assets (Reusable)
+        this.dripGeo = new THREE.SphereGeometry(3, 8, 8);
+        this.dripMat = new THREE.MeshPhysicalMaterial({
+            color: 0x8a0303, roughness: 0.1, metalness: 0.1,
+            transmission: 0.2, thickness: 2.0 // Viscous look
+        });
+        this.dripGroup = new THREE.Group();
+        this.pivot.add(this.dripGroup);
     }
 
     initConfetti() {
@@ -275,7 +284,66 @@ export class RubberButton {
         }, 50); // Tuned Delay
     }
 
+    spawnDrip() {
+        const count = 1 + Math.floor(Math.random() * 2); // 1-3 drips
+        for (let i = 0; i < count; i++) {
+            const mesh = new THREE.Mesh(this.dripGeo, this.dripMat);
+
+            // Pick a random side of the pillar (Width=220, Depth=220)
+            // Center is 0,0. Edges are +/- 110.
+            const side = Math.floor(Math.random() * 4);
+            let x = 0, z = 0;
+            const offset = (Math.random() - 0.5) * 200; // Spread along fluid face
+
+            switch (side) {
+                case 0: x = 112; z = offset; break; // Right
+                case 1: x = -112; z = offset; break; // Left
+                case 2: z = 112; x = offset; break; // Front
+                case 3: z = -112; x = offset; break; // Back
+            }
+
+            mesh.position.set(x, -21, z); // Start just under the "lip"
+            // Scale random
+            const s = 0.8 + Math.random() * 0.8;
+            mesh.scale.set(s, s, s);
+
+            this.dripGroup.add(mesh);
+
+            this.physics.drips.push({
+                mesh: mesh,
+                vy: 0,
+                active: true,
+                friction: 0.90 + Math.random() * 0.05, // Different viscosities
+                stopY: -100 - Math.random() * 400 // Random stop point
+            });
+        }
+    }
+
+    updateDrips() {
+        for (let i = this.physics.drips.length - 1; i >= 0; i--) {
+            const d = this.physics.drips[i];
+            if (!d.active) continue;
+
+            d.vy -= 0.1; // Gravity (slow ooze)
+            d.mesh.position.y += d.vy;
+            d.vy *= d.friction; // Viscosity
+
+            // Stop logic
+            if (d.mesh.position.y < d.stopY || Math.abs(d.vy) < 0.01) {
+                d.active = false; // Freeze
+            }
+
+            // Cleanup very old drips? User said "stays", so we keep them.
+            // Maybe limit total count if too many?
+            if (this.physics.drips.length > 100) {
+                const old = this.physics.drips.shift();
+                if (old && old.mesh.parent) old.mesh.parent.remove(old.mesh);
+            }
+        }
+    }
+
     updateConfetti() {
+        this.updateDrips();
         const now = Date.now();
         this.particles.forEach((p) => {
             if (p.life > 0) {
@@ -335,6 +403,7 @@ export class RubberButton {
                 audioManager.playTone(150, 'square', 0.1, 0.3);
                 this.canvas.style.cursor = 'grabbing';
                 if (this.btnOutline) this.btnOutline.visible = false; // Hide on stretch
+                this.spawnDrip(); // Blood Effect
             }
         };
 
