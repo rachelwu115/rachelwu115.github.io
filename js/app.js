@@ -456,8 +456,8 @@ class RubberButton {
 
         // Configuration
         this.config = {
-            snapLimit: 70.0, // Reduced from 90 (User: "Sticky point too big")
-            softness: 100.0, // Increased Softness ("Liquitier")
+            snapLimit: 80.0, // Sticky/Stretchy Balance
+            softness: 150.0, // Liquid/Gooey Feel
             gravity: 0.15,
             beatRate: 1200,
         };
@@ -554,8 +554,9 @@ class RubberButton {
         this.scene.add(spotLight);
 
         // VISIBLE LIGHT BEAM
-        // Narrowed to strict minimum (Radius 160 > Diagonal 156)
-        const beamGeo = new THREE.CylinderGeometry(160, 600, 3000, 64, 1, true);
+        // Dramatic Taper: Narrow Top (40), Wide Bottom (600)
+        // Calculated to ensure Radius > 156 at Pillar Top (-20)
+        const beamGeo = new THREE.CylinderGeometry(40, 600, 3000, 64, 1, true);
         beamGeo.translate(0, -1500, 0); // Pivot at top (extends -3000 down)
         const beamMat = new THREE.MeshBasicMaterial({
             color: 0xfffdf5, // Warm White
