@@ -502,6 +502,138 @@ class RubberButton {
         this.startLoop();
     }
 
+    /**
+     * Sets up the Three.js scene, camera, and renderer.
+     */
+    initScene() {
+        this.scene = new THREE.Scene();
+        // Dark Grey Background (Reference Match)
+        this.scene.background = new THREE.Color(0x2a2a2a);
+
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        // FOV 15: Extreme Telephoto (Orthographic-like)
+        this.camera = new THREE.PerspectiveCamera(15, w / h, 0.1, 3000);
+
+        // VIEW ANGLE: Flattened Illustration Perspective centered
+        this.camera.position.set(0, 100, 900);
+        this.camera.lookAt(0, 0, 0);
+
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: this.canvas,
+            alpha: true,
+            antialias: true
+        });
+        this.renderer.setSize(w, h);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        window.addEventListener('resize', () => this.onResize());
+    }
+
+    /**
+     * Configures the lighting for the scene.
+     */
+    initLighting() {
+        // Very Low Ambient for maximum Drama
+        const ambient = new THREE.AmbientLight(0xffffff, 0.1);
+        this.scene.add(ambient);
+
+        // ILLUSTRATION SPOTLIGHT (Key Light)
+        const spotLight = new THREE.SpotLight(0xffffff, 4.0);
+        spotLight.position.set(0, 500, 0);
+        spotLight.angle = 0.3;
+        spotLight.penumbra = 0.4;
+        spotLight.castShadow = true;
+        spotLight.shadow.mapSize.set(2048, 2048);
+        spotLight.shadow.bias = -0.00005;
+        this.scene.add(spotLight);
+
+        // VISIBLE LIGHT BEAM (Volumetric Fake)
+        const beamGeo = new THREE.CylinderGeometry(5, 180, 800, 64, 1, true);
+        beamGeo.translate(0, -400, 0); // Pivot at top
+        const beamMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.08,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const beam = new THREE.Mesh(beamGeo, beamMat);
+        beam.position.set(0, 500, 0);
+        this.scene.add(beam);
+
+        // Fill Light
+        const fill = new THREE.DirectionalLight(0xffffff, 0.1);
+        fill.position.set(0, 0, 200);
+        this.scene.add(fill);
+    }
+
+    initGeometry() {
+        // Shared Materials
+        this.materials = {
+            rubber: new THREE.MeshPhysicalMaterial({
+                color: 0xff0000, emissive: 0x330000,
+                roughness: 0.15, metalness: 0.0,
+                clearcoat: 1.0, clearcoatRoughness: 0.1,
+            }),
+            base: new THREE.MeshLambertMaterial({
+                color: 0x111111 // Dark Base
+            }),
+            pillar: new THREE.MeshLambertMaterial({
+                color: 0xffffff // White Pillar
+            })
+        };
+
+        this.pivot = new THREE.Group();
+        this.scene.add(this.pivot);
+
+        // Base Group
+        const baseGroup = new THREE.Group();
+        const puck = new THREE.Mesh(new THREE.CylinderGeometry(70, 75, 20, 64), this.materials.base);
+        puck.position.y = -10; puck.receiveShadow = true;
+        baseGroup.add(puck);
+
+        const bezel = new THREE.Mesh(new THREE.TorusGeometry(68, 6, 16, 100), this.materials.base);
+        bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
+        baseGroup.add(bezel);
+
+        // MUSEUM PILLAR
+        const pillar = new THREE.Mesh(
+            new THREE.BoxGeometry(150, 400, 150),
+            this.materials.pillar
+        );
+        pillar.position.y = -220;
+        pillar.receiveShadow = true;
+        pillar.castShadow = true;
+        baseGroup.add(pillar);
+
+        this.pivot.add(baseGroup);
+
+        // Button Mesh
+        const domeGeo = new THREE.SphereGeometry(66, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        this.mesh = new THREE.Mesh(domeGeo, this.materials.rubber);
+        this.mesh.castShadow = true; this.mesh.receiveShadow = true;
+        this.mesh.scale.set(1, 0.7, 1);
+        this.pivot.add(this.mesh);
+
+        // Physics Data Init
+        this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
+        this.weights = new Float32Array(this.originalPositions.length / 3);
+
+        // VISIBLE FLOOR
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(3000, 3000),
+            new THREE.MeshLambertMaterial({ color: 0x2a2a2a })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -420;
+        floor.receiveShadow = true;
+        this.pivot.add(floor);
+    }
+
     initConfetti() {
         const count = 150;
         this.confettiGroup = new THREE.Group();
