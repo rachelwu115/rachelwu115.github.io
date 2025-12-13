@@ -518,9 +518,9 @@ class RubberButton {
         // FOV 18: Telephoto
         this.camera = new THREE.PerspectiveCamera(18, w / h, 0.1, 4000);
 
-        // VIEW ANGLE: High Angle (Isometric-like) to show Top & Front
-        this.camera.position.set(0, 400, 1600);
-        this.camera.lookAt(0, -50, 0);
+        // VIEW ANGLE: Zoomed In and Lowered
+        this.camera.position.set(0, 300, 1300);
+        this.camera.lookAt(0, -20, 0);
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -554,8 +554,8 @@ class RubberButton {
         this.scene.add(spotLight);
 
         // VISIBLE LIGHT BEAM
-        // Wide Cone to ensure Pillar fits inside without intersection artifacts
-        const beamGeo = new THREE.CylinderGeometry(250, 1200, 3000, 64, 1, true);
+        // Narrowed Beam (Adjusted for aesthetics while keeping Pillar inside)
+        const beamGeo = new THREE.CylinderGeometry(180, 700, 3000, 64, 1, true);
         beamGeo.translate(0, -1500, 0); // Pivot at top (extends -3000 down)
         const beamMat = new THREE.MeshBasicMaterial({
             color: 0xfffdf5, // Warm White
@@ -595,7 +595,7 @@ class RubberButton {
 
         // Materials: [Right, Left, Top, Bottom, Front, Back]
         const matWhite = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const matGrey = new THREE.MeshBasicMaterial({ color: 0xe0e0e0 });
+        const matGrey = new THREE.MeshBasicMaterial({ color: 0xcccccc }); // Darker Grey for Contrast
 
         const pillar = new THREE.Mesh(pillarGeo, [
             matGrey, matGrey, matWhite, matGrey, matGrey, matGrey
