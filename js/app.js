@@ -1253,7 +1253,28 @@ class RubberButton {
      */
     updatePhysics(dt) {
         if (this.state.isExploded) return;
-        // Stub to prevent crash. Interaction handled by events.
+
+        // 1. UPDATE RAYCASTER
+        if (this.camera && this.mouse) {
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+        }
+
+        // 2. INTERACTION LOGIC
+        if (this.state.isDragging) {
+            // Calculate Drag Offset
+            if (this.raycaster && this.mesh) {
+                const intersects = this.raycaster.intersectObject(this.mesh);
+                if (intersects.length > 0) {
+                    document.body.style.cursor = 'pointer';
+                    if (this.state.mouseDown && !this.state.isDragging) {
+                        this.state.isDragging = true;
+                        this.physics.grabPoint.copy(intersects[0].point);
+                    }
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            }
+        }
     }
 
     /**
