@@ -507,12 +507,12 @@ class RubberButton {
      */
     initScene() {
         this.scene = new THREE.Scene();
-        // Dark Grey Background (Reference Match)
-        this.scene.background = new THREE.Color(0x2a2a2a);
+        // Lighter Matte Grey (Reference Match)
+        this.scene.background = new THREE.Color(0x444444);
 
         const w = window.innerWidth;
         const h = window.innerHeight;
-        // FOV 15: Extreme Telephoto (Orthographic-like)
+        // FOV 15: Extreme Telephoto
         this.camera = new THREE.PerspectiveCamera(15, w / h, 0.1, 3000);
 
         // VIEW ANGLE: Flattened Illustration Perspective centered
@@ -536,37 +536,38 @@ class RubberButton {
      * Configures the lighting for the scene.
      */
     initLighting() {
-        // Very Low Ambient for maximum Drama
-        const ambient = new THREE.AmbientLight(0xffffff, 0.1);
+        // Ambient (Flatness)
+        const ambient = new THREE.AmbientLight(0xffffff, 0.2);
         this.scene.add(ambient);
 
         // ILLUSTRATION SPOTLIGHT (Key Light)
-        const spotLight = new THREE.SpotLight(0xffffff, 4.0);
-        spotLight.position.set(0, 500, 0);
-        spotLight.angle = 0.3;
-        spotLight.penumbra = 0.4;
+        const spotLight = new THREE.SpotLight(0xffffff, 3.5);
+        spotLight.position.set(0, 600, 0); // Higher source
+        spotLight.angle = 0.28;
+        spotLight.penumbra = 0.5; // Very soft edge
         spotLight.castShadow = true;
         spotLight.shadow.mapSize.set(2048, 2048);
         spotLight.shadow.bias = -0.00005;
         this.scene.add(spotLight);
 
         // VISIBLE LIGHT BEAM (Volumetric Fake)
-        const beamGeo = new THREE.CylinderGeometry(5, 180, 800, 64, 1, true);
-        beamGeo.translate(0, -400, 0); // Pivot at top
+        // Conical shape matching the spotlight
+        const beamGeo = new THREE.CylinderGeometry(20, 200, 1000, 64, 1, true);
+        beamGeo.translate(0, -500, 0); // Pivot at top
         const beamMat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
+            color: 0xfffdf5, // Warm White
             transparent: true,
-            opacity: 0.08,
+            opacity: 0.12, // Visible but not overwhelming
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending,
             depthWrite: false
         });
         const beam = new THREE.Mesh(beamGeo, beamMat);
-        beam.position.set(0, 500, 0);
+        beam.position.set(0, 600, 0);
         this.scene.add(beam);
 
         // Fill Light
-        const fill = new THREE.DirectionalLight(0xffffff, 0.1);
+        const fill = new THREE.DirectionalLight(0xffffff, 0.15);
         fill.position.set(0, 0, 200);
         this.scene.add(fill);
     }
@@ -575,15 +576,16 @@ class RubberButton {
         // Shared Materials
         this.materials = {
             rubber: new THREE.MeshPhysicalMaterial({
-                color: 0xff0000, emissive: 0x330000,
-                roughness: 0.15, metalness: 0.0,
-                clearcoat: 1.0, clearcoatRoughness: 0.1,
+                color: 0xd92b2b, // Slightly desaturated Red (Illustration Style)
+                emissive: 0x440000,
+                roughness: 0.2, metalness: 0.0,
+                clearcoat: 0.8,
             }),
             base: new THREE.MeshLambertMaterial({
-                color: 0x111111 // Dark Base
+                color: 0x1a1a1a // Near Black Base
             }),
             pillar: new THREE.MeshLambertMaterial({
-                color: 0xffffff // White Pillar
+                color: 0xeeeeee // Off-White Pillar
             })
         };
 
@@ -623,10 +625,20 @@ class RubberButton {
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // VISIBLE FLOOR
+        // ILLUMINATED FLOOR POOL (Vector Style)
+        // A lighter disc to represent the light hitting the floor
+        const lightPool = new THREE.Mesh(
+            new THREE.CircleGeometry(190, 64),
+            new THREE.MeshBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.3 })
+        );
+        lightPool.rotation.x = -Math.PI / 2;
+        lightPool.position.y = -419; // Just above floor mesh
+        this.pivot.add(lightPool);
+
+        // VISIBLE FLOOR (Dark Grey Match)
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(3000, 3000),
-            new THREE.MeshLambertMaterial({ color: 0x2a2a2a })
+            new THREE.MeshLambertMaterial({ color: 0x444444 }) // Match BG
         );
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = -420;
