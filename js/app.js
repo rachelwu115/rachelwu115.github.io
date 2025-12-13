@@ -610,7 +610,7 @@ class RubberButton {
         const pillarGeo = new THREE.BoxGeometry(220, 600, 220);
         const pillar = new THREE.Mesh(pillarGeo, this.materials.pillar);
         pillar.position.y = -320; // Top at -20 (Base of button)
-        pillar.receiveShadow = true;
+        pillar.receiveShadow = false; // Disable shadows ON the pillar (Clean Look)
         pillar.castShadow = true;
         baseGroup.add(pillar);
 
