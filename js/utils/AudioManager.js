@@ -23,7 +23,7 @@ export class AudioManager {
         this.delayNode.delayTime.value = 0.4; // 400ms echo
 
         this.feedbackGain = this.ctx.createGain();
-        this.feedbackGain.gain.value = 0.1; // TUNED: Quieter Echo for Clarity
+        this.feedbackGain.gain.value = 0.05; // TUNED: Minimal Echo
 
         // Internal Routing (Feedback Loop)
         this.delayNode.connect(this.feedbackGain);
@@ -80,7 +80,7 @@ export class AudioManager {
         // Slight organic variation, but keeping tune recognizable
         // const detune = (Math.random() - 0.5) * 1; 
 
-        this.playTone(freq, 'sine', 0.8, 0.4); // TUNED: Louder (0.4)
+        this.playTone(freq, 'sine', 0.8, 0.25); // TUNED: Balanced Volume (0.25)
     }
 }
 

@@ -220,8 +220,8 @@ export class RubberButton {
         audioManager.playTone(400, 'sine', 0.1);
         audioManager.playTone(600, 'triangle', 0.15);
 
-        // origin: Shoot from underneath (Puck level)
-        let center = new THREE.Vector3(0, -15, 0);
+        // origin: Shoot from underneath (Deep inside pillar)
+        let center = new THREE.Vector3(0, -60, 0);
 
         // Confetti Burst
         const batchSize = 150;
@@ -238,7 +238,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                18.0 + Math.random() * 6.0, // TUNED: High burst to fill screen (vs High Gravity)
+                12.0 + Math.random() * 4.0, // TUNED: Medium burst (Don't fly off screen)
                 (Math.random() - 0.5) * 12.0
             );
 
