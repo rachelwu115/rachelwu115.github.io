@@ -12,6 +12,7 @@
 
 <body>
     <div id="particleCanvas"></div>
+    <canvas id="buttonCanvas"></canvas> <!-- MOVED HERE -->
 
     <!-- GLOBAL NAVIGATION -->
     <div class="nav-arrow nav-prev" id="navPrev" title="Previous Exhibit" style="display: none;"></div>
@@ -39,7 +40,7 @@
 
     <!-- EXHIBIT 2: THE BUTTON -->
     <section id="exhibit-2" class="exhibit-section">
-        <canvas id="buttonCanvas"></canvas>
+        <!-- Canvas moved to Body for global z-indexing -->
         <div class="museum-label button-label">
             <h2 class="label-title">THE BUTTON</h2>
             <p class="label-desc">Your actions have no consequences.</p>

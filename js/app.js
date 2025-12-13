@@ -1365,9 +1365,39 @@ class RubberButton {
         if (active) {
             this.onResize(); // Ensure size is correct on wake
             if (this.canvas) this.canvas.style.display = 'block';
+
+            // DIAGNOSTIC LOGGING
+            setTimeout(() => this.debugDiagnostic(), 500);
         } else {
             if (this.canvas) this.canvas.style.display = 'none'; // Explicitly hide canvas
         }
+    }
+
+    /**
+     * Logs critical 3D engine state for debugging visibility issues.
+     */
+    debugDiagnostic() {
+        console.group("RUBBER BUTTON DIAGNOSTIC");
+        console.log("Canvas:", this.canvas);
+        console.log("Canvas Size:", this.canvas ? `${this.canvas.width}x${this.canvas.height}` : "N/A");
+        console.log("Canvas Style:", this.canvas ? this.canvas.style.cssText : "N/A");
+        console.log("Renderer:", this.renderer);
+        console.log("Scene:", this.scene);
+        console.log("Scene Children:", this.scene ? this.scene.children.length : 0);
+        console.log("Camera:", this.camera);
+        if (this.camera) {
+            console.log("Camera Pos:", this.camera.position);
+            console.log("Camera Rot:", this.camera.rotation);
+        }
+        console.log("Mesh:", this.mesh);
+        if (this.mesh) {
+            console.log("Mesh Visible:", this.mesh.visible);
+            console.log("Mesh Pos:", this.mesh.position);
+            console.log("Mesh Scale:", this.mesh.scale);
+            console.log("Material:", this.mesh.material);
+        }
+        console.log("Is Active:", this.isActive);
+        console.groupEnd();
     }
 }
 
