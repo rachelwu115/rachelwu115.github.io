@@ -247,7 +247,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                6.0 + Math.random() * 4.0, // TUNED: Very Low burst (User Request)
+                10.0 + Math.random() * 6.0, // TUNED: Higher burst (Fill Screen)
                 (Math.random() - 0.5) * 12.0
             );
 
@@ -386,20 +386,48 @@ export class RubberButton {
     updateConfetti() {
         this.updateDrips();
         const now = Date.now();
+
+        // INTERACTIVITY: Cursor Repulsion
+        // Update raycaster with current mouse pos
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const ray = this.raycaster.ray;
+        const repulseRadiusSq = 2500; // 50^2
+        const repulseStrength = 2.0;
+
         this.particles.forEach((p) => {
             if (p.life > 0) {
+                // Physics
                 p.mesh.position.add(p.vel);
-                p.vel.y -= 0.15; // TUNED: High Gravity (Fast Fall)
+                p.vel.y -= 0.15; // Gravity
                 p.vel.multiplyScalar(0.99);
 
+                // Sway
                 const sSpeed = p.swaySpeed || 0.005;
                 const sOffset = p.swayOffset || 0;
                 const sway = Math.sin(now * sSpeed + sOffset) * 0.1;
                 p.mesh.position.x += sway; p.mesh.position.z += sway;
 
+                // Rotation
                 p.mesh.rotation.x += p.rotVel.x * 0.5;
                 p.mesh.rotation.y += p.rotVel.y * 0.5;
                 p.mesh.rotation.z += p.rotVel.z * 0.5;
+
+                // Repulsion Logic (Push away from Ray)
+                // Calculate distance squared from particle to the infinite ray
+                const distSq = ray.distanceSqToPoint(p.mesh.position);
+
+                if (distSq < repulseRadiusSq) {
+                    // Find closest point on ray
+                    const target = new THREE.Vector3();
+                    ray.closestPointToPoint(p.mesh.position, target);
+
+                    // Direction: Target -> Particle
+                    const dir = new THREE.Vector3().subVectors(p.mesh.position, target).normalize();
+
+                    // Force falls off with distance interaction
+                    // Add to velocity
+                    p.vel.add(dir.multiplyScalar(repulseStrength));
+                }
 
                 p.life -= 0.005;
 
@@ -415,6 +443,7 @@ export class RubberButton {
 
     bindEvents() {
         this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2(); // Initialize this.mouse
         const getNDC = (e) => {
             const rect = this.canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
