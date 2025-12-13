@@ -395,12 +395,8 @@ class GalleryNav {
         // 1. UPDATE NAVIGATION & NAV STATE
         this.currentExhibit = id;
 
-        // BACKGROUND COLOR TRANSITION (Force Strict Match)
-        if (id === 1) {
-            document.body.style.background = ''; // Revert to CSS (Rusty Lake Sage)
-        } else if (id === 2) {
-            document.body.style.background = '#444444'; // Illustration Dark Grey
-        }
+        // BACKGROUND COLOR: Managed by CSS (Sage Green per User Request)
+        document.body.style.background = '';
 
         // Update Arrows
         if (id === 1) {
@@ -514,16 +510,16 @@ class RubberButton {
      */
     initScene() {
         this.scene = new THREE.Scene();
-        // Lighter Matte Grey (Reference Match)
-        this.scene.background = new THREE.Color(0x444444);
+        // Background: Transparent (Alpha) to show CSS Body Color
+        this.scene.background = null;
 
         const w = window.innerWidth;
         const h = window.innerHeight;
         // FOV 15: Extreme Telephoto
-        this.camera = new THREE.PerspectiveCamera(15, w / h, 0.1, 3000);
+        this.camera = new THREE.PerspectiveCamera(15, w / h, 0.1, 5000);
 
-        // VIEW ANGLE: Flattened Illustration Perspective centered
-        this.camera.position.set(0, 100, 900);
+        // VIEW ANGLE: Zoomed Out to fit Full Pillar
+        this.camera.position.set(0, 50, 3500);
         this.camera.lookAt(0, 0, 0);
 
         this.renderer = new THREE.WebGLRenderer({
@@ -610,14 +606,20 @@ class RubberButton {
         baseGroup.add(bezel);
 
         // MUSEUM PILLAR
-        const pillar = new THREE.Mesh(
-            new THREE.BoxGeometry(150, 400, 150),
-            this.materials.pillar
-        );
+        const pillarGeo = new THREE.BoxGeometry(150, 400, 150);
+        const pillar = new THREE.Mesh(pillarGeo, this.materials.pillar);
         pillar.position.y = -220;
         pillar.receiveShadow = true;
         pillar.castShadow = true;
         baseGroup.add(pillar);
+
+        // TOON OUTLINE: PILLAR
+        const pillarEdges = new THREE.LineSegments(
+            new THREE.EdgesGeometry(pillarGeo),
+            new THREE.LineBasicMaterial({ color: 0x000000 })
+        );
+        pillarEdges.position.y = -220; // Match pillar
+        baseGroup.add(pillarEdges);
 
         this.pivot.add(baseGroup);
 
@@ -627,6 +629,15 @@ class RubberButton {
         this.mesh.castShadow = true; this.mesh.receiveShadow = true;
         this.mesh.scale.set(1, 0.7, 1);
         this.pivot.add(this.mesh);
+
+        // TOON OUTLINE: BUTTON (Inverted Hull)
+        const outlineMat = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            side: THREE.BackSide
+        });
+        const outlineMesh = new THREE.Mesh(domeGeo, outlineMat);
+        outlineMesh.scale.setScalar(1.05);
+        this.mesh.add(outlineMesh);
 
         // Physics Data Init
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
