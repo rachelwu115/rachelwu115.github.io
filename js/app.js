@@ -539,8 +539,8 @@ class RubberButton {
      * Configures the lighting for the scene.
      */
     initLighting() {
-        // Ambient (Flatness)
-        const ambient = new THREE.AmbientLight(0xffffff, 0.2);
+        // Ambient (Whiter overall look)
+        const ambient = new THREE.AmbientLight(0xffffff, 0.4);
         this.scene.add(ambient);
 
         // ILLUSTRATION SPOTLIGHT (Top Down)
@@ -589,7 +589,7 @@ class RubberButton {
                 color: 0x1a1a1a // Near Black Base
             }),
             pillar: new THREE.MeshLambertMaterial({
-                color: 0xeeeeee // Off-White Pillar
+                color: 0xffffff // Pure White Pillar
             })
         };
 
@@ -606,18 +606,17 @@ class RubberButton {
         bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
         baseGroup.add(bezel);
 
-        // MUSEUM PILLAR (Shortened)
-        const pillarGeo = new THREE.BoxGeometry(150, 250, 150);
+        // MUSEUM PILLAR (Wider & Taller to fill frame/cut off bottom)
+        const pillarGeo = new THREE.BoxGeometry(220, 600, 220);
         const pillar = new THREE.Mesh(pillarGeo, this.materials.pillar);
-        pillar.position.y = -145; // Top at -20 (Base of button)
+        pillar.position.y = -320; // Top at -20 (Base of button)
         pillar.receiveShadow = true;
         pillar.castShadow = true;
         baseGroup.add(pillar);
 
         // TOON OUTLINE: PILLAR (Inverted Hull for THICKNESS)
-        // Replacing LineSegments with Hull Mesh
         const pillarOutline = new THREE.Mesh(
-            new THREE.BoxGeometry(156, 256, 156), // +6 thickness
+            new THREE.BoxGeometry(226, 606, 226), // +6 thickness
             new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide })
         );
         pillarOutline.position.copy(pillar.position);
@@ -654,13 +653,13 @@ class RubberButton {
         lightPool.position.y = -269; // Just above floor mesh (-270)
         this.pivot.add(lightPool);
 
-        // VISIBLE FLOOR
+        // SHADOW FLOOR (Transparent for Sage Green BG)
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(3000, 3000),
-            new THREE.MeshLambertMaterial({ color: 0x444444 })
+            new THREE.ShadowMaterial({ opacity: 0.2, color: 0x000000 })
         );
         floor.rotation.x = -Math.PI / 2;
-        floor.position.y = -270; // Bottom of new pillar
+        floor.position.y = -320; // Match new pillar base
         floor.receiveShadow = true;
         this.pivot.add(floor);
     }

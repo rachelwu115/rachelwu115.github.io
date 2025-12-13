@@ -239,13 +239,17 @@ body {
 }
 
 /* Override for Button Exhibit (Centered on Pillar) */
+/* Override for Button Exhibit (Centered on Pillar) */
 .button-label {
     margin-left: 0;
-    margin-top: 150px;
-    /* Position below the button center */
+    margin-top: 100px;
+    /* Higher up */
     transform: translateX(-50%);
     text-align: center;
-    width: 220px;
+    width: 160px;
+    /* Constrained width to sit well within pillar face */
+    font-size: 0.9rem;
+    padding: 15px;
 }
 
 .label-title {
