@@ -1358,6 +1358,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     new MagneticButton({ area: '.magnetic-area', button: '.magnetic-content' });
     new Mirror();
+    new RubberButton();
     new GalleryNav();
     new GlassCase();
 });
