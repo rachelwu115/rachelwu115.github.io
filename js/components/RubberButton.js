@@ -239,7 +239,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                15.0 + Math.random() * 10.0, // TUNED: Faster upward burst
+                8.0 + Math.random() * 6.0, // TUNED: Lower burst, just over edge
                 (Math.random() - 0.5) * 12.0
             );
 
