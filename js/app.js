@@ -506,7 +506,7 @@ class RubberButton {
         this.initLighting();
         this.initGeometry();
         this.initConfetti();
-        // this.initFlesh(); // Gore System Disabled per user request
+        this.initConfetti();
         this.initAudio();
         this.bindEvents();
         this.startLoop();
@@ -809,7 +809,7 @@ class RubberButton {
         }
 
         // Trigger Flesh Burst
-        this.explodeFlesh(center);
+        // this.explodeFlesh(center); // Removed
 
         // REGENERATE FAST (200ms)
         setTimeout(() => {
@@ -845,95 +845,7 @@ class RubberButton {
         }, 200);
     }
 
-    explodeFlesh(center) {
-        // Activate chunks
-        this.fleshChunks.forEach(p => {
-            p.mesh.visible = true;
-            p.life = 4.0 + Math.random() * 3.0; // Longer life for dripping
-            p.stuck = false; // Reset sticking
 
-            // Start inside button but wider spread
-            p.mesh.position.copy(center).addScalar((Math.random() - 0.5) * 60);
-
-            // Explosive Velocity (Outward + Up)
-            p.vel.set(
-                (Math.random() - 0.5) * 40.0,  // Wider X
-                15.0 + Math.random() * 20.0,   // Higher Splash
-                (Math.random() - 0.5) * 40.0   // Wider Z
-            );
-
-            // Tumbling
-            p.rotVel.set(
-                Math.random() * 0.4, Math.random() * 0.4, Math.random() * 0.4
-            );
-        });
-    }
-
-    updateFlesh(dt) {
-        const bounds = 110; // Pillar is 220 wide -> +/- 110
-        const topY = -20;
-        const drag = 0.98;
-
-        this.fleshChunks.forEach(p => {
-            if (!p.mesh.visible) return;
-
-            p.life -= dt;
-            if (p.life <= 0) {
-                p.mesh.visible = false;
-                return;
-            }
-
-            // Gravity
-            if (!p.stuck) {
-                p.vel.y -= this.config.gravity * 3.0 * (dt * 60); // Heavier than confetti
-            } else {
-                p.vel.y -= this.config.gravity * 0.2 * (dt * 60); // Viscous Drip
-            }
-
-            // Apply Velocity
-            p.mesh.position.add(p.vel);
-            p.mesh.rotation.x += p.rotVel.x;
-            p.mesh.rotation.y += p.rotVel.y;
-            p.mesh.rotation.z += p.rotVel.z;
-
-            // DRIP PHYSICS (Collision with Pillar)
-            // If below top face and within X/Z bounds...
-            if (p.mesh.position.y < topY - 5) {
-                const x = p.mesh.position.x;
-                const z = p.mesh.position.z;
-
-                // Check if *inside* or *touching* the pillar column
-                // Allow slightly outside for "surface tension" thickness
-                if (Math.abs(x) < bounds + 10 && Math.abs(z) < bounds + 10) {
-
-                    // Identify Closest Face to snap to
-                    const distRight = Math.abs(bounds - x);
-                    const distLeft = Math.abs(-bounds - x);
-                    const distFront = Math.abs(bounds - z);
-                    const distBack = Math.abs(-bounds - z);
-
-                    const min = Math.min(distRight, distLeft, distFront, distBack);
-
-                    if (min < 15) { // Close enough to stick
-                        p.stuck = true;
-
-                        // Kill Horizontal Momentum (Stick)
-                        p.vel.x *= 0.1;
-                        p.vel.z *= 0.1;
-
-                        // Viscosity (Slow vertical drip)
-                        if (p.vel.y < -2.0) p.vel.y = -2.0;
-
-                        // Snap to Surface
-                        if (min === distRight) p.mesh.position.x = bounds + 2; // Right Face
-                        else if (min === distLeft) p.mesh.position.x = -bounds - 2; // Left
-                        else if (min === distFront) p.mesh.position.z = bounds + 2; // Front
-                        else p.mesh.position.z = -bounds - 2; // Back
-                    }
-                }
-            }
-        });
-    }
 
 
 
@@ -1110,7 +1022,7 @@ class RubberButton {
 
             // ALWAYS UPDATE PARTICLES (Fixes freezing issue)
             this.updatePhysics(dt);
-            // this.updateFlesh(dt);
+            // this.updateFlesh(dt); // Removed
 
             if (this.isActive) {
                 if (this.state.isExploded) {
@@ -1432,5 +1344,5 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("CRITICAL: RubberButton Crash", e);
     }
     new GalleryNav();
-    new GlassCase();
+    // new GlassCase(); // Removed
 });
