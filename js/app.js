@@ -606,11 +606,20 @@ class RubberButton {
         bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
         baseGroup.add(bezel);
 
-        // MUSEUM PILLAR (Wider & Taller to fill frame/cut off bottom)
+        // MUSEUM PILLAR (Solid Colors, No Lighting Artifacts)
         const pillarGeo = new THREE.BoxGeometry(220, 600, 220);
-        const pillar = new THREE.Mesh(pillarGeo, this.materials.pillar);
-        pillar.position.y = -320; // Top at -20 (Base of button)
-        pillar.receiveShadow = false; // Disable shadows ON the pillar (Clean Look)
+
+        // Face Materials: [Right, Left, Top, Bottom, Front, Back]
+        // Use BasicMaterial to ignore lighting and ensure solid, flat colors
+        const matTop = new THREE.MeshBasicMaterial({ color: 0xffffff }); // Bright White Top
+        const matSide = new THREE.MeshBasicMaterial({ color: 0xdddddd }); // Light Grey Sides
+
+        const pillar = new THREE.Mesh(pillarGeo, [
+            matSide, matSide, matTop, matSide, matSide, matSide
+        ]);
+
+        pillar.position.y = -320; // Top at -20
+        pillar.receiveShadow = false;
         pillar.castShadow = true;
         baseGroup.add(pillar);
 
