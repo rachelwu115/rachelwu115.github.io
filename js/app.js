@@ -1068,6 +1068,8 @@ class RubberButton {
      * Starts the animation loop for the button.
      */
     startLoop() {
+        const clock = new THREE.Clock();
+
         const animate = () => {
             requestAnimationFrame(animate);
 
@@ -1103,247 +1105,249 @@ class RubberButton {
                 this.confettiGroup.visible = true;
             } else {
                 this.renderer.render(this.scene, this.camera);
-            };
-            animate();
+            }
+        };
+
+        animate();
+    }
+
+    /**
+     * Updates the heartbeat and shiver effects for the button.
+     */
+    updateHeartbeat() {
+        const now = Date.now();
+        const phase = now % this.config.beatRate;
+
+        // --- ORGANIC REGROWTH LOGIC ---
+        if (this.state.isRegenerating) {
+            this.state.regrowthProgress += 0.008; // Crisp Speed
+
+            if (this.state.regrowthProgress >= 1.0) {
+                this.state.regrowthProgress = 1.0;
+                this.state.isRegenerating = false;
+                // Final clean snap
+                this.mesh.position.set(0, this.physics.pressY, 0);
+                this.mesh.rotation.set(0, 0, 0);
+                this.mesh.scale.set(1, 0.7, 1);
+            } else {
+                const t = this.state.regrowthProgress;
+                const origin = this.state.regrowthOrigin || { x: 0, y: -20, z: 0 };
+
+                // 1. POSITION: Quartic Ease Out (Crisp arrival)
+                // Starts fast, breaks hard, stops cleanly.
+                const ease = 1 - Math.pow(1 - t, 4);
+
+                this.mesh.position.x = origin.x * (1 - ease);
+                this.mesh.position.z = origin.z * (1 - ease);
+                this.mesh.position.y = origin.y * (1 - ease) + this.physics.pressY;
+
+                // 2. SCALE: Breathing Growth (No violent bounce)
+                // Grows to 1.0 with a small "inhale" overshoot (max ~1.05)
+                const scaleBase = 1 - Math.pow(1 - t, 3); // Cubic growth
+                const gentleHump = Math.sin(t * Math.PI) * 0.1 * (1.0 - t); // Decaying sine
+                const s = scaleBase + gentleHump;
+
+                // 3. MICRO-NOISE (Subtle biological shivering)
+                const noise = 0.03 * (1 - ease);
+                const nx = Math.sin(now * 0.05) * noise;
+                const ny = Math.cos(now * 0.05) * noise;
+
+                // Apply
+                this.mesh.scale.set(
+                    s + nx,
+                    s * 0.7 + ny, // Maintains button flatness
+                    s - nx
+                );
+
+                // 4. TUMBLE (Minimal)
+                this.mesh.rotation.z = Math.sin(t * Math.PI) * 0.05;
+                this.mesh.rotation.x = Math.cos(t * Math.PI) * 0.05;
+
+                return; // SKIP normal heartbeat
+            }
         }
 
-        /**
-         * Updates the heartbeat and shiver effects for the button.
-         */
-        updateHeartbeat() {
-            const now = Date.now();
-            const phase = now % this.config.beatRate;
+        // --- NORMAL HEARTBEAT ---
 
-            // --- ORGANIC REGROWTH LOGIC ---
-            if (this.state.isRegenerating) {
-                this.state.regrowthProgress += 0.008; // Crisp Speed
+        let pulse = 1.0;
+        if (phase < 300) {
+            pulse = 1.0 + Math.sin((phase / 300) * Math.PI) * 0.008;
+        }
 
-                if (this.state.regrowthProgress >= 1.0) {
-                    this.state.regrowthProgress = 1.0;
-                    this.state.isRegenerating = false;
-                    // Final clean snap
-                    this.mesh.position.set(0, this.physics.pressY, 0);
-                    this.mesh.rotation.set(0, 0, 0);
-                    this.mesh.scale.set(1, 0.7, 1);
+        // Apply Pulse
+        this.mesh.scale.set(pulse, 0.7 * pulse, pulse);
+
+        // Apply Shiver (Idle Jitter)
+        this.mesh.position.x = (Math.random() - 0.5) * 0.2;
+        this.mesh.position.z = (Math.random() - 0.5) * 0.2;
+        this.mesh.position.y = this.physics.pressY;
+
+        // Audio Trigger
+        if (phase < 50 && this.state.beatPhase === 0) {
+            const vol = this.state.isRegenerating ? 0.1 : 0.2;
+            this.playTone(55, 'sine', 0.2, vol);
+            this.state.beatPhase = 1;
+        }
+        if (phase > 500) this.state.beatPhase = 0;
+    }
+
+    /**
+     * Updates the position and rotation of confetti particles.
+     */
+    updateConfetti() {
+        const now = Date.now();
+        // Optimization: check if any particles are alive?
+        // We'll just loop, overhead of 150 items is tiny.
+
+        this.particles.forEach((p) => {
+            if (p.life > 0) {
+                // Physics: Velocity
+                p.mesh.position.add(p.vel);
+
+                // SLOW MOTION PHYSICS
+                p.vel.y -= 0.05; // Very low gravity (Floaty)
+                p.vel.multiplyScalar(0.99); // Low drag (Sustain velocity)
+
+                // Flower Petal Flutter (Sine wave sway)
+                // We added swaySpeed/swayOffset in init, but if they don't exist, default them
+                const sSpeed = p.swaySpeed || 0.005;
+                const sOffset = p.swayOffset || 0;
+
+                const sway = Math.sin(now * sSpeed + sOffset) * 0.1;
+                p.mesh.position.x += sway;
+                p.mesh.position.z += sway;
+
+                // Slow Tumble
+                p.mesh.rotation.x += p.rotVel.x * 0.5;
+                p.mesh.rotation.y += p.rotVel.y * 0.5;
+                p.mesh.rotation.z += p.rotVel.z * 0.5;
+
+                // Long Decay
+                p.life -= 0.005; // ~3 seconds life
+
+                if (p.life <= 0 || p.mesh.position.y < -100) {
+                    p.mesh.visible = false;
+                    p.life = 0;
                 } else {
-                    const t = this.state.regrowthProgress;
-                    const origin = this.state.regrowthOrigin || { x: 0, y: -20, z: 0 };
-
-                    // 1. POSITION: Quartic Ease Out (Crisp arrival)
-                    // Starts fast, breaks hard, stops cleanly.
-                    const ease = 1 - Math.pow(1 - t, 4);
-
-                    this.mesh.position.x = origin.x * (1 - ease);
-                    this.mesh.position.z = origin.z * (1 - ease);
-                    this.mesh.position.y = origin.y * (1 - ease) + this.physics.pressY;
-
-                    // 2. SCALE: Breathing Growth (No violent bounce)
-                    // Grows to 1.0 with a small "inhale" overshoot (max ~1.05)
-                    const scaleBase = 1 - Math.pow(1 - t, 3); // Cubic growth
-                    const gentleHump = Math.sin(t * Math.PI) * 0.1 * (1.0 - t); // Decaying sine
-                    const s = scaleBase + gentleHump;
-
-                    // 3. MICRO-NOISE (Subtle biological shivering)
-                    const noise = 0.03 * (1 - ease);
-                    const nx = Math.sin(now * 0.05) * noise;
-                    const ny = Math.cos(now * 0.05) * noise;
-
-                    // Apply
-                    this.mesh.scale.set(
-                        s + nx,
-                        s * 0.7 + ny, // Maintains button flatness
-                        s - nx
-                    );
-
-                    // 4. TUMBLE (Minimal)
-                    this.mesh.rotation.z = Math.sin(t * Math.PI) * 0.05;
-                    this.mesh.rotation.x = Math.cos(t * Math.PI) * 0.05;
-
-                    return; // SKIP normal heartbeat
+                    // activeCount++; // No longer needed
                 }
+
+                // Smooth Pop-in
+                const s = Math.min(1.0, p.life * 5.0); // Fast initial scale up
+                p.mesh.scale.set(s, s, s);
             }
+        });
 
-            // --- NORMAL HEARTBEAT ---
+        // If no particles left and clean-up time passed, ensure state is reset?
+        // (Handled by explode timeout)
+    }
 
-            let pulse = 1.0;
-            if (phase < 300) {
-                pulse = 1.0 + Math.sin((phase / 300) * Math.PI) * 0.008;
-            }
+    /**
+     * Applies deformation physics to the button mesh.
+     */
+    updateDeformation() {
+        const P = this.physics;
+        const positions = this.mesh.geometry.attributes.position.array;
 
-            // Apply Pulse
-            this.mesh.scale.set(pulse, 0.7 * pulse, pulse);
+        // Spring Return Logic
+        if (!this.state.isDragging) {
+            const force = P.dragOffset.clone().multiplyScalar(-0.15); // Stiffness
+            P.returnVelocity.add(force).multiplyScalar(0.85); // Damping
+            P.dragOffset.add(P.returnVelocity);
 
-            // Apply Shiver (Idle Jitter)
-            this.mesh.position.x = (Math.random() - 0.5) * 0.2;
-            this.mesh.position.z = (Math.random() - 0.5) * 0.2;
-            this.mesh.position.y = this.physics.pressY;
-
-            // Audio Trigger
-            if (phase < 50 && this.state.beatPhase === 0) {
-                const vol = this.state.isRegenerating ? 0.1 : 0.2;
-                this.playTone(55, 'sine', 0.2, vol);
-                this.state.beatPhase = 1;
-            }
-            if (phase > 500) this.state.beatPhase = 0;
-        }
-
-        /**
-         * Updates the position and rotation of confetti particles.
-         */
-        updateConfetti() {
-            const now = Date.now();
-            // Optimization: check if any particles are alive?
-            // We'll just loop, overhead of 150 items is tiny.
-
-            this.particles.forEach((p) => {
-                if (p.life > 0) {
-                    // Physics: Velocity
-                    p.mesh.position.add(p.vel);
-
-                    // SLOW MOTION PHYSICS
-                    p.vel.y -= 0.05; // Very low gravity (Floaty)
-                    p.vel.multiplyScalar(0.99); // Low drag (Sustain velocity)
-
-                    // Flower Petal Flutter (Sine wave sway)
-                    // We added swaySpeed/swayOffset in init, but if they don't exist, default them
-                    const sSpeed = p.swaySpeed || 0.005;
-                    const sOffset = p.swayOffset || 0;
-
-                    const sway = Math.sin(now * sSpeed + sOffset) * 0.1;
-                    p.mesh.position.x += sway;
-                    p.mesh.position.z += sway;
-
-                    // Slow Tumble
-                    p.mesh.rotation.x += p.rotVel.x * 0.5;
-                    p.mesh.rotation.y += p.rotVel.y * 0.5;
-                    p.mesh.rotation.z += p.rotVel.z * 0.5;
-
-                    // Long Decay
-                    p.life -= 0.005; // ~3 seconds life
-
-                    if (p.life <= 0 || p.mesh.position.y < -100) {
-                        p.mesh.visible = false;
-                        p.life = 0;
-                    } else {
-                        // activeCount++; // No longer needed
-                    }
-
-                    // Smooth Pop-in
-                    const s = Math.min(1.0, p.life * 5.0); // Fast initial scale up
-                    p.mesh.scale.set(s, s, s);
-                }
-            });
-
-            // If no particles left and clean-up time passed, ensure state is reset?
-            // (Handled by explode timeout)
-        }
-
-        /**
-         * Applies deformation physics to the button mesh.
-         */
-        updateDeformation() {
-            const P = this.physics;
-            const positions = this.mesh.geometry.attributes.position.array;
-
-            // Spring Return Logic
-            if (!this.state.isDragging) {
-                const force = P.dragOffset.clone().multiplyScalar(-0.15); // Stiffness
-                P.returnVelocity.add(force).multiplyScalar(0.85); // Damping
-                P.dragOffset.add(P.returnVelocity);
-
-                if (P.dragOffset.lengthSq() < 0.01 && P.returnVelocity.lengthSq() < 0.01) {
-                    P.dragOffset.set(0, 0, 0);
-                    P.returnVelocity.set(0, 0, 0);
-                }
-            }
-
-            // Vertex Displacement
-            if (P.dragOffset.lengthSq() > 0.001 || this.state.isDragging) {
-                const localDrag = P.dragOffset.clone();
-                localDrag.x /= this.mesh.scale.x;
-                localDrag.y /= this.mesh.scale.y;
-                localDrag.z /= this.mesh.scale.z;
-
-                // Directional Logic (Squash vs Stretch)
-                let effDragY = localDrag.y;
-                let radialSquash = 0;
-
-                if (localDrag.y < 0) {
-                    effDragY *= 0.1;
-                    radialSquash = -localDrag.y * 0.4;
-                }
-
-                for (let i = 0; i < this.weights.length; i++) {
-                    const w = this.weights[i];
-                    if (w < 0.001) {
-                        // Reset to original (optimization)
-                        positions[i * 3] = this.originalPositions[i * 3];
-                        positions[i * 3 + 1] = this.originalPositions[i * 3 + 1];
-                        positions[i * 3 + 2] = this.originalPositions[i * 3 + 2];
-                        continue;
-                    }
-
-                    // Apply X/Z drag + Radial Squash
-                    const ox = this.originalPositions[i * 3];
-                    const oz = this.originalPositions[i * 3 + 2];
-
-                    // Squash Expansion
-                    const sx = ox * radialSquash * 0.01 * w;
-                    const sz = oz * radialSquash * 0.01 * w;
-
-                    positions[i * 3] = ox + (localDrag.x * w) + sx;
-                    positions[i * 3 + 2] = oz + (localDrag.z * w) + sz;
-
-                    // Apply Y Drag + Floor Constraint
-                    let newY = this.originalPositions[i * 3 + 1] + (effDragY * w);
-
-                    // Constraint: Y must be above floor relative to Press depth
-                    // LocalY * ScaleY + PressY >= FloorY (2.0)
-                    const limitY = (2.0 - P.pressY) / this.mesh.scale.y;
-                    newY = Math.max(limitY, newY);
-
-                    positions[i * 3 + 1] = newY;
-                }
-                this.mesh.geometry.attributes.position.needsUpdate = true;
-                this.mesh.geometry.computeVertexNormals();
+            if (P.dragOffset.lengthSq() < 0.01 && P.returnVelocity.lengthSq() < 0.01) {
+                P.dragOffset.set(0, 0, 0);
+                P.returnVelocity.set(0, 0, 0);
             }
         }
 
-        /**
-         * Resets the button physics to its original state.
-         */
-        resetPhysics() {
-            this.physics.dragOffset.set(0, 0, 0);
-            this.physics.returnVelocity.set(0, 0, 0);
-            this.physics.grabPoint.set(0, 0, 0);
-            this.physics.localGrabPoint.set(0, 0, 0);
-            this.physics.pressY = 0;
-            this.physics.targetPressY = 0;
+        // Vertex Displacement
+        if (P.dragOffset.lengthSq() > 0.001 || this.state.isDragging) {
+            const localDrag = P.dragOffset.clone();
+            localDrag.x /= this.mesh.scale.x;
+            localDrag.y /= this.mesh.scale.y;
+            localDrag.z /= this.mesh.scale.z;
 
-            // CRITICAL: Clear weights to prevent lingering deformation
-            this.weights.fill(0);
+            // Directional Logic (Squash vs Stretch)
+            let effDragY = localDrag.y;
+            let radialSquash = 0;
 
-            // Reset Geometry
-            this.mesh.geometry.attributes.position.array.set(this.originalPositions);
+            if (localDrag.y < 0) {
+                effDragY *= 0.1;
+                radialSquash = -localDrag.y * 0.4;
+            }
+
+            for (let i = 0; i < this.weights.length; i++) {
+                const w = this.weights[i];
+                if (w < 0.001) {
+                    // Reset to original (optimization)
+                    positions[i * 3] = this.originalPositions[i * 3];
+                    positions[i * 3 + 1] = this.originalPositions[i * 3 + 1];
+                    positions[i * 3 + 2] = this.originalPositions[i * 3 + 2];
+                    continue;
+                }
+
+                // Apply X/Z drag + Radial Squash
+                const ox = this.originalPositions[i * 3];
+                const oz = this.originalPositions[i * 3 + 2];
+
+                // Squash Expansion
+                const sx = ox * radialSquash * 0.01 * w;
+                const sz = oz * radialSquash * 0.01 * w;
+
+                positions[i * 3] = ox + (localDrag.x * w) + sx;
+                positions[i * 3 + 2] = oz + (localDrag.z * w) + sz;
+
+                // Apply Y Drag + Floor Constraint
+                let newY = this.originalPositions[i * 3 + 1] + (effDragY * w);
+
+                // Constraint: Y must be above floor relative to Press depth
+                // LocalY * ScaleY + PressY >= FloorY (2.0)
+                const limitY = (2.0 - P.pressY) / this.mesh.scale.y;
+                newY = Math.max(limitY, newY);
+
+                positions[i * 3 + 1] = newY;
+            }
             this.mesh.geometry.attributes.position.needsUpdate = true;
-            this.mesh.position.y = 0;
-
-            // FIX: Recompute normals to ensure lighting/shading is consistent
             this.mesh.geometry.computeVertexNormals();
         }
-
-        /**
-         * Handles window resize events to update camera aspect ratio and renderer size.
-         */
-        onResize() {
-            if (!this.camera || !this.renderer) return;
-            const w = window.innerWidth;
-            const h = window.innerHeight;
-            this.camera.aspect = w / h;
-            this.camera.updateProjectionMatrix();
-            this.renderer.setSize(w, h);
-        }
     }
+
+    /**
+     * Resets the button physics to its original state.
+     */
+    resetPhysics() {
+        this.physics.dragOffset.set(0, 0, 0);
+        this.physics.returnVelocity.set(0, 0, 0);
+        this.physics.grabPoint.set(0, 0, 0);
+        this.physics.localGrabPoint.set(0, 0, 0);
+        this.physics.pressY = 0;
+        this.physics.targetPressY = 0;
+
+        // CRITICAL: Clear weights to prevent lingering deformation
+        this.weights.fill(0);
+
+        // Reset Geometry
+        this.mesh.geometry.attributes.position.array.set(this.originalPositions);
+        this.mesh.geometry.attributes.position.needsUpdate = true;
+        this.mesh.position.y = 0;
+
+        // FIX: Recompute normals to ensure lighting/shading is consistent
+        this.mesh.geometry.computeVertexNormals();
+    }
+
+    /**
+     * Handles window resize events to update camera aspect ratio and renderer size.
+     */
+    onResize() {
+        if (!this.camera || !this.renderer) return;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        this.camera.aspect = w / h;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(w, h);
+    }
+}
 
 
 
