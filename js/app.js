@@ -554,13 +554,13 @@ class RubberButton {
         this.scene.add(spotLight);
 
         // VISIBLE LIGHT BEAM
-        // Tapered Cone matching spotlight, extended to bottom
-        const beamGeo = new THREE.CylinderGeometry(20, 400, 3000, 64, 1, true);
+        // Wide Cone to ensure Pillar fits inside without intersection artifacts
+        const beamGeo = new THREE.CylinderGeometry(250, 1200, 3000, 64, 1, true);
         beamGeo.translate(0, -1500, 0); // Pivot at top (extends -3000 down)
         const beamMat = new THREE.MeshBasicMaterial({
             color: 0xfffdf5, // Warm White
             transparent: true,
-            opacity: 0.12, // Visible but not overwhelming
+            opacity: 0.08, // Subtle wash
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending,
             depthWrite: false
