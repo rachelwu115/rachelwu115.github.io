@@ -1,4 +1,5 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { audioManager } from '../utils/AudioManager.js';
 
 /**
  * COMPONENT: Sticky Rubber Button (Three.js WebGL)
@@ -170,9 +171,9 @@ export class RubberButton {
 
         // Button Outline
         const btnOutlineMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide });
-        const btnOutline = new THREE.Mesh(domeGeo, btnOutlineMat);
-        btnOutline.scale.setScalar(1.02);
-        this.mesh.add(btnOutline);
+        this.btnOutline = new THREE.Mesh(domeGeo, btnOutlineMat);
+        this.btnOutline.scale.setScalar(1.02);
+        this.mesh.add(this.btnOutline);
 
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
@@ -204,20 +205,7 @@ export class RubberButton {
     }
 
     initAudio() {
-        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        this.playTone = (freq, type, duration, vol = 0.5) => {
-            if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-            const osc = this.audioCtx.createOscillator();
-            const gain = this.audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
-            gain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(this.audioCtx.destination);
-            osc.start();
-            osc.stop(this.audioCtx.currentTime + duration);
-        };
+        // Delegated to AudioManager
     }
 
     explode() {
@@ -229,8 +217,8 @@ export class RubberButton {
         this.canvas.style.backgroundColor = 'rgba(255,255,255,0.2)';
         setTimeout(() => this.canvas.style.backgroundColor = '', 150);
 
-        this.playTone(400, 'sine', 0.1);
-        this.playTone(600, 'triangle', 0.15);
+        audioManager.playTone(400, 'sine', 0.1);
+        audioManager.playTone(600, 'triangle', 0.15);
 
         let center = this.physics.grabPoint.clone();
         if (center.lengthSq() < 1) center = this.mesh.position.clone();
@@ -251,7 +239,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                3.0 + Math.random() * 5.0,
+                15.0 + Math.random() * 10.0, // TUNED: Faster upward burst
                 (Math.random() - 0.5) * 12.0
             );
 
@@ -284,7 +272,7 @@ export class RubberButton {
 
             this.resetPhysics();
             this.mesh.position.set(this.state.regrowthOrigin.x, this.state.regrowthOrigin.y, this.state.regrowthOrigin.z);
-            this.playTone(100, 'sine', 0.3, 0.2);
+            audioManager.playTone(100, 'sine', 0.3, 0.2);
         }, 50); // Tuned Delay
     }
 
@@ -345,8 +333,9 @@ export class RubberButton {
                 this.physics.localGrabPoint.copy(this.mesh.worldToLocal(hit.point.clone()));
                 this.physics.dragOffset.set(0, 0, 0);
                 this.calculateWeights();
-                this.playTone(150, 'square', 0.1, 0.3);
+                audioManager.playTone(150, 'square', 0.1, 0.3);
                 this.canvas.style.cursor = 'grabbing';
+                if (this.btnOutline) this.btnOutline.visible = false; // Hide on stretch
             }
         };
 
@@ -372,7 +361,11 @@ export class RubberButton {
         };
 
         const onUp = () => {
-            if (this.state.isDragging) this.canvas.style.cursor = 'grabbing';
+            if (this.state.isDragging) {
+                this.canvas.style.cursor = 'grabbing';
+                // Note: outline comes back only when completely reset, or we can bring it back here if not exploded
+                // Re-enable in resetPhysics is cleaner for the "snap back" feel
+            }
         };
 
         const c = this.canvas;
@@ -469,7 +462,7 @@ export class RubberButton {
 
         if (phase < 50 && this.state.beatPhase === 0) {
             const vol = this.state.isRegenerating ? 0.1 : 0.2;
-            this.playTone(55, 'sine', 0.2, vol);
+            audioManager.playTone(55, 'sine', 0.2, vol);
             this.state.beatPhase = 1;
         }
         if (phase > 500) this.state.beatPhase = 0;
@@ -538,6 +531,7 @@ export class RubberButton {
         this.mesh.geometry.attributes.position.needsUpdate = true;
         this.mesh.position.y = 0;
         this.mesh.geometry.computeVertexNormals();
+        if (this.btnOutline) this.btnOutline.visible = true; // Show when reset
     }
 
     onResize() {

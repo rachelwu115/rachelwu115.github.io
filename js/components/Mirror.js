@@ -1,4 +1,5 @@
 import { APP_CONFIG } from '../config.js';
+import { audioManager } from '../utils/AudioManager.js';
 
 export class Mirror {
     constructor() {
@@ -201,6 +202,8 @@ export class Mirror {
             angle: (Math.random() - 0.5) * 0.2,
             onFace: true
         });
+
+        audioManager.playRandomNote();
     }
 
     update() {
