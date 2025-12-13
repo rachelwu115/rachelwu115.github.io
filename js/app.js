@@ -515,12 +515,12 @@ class RubberButton {
 
         const w = window.innerWidth;
         const h = window.innerHeight;
-        // FOV 18: Balanced Telephoto to fit Shorter Pillar
+        // FOV 18: Telephoto
         this.camera = new THREE.PerspectiveCamera(18, w / h, 0.1, 4000);
 
-        // VIEW ANGLE: Zoomed In
-        this.camera.position.set(0, 60, 1600);
-        this.camera.lookAt(0, -20, 0);
+        // VIEW ANGLE: High Angle (Isometric-like) to show Top & Front
+        this.camera.position.set(0, 400, 1600);
+        this.camera.lookAt(0, -50, 0);
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
@@ -543,18 +543,18 @@ class RubberButton {
         const ambient = new THREE.AmbientLight(0xffffff, 0.2);
         this.scene.add(ambient);
 
-        // ILLUSTRATION SPOTLIGHT (Key Light)
+        // ILLUSTRATION SPOTLIGHT (Top Down)
         const spotLight = new THREE.SpotLight(0xffffff, 3.5);
-        spotLight.position.set(0, 600, 0); // Higher source
-        spotLight.angle = 0.28;
+        spotLight.position.set(0, 800, 0); // High overhead
+        spotLight.angle = 0.25;
         spotLight.penumbra = 0.5; // Very soft edge
         spotLight.castShadow = true;
         spotLight.shadow.mapSize.set(2048, 2048);
         spotLight.shadow.bias = -0.00005;
         this.scene.add(spotLight);
 
-        // VISIBLE LIGHT BEAM (Volumetric Fake)
-        // Conical shape matching the spotlight
+        // VISIBLE LIGHT BEAM
+        // Tapered Cone matching spotlight
         const beamGeo = new THREE.CylinderGeometry(20, 200, 1000, 64, 1, true);
         beamGeo.translate(0, -500, 0); // Pivot at top
         const beamMat = new THREE.MeshBasicMaterial({
@@ -566,12 +566,13 @@ class RubberButton {
             depthWrite: false
         });
         const beam = new THREE.Mesh(beamGeo, beamMat);
-        beam.position.set(0, 600, 0);
+        beam.position.set(0, 800, 0);
         this.scene.add(beam);
 
-        // Fill Light
-        const fill = new THREE.DirectionalLight(0xffffff, 0.15);
-        fill.position.set(0, 0, 200);
+        // FILL LIGHT (Front Face Visibility)
+        // Stronger fill to ensure Front is Grey, not Black
+        const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+        fill.position.set(0, 100, 500);
         this.scene.add(fill);
     }
 
@@ -605,7 +606,7 @@ class RubberButton {
         bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
         baseGroup.add(bezel);
 
-        // MUSEUM PILLAR (Shortened for Framing)
+        // MUSEUM PILLAR (Shortened)
         const pillarGeo = new THREE.BoxGeometry(150, 250, 150);
         const pillar = new THREE.Mesh(pillarGeo, this.materials.pillar);
         pillar.position.y = -145; // Top at -20 (Base of button)
@@ -613,13 +614,14 @@ class RubberButton {
         pillar.castShadow = true;
         baseGroup.add(pillar);
 
-        // TOON OUTLINE: PILLAR
-        const pillarEdges = new THREE.LineSegments(
-            new THREE.EdgesGeometry(pillarGeo),
-            new THREE.LineBasicMaterial({ color: 0x000000 })
+        // TOON OUTLINE: PILLAR (Inverted Hull for THICKNESS)
+        // Replacing LineSegments with Hull Mesh
+        const pillarOutline = new THREE.Mesh(
+            new THREE.BoxGeometry(156, 256, 156), // +6 thickness
+            new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide })
         );
-        pillarEdges.position.y = -145;
-        baseGroup.add(pillarEdges);
+        pillarOutline.position.copy(pillar.position);
+        baseGroup.add(pillarOutline);
 
         this.pivot.add(baseGroup);
 
