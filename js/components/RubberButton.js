@@ -247,7 +247,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                4.5 + Math.random() * 2.0, // TUNED: Calculated to just clear height=60 (4.5 min)
+                12.0 + Math.random() * 4.0, // TUNED: Medium burst (Rollback)
                 (Math.random() - 0.5) * 12.0
             );
 
@@ -289,53 +289,94 @@ export class RubberButton {
         for (let i = 0; i < count; i++) {
             const mesh = new THREE.Mesh(this.dripGeo, this.dripMat);
 
-            // Pick a random side of the pillar (Width=220, Depth=220)
-            // Center is 0,0. Edges are +/- 110.
-            const side = Math.floor(Math.random() * 4);
-            let x = 0, z = 0;
-            const offset = (Math.random() - 0.5) * 200; // Spread along fluid face
+            // POOLING: Spawn on top surface (Pillar top is ~ -20)
+            // Spawn around the button base (radius ~70)
+            const angle = Math.random() * Math.PI * 2;
+            const r = 60 + Math.random() * 15;
+            const x = Math.cos(angle) * r;
+            const z = Math.sin(angle) * r;
 
-            switch (side) {
-                case 0: x = 112; z = offset; break; // Right
-                case 1: x = -112; z = offset; break; // Left
-                case 2: z = 112; x = offset; break; // Front
-                case 3: z = -112; x = offset; break; // Back
-            }
+            mesh.position.set(x, -20.2, z); // Just above surface
 
-            mesh.position.set(x, -21, z); // Start just under the "lip"
-            // Scale random
-            const s = 0.8 + Math.random() * 0.8;
-            mesh.scale.set(s, s, s);
+            // Random Scale
+            const s = 0.8 + Math.random() * 1.2; // Slightly bigger puddles
+            mesh.scale.set(s, s * 0.1, s); // Flattened initially
 
             this.dripGroup.add(mesh);
 
+            // Velocity: Outward spread
+            const speed = 0.5 + Math.random() * 2.0;
+
             this.physics.drips.push({
                 mesh: mesh,
+                vx: Math.cos(angle) * speed,
+                vz: Math.sin(angle) * speed,
                 vy: 0,
+                state: 'pooling', // 'pooling' or 'falling'
                 active: true,
-                friction: 0.90 + Math.random() * 0.05, // Different viscosities
-                stopY: -100 - Math.random() * 400 // Random stop point
+                friction: 0.92 + Math.random() * 0.04,
+                stopY: -100 - Math.random() * 400
             });
         }
     }
 
     updateDrips() {
+        // Pillar edges are +/- 110
+        const EDGE = 110;
+
         for (let i = this.physics.drips.length - 1; i >= 0; i--) {
             const d = this.physics.drips[i];
             if (!d.active) continue;
 
-            d.vy -= 0.1; // Gravity (slow ooze)
-            d.mesh.position.y += d.vy;
-            d.vy *= d.friction; // Viscosity
+            if (d.state === 'pooling') {
+                // Spread
+                d.mesh.position.x += d.vx;
+                d.mesh.position.z += d.vz;
 
-            // Stop logic
-            if (d.mesh.position.y < d.stopY || Math.abs(d.vy) < 0.01) {
-                d.active = false; // Freeze
+                // Friction
+                d.vx *= d.friction;
+                d.vz *= d.friction;
+
+                // Check Edges
+                const x = d.mesh.position.x;
+                const z = d.mesh.position.z;
+
+                if (Math.abs(x) > EDGE || Math.abs(z) > EDGE) {
+                    // OVERFLOW!
+                    d.state = 'falling';
+
+                    // Snap to edge
+                    if (Math.abs(x) > EDGE) d.mesh.position.x = Math.sign(x) * EDGE;
+                    if (Math.abs(z) > EDGE) d.mesh.position.z = Math.sign(z) * EDGE;
+
+                    // Kill horizontal velocity, start gravity
+                    d.vx = 0; d.vz = 0;
+
+                    // Plump up shape (was flat puddle, now drop)
+                    const s = d.mesh.scale.x;
+                    d.mesh.scale.set(s, s, s);
+                }
+
+                // Stop pooling if too slow? 
+                // No, keep them "wet" until they fall or exist forever. 
+                // Maybe extremely slow stop?
+                if (Math.abs(d.vx) < 0.01 && Math.abs(d.vz) < 0.01) {
+                    // Stays as a static puddle
+                }
+
+            } else if (d.state === 'falling') {
+                d.vy -= 0.15; // Gravity
+                d.mesh.position.y += d.vy;
+                d.vy *= d.friction; // Viscosity on side
+
+                // Stop logic
+                if (d.mesh.position.y < d.stopY || Math.abs(d.vy) < 0.01) {
+                    d.active = false; // Freeze
+                }
             }
 
-            // Cleanup very old drips? User said "stays", so we keep them.
-            // Maybe limit total count if too many?
-            if (this.physics.drips.length > 100) {
+            // Limit count logic
+            if (this.physics.drips.length > 200) {
                 const old = this.physics.drips.shift();
                 if (old && old.mesh.parent) old.mesh.parent.remove(old.mesh);
             }
