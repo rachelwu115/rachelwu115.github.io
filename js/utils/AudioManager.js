@@ -9,8 +9,26 @@ export class AudioManager {
         this.masterGain.gain.value = 0.3; // safe master volume
         this.masterGain.connect(this.ctx.destination);
 
-        // C Major Pentatonic Scale (C4 - C6)
-        this.scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00];
+        // Scale: E Minor Pentatonic (Sad/Melancholy)
+        this.scale = [
+            164.81, 196.00, 220.00, 246.94, // Octave 3
+            293.66, 329.63, 392.00, 440.00, // Octave 4
+            493.88, 587.33                  // Octave 5
+        ];
+
+        // Echo / Delay System
+        this.delayNode = this.ctx.createDelay();
+        this.delayNode.delayTime.value = 0.4; // 400ms echo
+
+        this.feedbackGain = this.ctx.createGain();
+        this.feedbackGain.gain.value = 0.35; // Repeats
+
+        // Internal Routing (Feedback Loop)
+        this.delayNode.connect(this.feedbackGain);
+        this.feedbackGain.connect(this.delayNode);
+
+        // Output Routing
+        this.delayNode.connect(this.masterGain);
     }
 
     resume() {
@@ -38,7 +56,12 @@ export class AudioManager {
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
 
         osc.connect(gain);
+
+        // Dry Signal
         gain.connect(this.masterGain);
+
+        // Wet Signal (Echo)
+        gain.connect(this.delayNode);
 
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
