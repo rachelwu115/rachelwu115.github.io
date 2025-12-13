@@ -506,7 +506,7 @@ class RubberButton {
         this.initLighting();
         this.initGeometry();
         this.initConfetti();
-        this.initFlesh(); // New Gore System
+        // this.initFlesh(); // Gore System Disabled per user request
         this.initAudio();
         this.bindEvents();
         this.startLoop();
@@ -1105,7 +1105,7 @@ class RubberButton {
 
             // ALWAYS UPDATE PARTICLES (Fixes freezing issue)
             this.updatePhysics(dt);
-            this.updateFlesh(dt);
+            // this.updateFlesh(dt);
 
             if (this.isActive && this.state.isExploded) {
                 this.confettiGroup.visible = true;
