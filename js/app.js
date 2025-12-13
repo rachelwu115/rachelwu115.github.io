@@ -11,7 +11,7 @@
  * @version 12.0 (Custom Cursor)
  */
 
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+// THREE.js is loaded globally via index.html (Classic Script)
 
 const APP_CONFIG = {
     // -------------------------------------------------------------------------
