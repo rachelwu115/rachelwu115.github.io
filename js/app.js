@@ -577,83 +577,73 @@ class RubberButton {
     }
 
     initGeometry() {
-        // Shared Materials
-        this.materials = {
-            rubber: new THREE.MeshPhysicalMaterial({
-                color: 0xd92b2b, // Slightly desaturated Red (Illustration Style)
-                emissive: 0x440000,
-                roughness: 0.2, metalness: 0.0,
-                clearcoat: 0.8,
-            }),
-            base: new THREE.MeshLambertMaterial({
-                color: 0x1a1a1a // Near Black Base
-            }),
-            pillar: new THREE.MeshLambertMaterial({
-                color: 0xffffff // Pure White Pillar
-            })
-        };
-
         this.pivot = new THREE.Group();
         this.scene.add(this.pivot);
 
-        // Base Group
-        const baseGroup = new THREE.Group();
-        const puck = new THREE.Mesh(new THREE.CylinderGeometry(70, 75, 20, 64), this.materials.base);
-        puck.position.y = -10; puck.receiveShadow = true;
-        baseGroup.add(puck);
+        // --- MATERIALS ---
+        const matRubber = new THREE.MeshPhysicalMaterial({
+            color: 0xd92b2b, emissive: 0x440000,
+            roughness: 0.2, metalness: 0.0, clearcoat: 0.8
+        });
+        const matBase = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
-        const bezel = new THREE.Mesh(new THREE.TorusGeometry(68, 6, 16, 100), this.materials.base);
-        bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
-        baseGroup.add(bezel);
+        // --- PILLAR (Solid Color, No Artifacts) ---
+        // Principle: Use BasicMaterial to avoid lighting gradients/shadows on the box faces.
+        // Explicitly paint faces: Top=White, Sides=Grey.
+        const pillarW = 220, pillarH = 600, pillarD = 220;
+        const pillarGeo = new THREE.BoxGeometry(pillarW, pillarH, pillarD);
 
-        // MUSEUM PILLAR (Solid Colors, No Lighting Artifacts)
-        const pillarGeo = new THREE.BoxGeometry(220, 600, 220);
-
-        // Face Materials: [Right, Left, Top, Bottom, Front, Back]
-        // Use BasicMaterial to ignore lighting and ensure solid, flat colors
-        const matTop = new THREE.MeshBasicMaterial({ color: 0xffffff }); // Bright White Top
-        const matSide = new THREE.MeshBasicMaterial({ color: 0xe6e6e6 }); // Subtle Light Grey
+        // Materials: [Right, Left, Top, Bottom, Front, Back]
+        const matWhite = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const matGrey = new THREE.MeshBasicMaterial({ color: 0xe0e0e0 });
 
         const pillar = new THREE.Mesh(pillarGeo, [
-            matSide, matSide, matTop, matSide, matSide, matSide
+            matGrey, matGrey, matWhite, matGrey, matGrey, matGrey
         ]);
-
-        pillar.position.y = -320; // Top at -20
+        // Shift down slightly (-320.1) to ensure Puck (-20 bottom) sits cleanly on top without Z-fighting
+        pillar.position.y = -320.1;
         pillar.receiveShadow = false;
         pillar.castShadow = true;
-        baseGroup.add(pillar);
+        this.pivot.add(pillar);
 
-        // TOON OUTLINE: PILLAR (Inverted Hull for THICKNESS)
-        const pillarOutline = new THREE.Mesh(
-            new THREE.BoxGeometry(226, 606, 226), // +6 thickness
-            new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide })
-        );
-        pillarOutline.position.copy(pillar.position);
-        baseGroup.add(pillarOutline);
-
-        this.pivot.add(baseGroup);
-
-        // Button Mesh
-        const domeGeo = new THREE.SphereGeometry(66, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
-        this.mesh = new THREE.Mesh(domeGeo, this.materials.rubber);
-        this.mesh.castShadow = true; this.mesh.receiveShadow = true;
-        this.mesh.scale.set(1, 0.7, 1);
-        this.pivot.add(this.mesh);
-
-        // TOON OUTLINE: BUTTON (Inverted Hull)
+        // --- PILLAR OUTLINE (Inverted Hull) ---
+        // Render a slightly larger black box inside-out around the pillar
+        const outlineGeo = new THREE.BoxGeometry(pillarW + 4, pillarH + 4, pillarD + 4);
         const outlineMat = new THREE.MeshBasicMaterial({
             color: 0x000000,
             side: THREE.BackSide
         });
-        const outlineMesh = new THREE.Mesh(domeGeo, outlineMat);
-        outlineMesh.scale.setScalar(1.05);
-        this.mesh.add(outlineMesh);
+        const outline = new THREE.Mesh(outlineGeo, outlineMat);
+        outline.position.copy(pillar.position);
+        this.pivot.add(outline);
+
+        // --- BUTTON BASE (Puck & Bezel) ---
+        const puck = new THREE.Mesh(new THREE.CylinderGeometry(70, 75, 20, 64), matBase);
+        puck.position.y = -10; puck.receiveShadow = true;
+        this.pivot.add(puck);
+
+        const bezel = new THREE.Mesh(new THREE.TorusGeometry(68, 6, 16, 100), matBase);
+        bezel.rotation.x = -Math.PI / 2; bezel.receiveShadow = true;
+        this.pivot.add(bezel);
+
+        // --- BUTTON DOME ---
+        const domeGeo = new THREE.SphereGeometry(66, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        this.mesh = new THREE.Mesh(domeGeo, matRubber);
+        this.mesh.castShadow = true; this.mesh.receiveShadow = true;
+        this.mesh.scale.set(1, 0.7, 1);
+        this.pivot.add(this.mesh);
+
+        // --- BUTTON OUTLINE ---
+        const btnOutlineMat = new THREE.MeshBasicMaterial({
+            color: 0x000000, side: THREE.BackSide
+        });
+        const btnOutline = new THREE.Mesh(domeGeo, btnOutlineMat);
+        btnOutline.scale.setScalar(1.05);
+        this.mesh.add(btnOutline);
 
         // Physics Data Init
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
-
-        // FLOOR REMOVED (Eliminates intersection lines on pillar face)
     }
 
     initConfetti() {
