@@ -423,14 +423,17 @@ class GalleryNav {
         // 2. EXHIBIT SPECIFIC LOGIC (3D ENGINE)
         // Canvas visibility is now handled by the #exhibit-2 section wrap
 
+        // 3. MANAGE BUTTON STATE (Audio/Physics)
+        if (window.rubberButton) {
+            window.rubberButton.setActive(id === 2);
+        }
+
         if (id === 2) {
             // Safe Init
             try {
                 if (!window.rubberButton) {
                     window.rubberButton = new RubberButton();
-                } else {
-                    // Animation loop is always running
-                    if (window.rubberButton.onResize) window.rubberButton.onResize();
+                    window.rubberButton.setActive(true); // Force active if just created
                 }
             } catch (err) {
                 console.error("Three.js Init Failed:", err);
@@ -465,6 +468,7 @@ class RubberButton {
         };
 
         // State
+        this.isActive = false; // Start inactive (Exhibit 1 is default)
         this.state = {
             isDragging: false,
             isReturning: false,
@@ -1080,7 +1084,7 @@ class RubberButton {
 
             // 2. BUTTON RENDERING
             // Only update button visuals/physics if it's visible
-            if (this.mesh.visible) {
+            if (this.isActive && this.mesh.visible) {
                 // ALIVE STATE (Heartbeat)
                 this.updateHeartbeat();
 
@@ -1103,9 +1107,9 @@ class RubberButton {
             this.updatePhysics(dt);
             this.updateFlesh(dt);
 
-            if (this.state.isExploded) {
+            if (this.isActive && this.state.isExploded) {
                 this.confettiGroup.visible = true;
-            } else {
+            } else if (this.isActive) {
                 this.renderer.render(this.scene, this.camera);
             }
         };
@@ -1348,6 +1352,22 @@ class RubberButton {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
+    }
+
+    /**
+     * Toggles the active state of the button (Audio/Rendering).
+     * @param {boolean} active 
+     */
+    setActive(active) {
+        this.isActive = active;
+        console.log(`RubberButton SetActive: ${active}`);
+
+        if (active) {
+            this.onResize(); // Ensure size is correct on wake
+            if (this.canvas) this.canvas.style.display = 'block';
+        } else {
+            if (this.canvas) this.canvas.style.display = 'none'; // Explicitly hide canvas
+        }
     }
 }
 
