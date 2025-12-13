@@ -11,7 +11,7 @@
  * @version 12.0 (Custom Cursor)
  */
 
-// THREE.js is loaded globally via index.html (Classic Script)
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
 const APP_CONFIG = {
     // -------------------------------------------------------------------------
@@ -1244,8 +1244,16 @@ class RubberButton {
             }
         });
 
-        // If no particles left and clean-up time passed, ensure state is reset?
-        // (Handled by explode timeout)
+
+    }
+
+    /**
+     * Updates interaction physics (Raycasting & Dragging).
+     * @param {number} dt 
+     */
+    updatePhysics(dt) {
+        if (this.state.isExploded) return;
+        // Stub to prevent crash. Interaction handled by events.
     }
 
     /**
