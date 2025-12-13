@@ -220,9 +220,8 @@ export class RubberButton {
         audioManager.playTone(400, 'sine', 0.1);
         audioManager.playTone(600, 'triangle', 0.15);
 
-        let center = this.physics.grabPoint.clone();
-        if (center.lengthSq() < 1) center = this.mesh.position.clone();
-        center.y += 5;
+        // origin: Shoot from underneath (Puck level)
+        let center = new THREE.Vector3(0, -15, 0);
 
         // Confetti Burst
         const batchSize = 150;
