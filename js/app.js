@@ -456,7 +456,7 @@ class RubberButton {
 
         // Configuration
         this.config = {
-            snapLimit: 50.0, // Restored Sticky Feel
+            snapLimit: 90.0, // Increased Drag Limit (User Request)
             softness: 80.0,  // Gaussian Blob Width
             gravity: 0.15,   // Floatier Confetti
             beatRate: 1200,  // Heartbeat ms
@@ -554,9 +554,9 @@ class RubberButton {
         this.scene.add(spotLight);
 
         // VISIBLE LIGHT BEAM
-        // Tapered Cone matching spotlight
-        const beamGeo = new THREE.CylinderGeometry(20, 200, 1000, 64, 1, true);
-        beamGeo.translate(0, -500, 0); // Pivot at top
+        // Tapered Cone matching spotlight, extended to bottom
+        const beamGeo = new THREE.CylinderGeometry(20, 400, 3000, 64, 1, true);
+        beamGeo.translate(0, -1500, 0); // Pivot at top (extends -3000 down)
         const beamMat = new THREE.MeshBasicMaterial({
             color: 0xfffdf5, // Warm White
             transparent: true,
@@ -644,15 +644,6 @@ class RubberButton {
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // ILLUMINATED FLOOR POOL
-        const lightPool = new THREE.Mesh(
-            new THREE.CircleGeometry(190, 64),
-            new THREE.MeshBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.3 })
-        );
-        lightPool.rotation.x = -Math.PI / 2;
-        lightPool.position.y = -269; // Just above floor mesh (-270)
-        this.pivot.add(lightPool);
-
         // SHADOW FLOOR (Transparent for Sage Green BG)
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(3000, 3000),
@@ -665,7 +656,7 @@ class RubberButton {
     }
 
     initConfetti() {
-        const count = 150;
+        const count = 500; // Extravaganza!
         this.confettiGroup = new THREE.Group();
         this.scene.add(this.confettiGroup);
 
@@ -744,12 +735,11 @@ class RubberButton {
             p.mesh.position.copy(center).addScalar((Math.random() - 0.5) * 5);
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
-            // LOGIC FIX: Velocities must be small for per-frame updates
-            // Previous was 50 (Instant teleport). New is 2-4.
+            // LOGIC FIX: Extravaganza Spread
             p.vel.set(
-                (Math.random() - 0.5) * 3.0,   // Spread X
-                2.0 + Math.random() * 3.0,     // Shoot UP (Petal drift start)
-                (Math.random() - 0.5) * 3.0    // Spread Z
+                (Math.random() - 0.5) * 15.0,   // Wide Spread X
+                5.0 + Math.random() * 8.0,     // Shoot UP High
+                (Math.random() - 0.5) * 15.0    // Wide Spread Z
             );
 
             // Gentle tumbling
