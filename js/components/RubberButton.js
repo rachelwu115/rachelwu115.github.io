@@ -247,7 +247,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                12.0 + Math.random() * 4.0, // TUNED: Medium burst (Rollback)
+                6.0 + Math.random() * 4.0, // TUNED: Very Low burst (User Request)
                 (Math.random() - 0.5) * 12.0
             );
 
@@ -444,7 +444,7 @@ export class RubberButton {
                 audioManager.playTone(150, 'square', 0.1, 0.3);
                 this.canvas.style.cursor = 'grabbing';
                 if (this.btnOutline) this.btnOutline.visible = false; // Hide on stretch
-                this.spawnDrip(); // Blood Effect
+                // this.spawnDrip(); // Blood Effect DISABLED per user request
             }
         };
 
