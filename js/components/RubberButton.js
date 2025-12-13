@@ -239,7 +239,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                8.0 + Math.random() * 6.0, // TUNED: Lower burst, just over edge
+                4.0 + Math.random() * 4.0, // TUNED: Very low hop
                 (Math.random() - 0.5) * 12.0
             );
 
@@ -281,7 +281,7 @@ export class RubberButton {
         this.particles.forEach((p) => {
             if (p.life > 0) {
                 p.mesh.position.add(p.vel);
-                p.vel.y -= 0.05;
+                p.vel.y -= 0.15; // TUNED: High Gravity (Fast Fall)
                 p.vel.multiplyScalar(0.99);
 
                 const sSpeed = p.swaySpeed || 0.005;

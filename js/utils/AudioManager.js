@@ -9,11 +9,11 @@ export class AudioManager {
         this.masterGain.gain.value = 0.3; // safe master volume
         this.masterGain.connect(this.ctx.destination);
 
-        // Scale: E Minor Pentatonic (Sad/Melancholy)
+        // Scale: E Minor Pentatonic (Sad/Melancholy) - Lower Octave (Deep)
         this.scale = [
-            164.81, 196.00, 220.00, 246.94, // Octave 3
-            293.66, 329.63, 392.00, 440.00, // Octave 4
-            493.88, 587.33                  // Octave 5
+            82.41, 98.00, 110.00, 123.47, // Octave 2
+            146.83, 164.81, 196.00, 220.00, // Octave 3
+            246.94, 293.66                  // Octave 4
         ];
 
         // Echo / Delay System
@@ -21,7 +21,7 @@ export class AudioManager {
         this.delayNode.delayTime.value = 0.4; // 400ms echo
 
         this.feedbackGain = this.ctx.createGain();
-        this.feedbackGain.gain.value = 0.35; // Repeats
+        this.feedbackGain.gain.value = 0.15; // TUNED: Quieter Echo
 
         // Internal Routing (Feedback Loop)
         this.delayNode.connect(this.feedbackGain);
@@ -76,7 +76,7 @@ export class AudioManager {
         // Add slight random detune for organic feel
         const detune = (Math.random() - 0.5) * 2;
 
-        this.playTone(freq + detune, 'sine', 0.6, 0.2);
+        this.playTone(freq + detune, 'sine', 0.8, 0.1); // TUNED: Longer duration (0.8), Quieter (0.1)
     }
 }
 
