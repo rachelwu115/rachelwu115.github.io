@@ -238,7 +238,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                7.0 + Math.random() * 4.0, // TUNED: Low, crisp arc (7-11)
+                4.5 + Math.random() * 2.0, // TUNED: Calculated to just clear height=60 (4.5 min)
                 (Math.random() - 0.5) * 12.0
             );
 

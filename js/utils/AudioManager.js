@@ -15,7 +15,8 @@ export class AudioManager {
             659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
             261.63, 329.63, 440.00, 493.88, // C E A B
             329.63, 415.30, 493.88, 523.25, // E G# B C
-            329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E E D# E D# E B D C A
+            329.63, 415.30, 493.88, 523.25, // E G# B C
+            // REMOVED Reprise to avoid "reset" feeling
             // Section B (Transition)
             493.88, 523.25, 587.33, 659.25, // B C D E
             392.00, 698.46, 659.25, 587.33, // G F E D
@@ -29,18 +30,19 @@ export class AudioManager {
         this.delayNode.delayTime.value = 0.4; // 400ms echo
 
         this.feedbackGain = this.ctx.createGain();
-        this.feedbackGain.gain.value = 0.3; // Repeats (Decay)
+        this.feedbackGain.gain.value = 0.0; // TUNED: No Echo (User Check)
 
-        // Wet Gain (Controls volume of ALL echoes, including the first one)
+        // Wet Gain (Controls volume of ALL echoes)
         this.wetGain = this.ctx.createGain();
-        this.wetGain.gain.value = 0.15; // TUNED: Subtle Echo Volume
+        this.wetGain.gain.value = 0.0; // TUNED: No Echo
 
         // Internal Routing (Feedback Loop)
-        this.delayNode.connect(this.feedbackGain);
-        this.feedbackGain.connect(this.delayNode);
+        // Disconnected for safety to ensure no "double note"
+        // this.delayNode.connect(this.feedbackGain);
+        // this.feedbackGain.connect(this.delayNode);
 
         // Output Routing
-        this.delayNode.connect(this.wetGain);
+        // this.delayNode.connect(this.wetGain);
         this.wetGain.connect(this.masterGain);
     }
 
