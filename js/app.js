@@ -500,6 +500,7 @@ class RubberButton {
         this.initLighting();
         this.initGeometry();
         this.initConfetti();
+        this.initFlesh(); // New Gore System
         this.initAudio();
         this.bindEvents();
         this.startLoop();
@@ -675,6 +676,43 @@ class RubberButton {
         }
     }
 
+    initFlesh() {
+        // "Flesh & Blood" Particle System
+        this.fleshChunks = [];
+        this.fleshGroup = new THREE.Group();
+        this.scene.add(this.fleshGroup);
+
+        // Chunky Debris Geometry
+        const baseGeo = new THREE.IcosahedronGeometry(1, 0); // Radius 1, will scale
+        const mat = new THREE.MeshPhysicalMaterial({
+            color: 0x8a0303, // Dried Blood
+            emissive: 0x220000,
+            roughness: 0.2, // Wet
+            metalness: 0.1,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.1,
+            flatShading: true
+        });
+
+        const count = 100;
+        for (let i = 0; i < count; i++) {
+            const mesh = new THREE.Mesh(baseGeo, mat.clone());
+            mesh.visible = false;
+            // Random scales for chunkiness
+            const s = 3 + Math.random() * 6;
+            mesh.scale.set(s, s, s);
+
+            this.fleshGroup.add(mesh);
+            this.fleshChunks.push({
+                mesh: mesh,
+                vel: new THREE.Vector3(),
+                rotVel: new THREE.Vector3(),
+                life: 0,
+                stuck: false // Physics State
+            });
+        }
+    }
+
     /**
      * Sets up the AudioContext and a helper for playing tones.
      */
@@ -763,6 +801,9 @@ class RubberButton {
             p.mesh.scale.set(0.1, 0.1, 0.1); // Start small, pop in
         }
 
+        // Trigger Flesh Burst
+        this.explodeFlesh(center);
+
         // REGENERATE FAST (200ms)
         setTimeout(() => {
             // Check if we are still in exploded state (safety)
@@ -796,6 +837,98 @@ class RubberButton {
             this.playTone(100, 'sine', 0.3, 0.2);
         }, 200);
     }
+
+    explodeFlesh(center) {
+        // Activate chunks
+        this.fleshChunks.forEach(p => {
+            p.mesh.visible = true;
+            p.life = 3.0 + Math.random() * 2.0; // Persist longer to drip
+            p.stuck = false; // Reset sticking
+
+            // Start inside button
+            p.mesh.position.copy(center).addScalar((Math.random() - 0.5) * 40);
+
+            // Explosive Velocity (Outward + Up)
+            p.vel.set(
+                (Math.random() - 0.5) * 25.0,
+                10.0 + Math.random() * 15.0,
+                (Math.random() - 0.5) * 25.0
+            );
+
+            // Tumbling
+            p.rotVel.set(
+                Math.random() * 0.4, Math.random() * 0.4, Math.random() * 0.4
+            );
+        });
+    }
+
+    updateFlesh(dt) {
+        const bounds = 110; // Pillar is 220 wide -> +/- 110
+        const topY = -20;
+        const drag = 0.98;
+
+        this.fleshChunks.forEach(p => {
+            if (!p.mesh.visible) return;
+
+            p.life -= dt;
+            if (p.life <= 0) {
+                p.mesh.visible = false;
+                return;
+            }
+
+            // Gravity
+            if (!p.stuck) {
+                p.vel.y -= this.config.gravity * 3.0 * (dt * 60); // Heavier than confetti
+            } else {
+                p.vel.y -= this.config.gravity * 0.2 * (dt * 60); // Viscous Drip
+            }
+
+            // Apply Velocity
+            p.mesh.position.add(p.vel);
+            p.mesh.rotation.x += p.rotVel.x;
+            p.mesh.rotation.y += p.rotVel.y;
+            p.mesh.rotation.z += p.rotVel.z;
+
+            // DRIP PHYSICS (Collision with Pillar)
+            // If below top face and within X/Z bounds...
+            if (p.mesh.position.y < topY - 5) {
+                const x = p.mesh.position.x;
+                const z = p.mesh.position.z;
+
+                // Check if *inside* or *touching* the pillar column
+                // Allow slightly outside for "surface tension" thickness
+                if (Math.abs(x) < bounds + 10 && Math.abs(z) < bounds + 10) {
+
+                    // Identify Closest Face to snap to
+                    const distRight = Math.abs(bounds - x);
+                    const distLeft = Math.abs(-bounds - x);
+                    const distFront = Math.abs(bounds - z);
+                    const distBack = Math.abs(-bounds - z);
+
+                    const min = Math.min(distRight, distLeft, distFront, distBack);
+
+                    if (min < 15) { // Close enough to stick
+                        p.stuck = true;
+
+                        // Kill Horizontal Momentum (Stick)
+                        p.vel.x *= 0.1;
+                        p.vel.z *= 0.1;
+
+                        // Viscosity (Slow vertical drip)
+                        if (p.vel.y < -2.0) p.vel.y = -2.0;
+
+                        // Snap to Surface
+                        if (min === distRight) p.mesh.position.x = bounds + 2; // Right Face
+                        else if (min === distLeft) p.mesh.position.x = -bounds - 2; // Left
+                        else if (min === distFront) p.mesh.position.z = bounds + 2; // Front
+                        else p.mesh.position.z = -bounds - 2; // Back
+                    }
+                }
+            }
+        });
+    }
+
+
 
     /**
      * Hides all confetti particles.
