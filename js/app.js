@@ -11,6 +11,8 @@
  * @version 12.0 (Custom Cursor)
  */
 
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
 const APP_CONFIG = {
     // -------------------------------------------------------------------------
     // ASSETS
@@ -437,7 +439,7 @@ class GalleryNav {
     }
 }
 
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
 
 /**
  * COMPONENT: Sticky Rubber Button (Three.js WebGL)
@@ -1358,7 +1360,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     new MagneticButton({ area: '.magnetic-area', button: '.magnetic-content' });
     new Mirror();
-    window.rubberButton = new RubberButton();
+    try {
+        console.log("Initializing RubberButton...");
+        window.rubberButton = new RubberButton();
+        console.log("RubberButton Initialized.");
+    } catch (e) {
+        console.error("CRITICAL: RubberButton Crash", e);
+    }
     new GalleryNav();
     new GlassCase();
 });
