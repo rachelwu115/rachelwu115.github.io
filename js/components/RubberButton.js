@@ -238,7 +238,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                12.0 + Math.random() * 4.0, // TUNED: Medium burst (Don't fly off screen)
+                7.0 + Math.random() * 4.0, // TUNED: Low, crisp arc (7-11)
                 (Math.random() - 0.5) * 12.0
             );
 
