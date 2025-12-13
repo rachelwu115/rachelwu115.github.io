@@ -476,6 +476,7 @@ class RubberButton {
             isDripping: false, // Drips functionality removed, but keeping for consistency if re-added
             beatPhase: 0,
         };
+        this.localTime = 0;
 
         // Physics Vectors
         this.physics = {
@@ -996,6 +997,9 @@ class RubberButton {
         const animate = () => {
             requestAnimationFrame(animate);
 
+            const dt = Math.min(clock.getDelta(), 0.1);
+            if (this.isActive) this.localTime += dt * 1000;
+
             // 1. CONFETTI (Always update if active)
             this.updateConfetti();
 
@@ -1018,7 +1022,6 @@ class RubberButton {
             }
 
             // PHYSICS UPDATE
-            const dt = Math.min(clock.getDelta(), 0.1);
 
             // ALWAYS UPDATE PARTICLES (Fixes freezing issue)
             this.updatePhysics(dt);
@@ -1039,12 +1042,12 @@ class RubberButton {
      * Updates the heartbeat and shiver effects for the button.
      */
     updateHeartbeat() {
-        const now = Date.now();
+        const now = this.localTime;
         const phase = now % this.config.beatRate;
 
         // --- ORGANIC REGROWTH LOGIC ---
         if (this.state.isRegenerating) {
-            this.state.regrowthProgress += 0.025; // Crisp Speed
+            this.state.regrowthProgress += 0.08; // INSTANT Speed
 
             if (this.state.regrowthProgress >= 1.0) {
                 this.state.regrowthProgress = 1.0;
@@ -1286,6 +1289,10 @@ class RubberButton {
      */
     setActive(active) {
         this.isActive = active;
+        if (active) {
+            this.localTime = 0;
+            this.state.beatPhase = 0;
+        }
         console.log(`RubberButton SetActive: ${active}`);
 
         if (active) {
