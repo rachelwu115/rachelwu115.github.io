@@ -456,10 +456,10 @@ class RubberButton {
 
         // Configuration
         this.config = {
-            snapLimit: 90.0, // Increased Drag Limit (User Request)
-            softness: 80.0,  // Gaussian Blob Width
-            gravity: 0.15,   // Floatier Confetti
-            beatRate: 1200,  // Heartbeat ms
+            snapLimit: 70.0, // Reduced from 90 (User: "Sticky point too big")
+            softness: 100.0, // Increased Softness ("Liquitier")
+            gravity: 0.15,
+            beatRate: 1200,
         };
 
         // State
@@ -554,8 +554,8 @@ class RubberButton {
         this.scene.add(spotLight);
 
         // VISIBLE LIGHT BEAM
-        // Narrowed Beam (Adjusted for aesthetics while keeping Pillar inside)
-        const beamGeo = new THREE.CylinderGeometry(180, 700, 3000, 64, 1, true);
+        // Narrowed to strict minimum (Radius 160 > Diagonal 156)
+        const beamGeo = new THREE.CylinderGeometry(160, 600, 3000, 64, 1, true);
         beamGeo.translate(0, -1500, 0); // Pivot at top (extends -3000 down)
         const beamMat = new THREE.MeshBasicMaterial({
             color: 0xfffdf5, // Warm White
@@ -647,7 +647,8 @@ class RubberButton {
     }
 
     initConfetti() {
-        const count = 500; // Extravaganza!
+        const count = 600; // Larger Pool for Overlapping Bursts
+        this.confettiIndex = 0; // Ring Buffer Pointer
         this.confettiGroup = new THREE.Group();
         this.scene.add(this.confettiGroup);
 
@@ -711,33 +712,41 @@ class RubberButton {
         setTimeout(() => this.canvas.style.backgroundColor = '', 150);
 
         // Sound: "Pop"
-        this.playTone(150, 'sawtooth', 0.1, 0.5);
-        setTimeout(() => this.playTone(300, 'square', 0.1, 0.3), 80);
+        this.playTone(400, 'sine', 0.1);
+        this.playTone(600, 'triangle', 0.15);
 
         // Spawn Logic
         let center = this.physics.grabPoint.clone();
         if (center.lengthSq() < 1) center = this.mesh.position.clone();
         center.y += 5; // Lift slightly
 
-        this.particles.forEach((p) => {
+        // RING BUFFER EMISSION: Only emit a batch, keeping others falling
+        const batchSize = 150;
+        const total = this.particles.length;
+
+        for (let i = 0; i < batchSize; i++) {
+            const p = this.particles[this.confettiIndex % total];
+            this.confettiIndex++;
+
             p.mesh.visible = true;
+            p.life = 1.0;
 
             // Start at burst point
             p.mesh.position.copy(center).addScalar((Math.random() - 0.5) * 5);
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
-            // LOGIC FIX: Extravaganza Spread
+            // LOGIC FIX: Lower Height ("Fly less high")
             p.vel.set(
-                (Math.random() - 0.5) * 15.0,   // Wide Spread X
-                5.0 + Math.random() * 8.0,     // Shoot UP High
-                (Math.random() - 0.5) * 15.0    // Wide Spread Z
+                (Math.random() - 0.5) * 12.0,   // Wide Spread X
+                3.0 + Math.random() * 5.0,     // Lower Y (Was 5-13)
+                (Math.random() - 0.5) * 12.0    // Wide Spread Z
             );
 
             // Gentle tumbling
             p.rotVel.set(
-                (Math.random() - 0.5) * 0.1,
-                (Math.random() - 0.5) * 0.1,
-                (Math.random() - 0.5) * 0.1
+                Math.random() * 0.2,
+                Math.random() * 0.2,
+                Math.random() * 0.2
             );
 
             // Aesthetic Colors (Rusty Lake Theme)
@@ -751,7 +760,7 @@ class RubberButton {
             // Long Life (for slow fall)
             p.life = 2.0 + Math.random() * 1.5;
             p.mesh.scale.set(0.1, 0.1, 0.1); // Start small, pop in
-        });
+        }
 
         // REGENERATE FAST (200ms)
         setTimeout(() => {
