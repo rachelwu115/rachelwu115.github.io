@@ -612,7 +612,7 @@ class RubberButton {
         // Face Materials: [Right, Left, Top, Bottom, Front, Back]
         // Use BasicMaterial to ignore lighting and ensure solid, flat colors
         const matTop = new THREE.MeshBasicMaterial({ color: 0xffffff }); // Bright White Top
-        const matSide = new THREE.MeshBasicMaterial({ color: 0xdddddd }); // Light Grey Sides
+        const matSide = new THREE.MeshBasicMaterial({ color: 0xe6e6e6 }); // Subtle Light Grey
 
         const pillar = new THREE.Mesh(pillarGeo, [
             matSide, matSide, matTop, matSide, matSide, matSide
@@ -653,15 +653,7 @@ class RubberButton {
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // SHADOW FLOOR (Transparent for Sage Green BG)
-        const floor = new THREE.Mesh(
-            new THREE.PlaneGeometry(3000, 3000),
-            new THREE.ShadowMaterial({ opacity: 0.2, color: 0x000000 })
-        );
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.y = -320; // Match new pillar base
-        floor.receiveShadow = true;
-        this.pivot.add(floor);
+        // FLOOR REMOVED (Eliminates intersection lines on pillar face)
     }
 
     initConfetti() {
