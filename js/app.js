@@ -510,6 +510,7 @@ class RubberButton {
         this.initAudio();
         this.bindEvents();
         this.startLoop();
+        this.setActive(false); // Hide initially to prevent blocking Exhibit 1
     }
 
     /**
@@ -1111,9 +1112,10 @@ class RubberButton {
             this.updatePhysics(dt);
             // this.updateFlesh(dt);
 
-            if (this.isActive && this.state.isExploded) {
-                this.confettiGroup.visible = true;
-            } else if (this.isActive) {
+            if (this.isActive) {
+                if (this.state.isExploded) {
+                    this.confettiGroup.visible = true;
+                }
                 this.renderer.render(this.scene, this.camera);
             }
         };
