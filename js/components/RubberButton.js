@@ -16,8 +16,8 @@ export class RubberButton {
 
         // Configuration
         this.config = {
-            snapLimit: 80.0, // Sticky/Stretchy Balance
-            softness: 150.0, // Liquid/Gooey Feel
+            snapLimit: 120.0, // Sticky/Stretchy Balance
+            softness: 200.0, // Liquid/Gooey Feel
             gravity: 0.15,
             beatRate: 1200,
         };
@@ -171,7 +171,7 @@ export class RubberButton {
         // Button Outline
         const btnOutlineMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide });
         const btnOutline = new THREE.Mesh(domeGeo, btnOutlineMat);
-        btnOutline.scale.setScalar(1.05);
+        btnOutline.scale.setScalar(1.02);
         this.mesh.add(btnOutline);
 
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
@@ -434,7 +434,7 @@ export class RubberButton {
         const phase = now % this.config.beatRate;
 
         if (this.state.isRegenerating) {
-            this.state.regrowthProgress += 0.08; // TUNED: INSTANT
+            this.state.regrowthProgress += 0.04; // TUNED: Slower than instant
 
             if (this.state.regrowthProgress >= 1.0) {
                 this.state.regrowthProgress = 1.0;
@@ -484,7 +484,7 @@ export class RubberButton {
         const positions = this.mesh.geometry.attributes.position.array;
 
         if (!this.state.isDragging) {
-            const force = P.dragOffset.clone().multiplyScalar(-0.15);
+            const force = P.dragOffset.clone().multiplyScalar(-0.1);
             P.returnVelocity.add(force).multiplyScalar(0.85);
             P.dragOffset.add(P.returnVelocity);
             if (P.dragOffset.lengthSq() < 0.01 && P.returnVelocity.lengthSq() < 0.01) {
