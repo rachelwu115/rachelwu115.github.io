@@ -103,12 +103,44 @@ export class Mirror {
                 }
             }
 
+            // EXTRACT CONTOUR & MAKE TRANSPARENT
+            this.contour = []; // Store normalized (0..1) coordinates of edge pixels
+
             for (let i = 0; i < w * h; i++) {
                 const idx = i * 4;
+                const x = i % w;
+                const y = Math.floor(i / w);
+
                 if (visited[i] === 1) {
-                    data[idx + 3] = 0;
+                    data[idx + 3] = 0; // Make background transparent
                 } else {
-                    data[idx] = 0; data[idx + 1] = 0; data[idx + 2] = 0; data[idx + 3] = 255;
+                    // It's part of the shadowman
+                    data[idx] = 0; data[idx + 1] = 0; data[idx + 2] = 0; data[idx + 3] = 255; // Force black
+
+                    // Edge Check: If any neighbor is visited (transparent background), this is an edge
+                    let isEdge = false;
+                    const neighbors = [
+                        { nx: x, ny: y - 1 }, { nx: x, ny: y + 1 },
+                        { nx: x - 1, ny: y }, { nx: x + 1, ny: y }
+                    ];
+                    for (const { nx, ny } of neighbors) {
+                        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                            const nIdx = ny * w + nx;
+                            if (visited[nIdx] === 1) {
+                                isEdge = true;
+                                break;
+                            }
+                        } else {
+                            // Border is also edge
+                            isEdge = true;
+                            break;
+                        }
+                    }
+
+                    if (isEdge) {
+                        // Store normalized coordinates for resolution independence
+                        this.contour.push({ x: x / w, y: y / h });
+                    }
                 }
             }
 
@@ -210,6 +242,7 @@ export class Mirror {
     }
 
     update() {
+        // Update Tears
         const chinY = this.layout.y + (APP_CONFIG.PHYSICS.BOUNDARY_Y * this.layout.h);
 
         for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -240,26 +273,75 @@ export class Mirror {
             }
         }
 
-        // Update constant shake
-        this.shake.x = (Math.random() - 0.5) * this.shake.intensity;
-        this.shake.y = (Math.random() - 0.5) * this.shake.intensity;
+        // Update Bubbles
+        this.updateBubbles();
+    }
+
+    updateBubbles() {
+        if (!this.contour || this.contour.length === 0) return;
+        if (!this.bubbles) this.bubbles = [];
+
+        // Spawn new bubbles repeatedly
+        // Spawn rate: 0-3 bubbles per frame
+        const spawnCount = Math.floor(Math.random() * 2);
+        for (let i = 0; i < spawnCount; i++) {
+            // Pick random point on contour
+            const pt = this.contour[Math.floor(Math.random() * this.contour.length)];
+
+            // Map normalized pt to screen space
+            const bx = this.layout.x + pt.x * this.layout.w;
+            const by = this.layout.y + pt.y * this.layout.h;
+
+            this.bubbles.push({
+                x: bx,
+                y: by,
+                r: 1 + Math.random() * 3, // Start small
+                maxR: 4 + Math.random() * 8, // Target size (sludge bubbles)
+                growth: 0.1 + Math.random() * 0.2,
+                life: 1.0,
+                decay: 0.01 + Math.random() * 0.02
+            });
+        }
+
+        // Update existing
+        for (let i = this.bubbles.length - 1; i >= 0; i--) {
+            const b = this.bubbles[i];
+            b.r += b.growth;
+            b.life -= b.decay;
+
+            // Slight rise
+            b.y -= 0.2;
+
+            if (b.life <= 0) {
+                this.bubbles.splice(i, 1);
+            }
+        }
     }
 
     draw() {
         if (!this.ctx) return;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Draw Bubbles BEHIND image (or on top? User asked for outline effect. On top looks "boiling")
+        // Let's draw on top to mask edge glitches and look like growing tumors/bubbles
+
         if (this.img) {
-            this.ctx.save();
-            // Apply Glitch Shake
-            this.ctx.translate(this.shake.x, this.shake.y);
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
-            this.ctx.restore();
 
             // Draw Eyes (Overlay)
             const { LEFT, RIGHT } = APP_CONFIG.EYES;
             this.drawEye(LEFT.x, LEFT.y);
             this.drawEye(RIGHT.x, RIGHT.y);
+        }
+
+        // Draw Bubbles
+        if (this.bubbles) {
+            this.ctx.fillStyle = '#000000';
+            this.bubbles.forEach(b => {
+                this.ctx.beginPath();
+                this.ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                this.ctx.fill();
+            });
         }
 
         // Draw Tears
