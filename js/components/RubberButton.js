@@ -787,7 +787,9 @@ export class RubberButton {
                 let totalSquash = (radialSquash * 0.01 * w) + gSquashFactor;
                 if (totalSquash < -0.9) totalSquash = -0.9;
 
-                if (isNaN(totalSquash) || isNaN(w)) continue;
+                // Fallback instead of skipping to prevent "frozen" vertices
+                if (isNaN(totalSquash)) totalSquash = 0;
+                if (isNaN(w)) w = 0;
 
                 // Apply safe squash
                 const sxTotal = ox * totalSquash;
@@ -797,7 +799,7 @@ export class RubberButton {
                 let pz = oz + (localDrag.z * w) + szTotal;
                 let py = this.originalPositions[i * 3 + 1] + (effDragY * w);
 
-                // Final NaN Guard
+                // Final NaN Guard - Reset to original if calculation fails
                 if (isNaN(px) || isNaN(py) || isNaN(pz)) {
                     px = ox; py = oy; pz = oz;
                 }
