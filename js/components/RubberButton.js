@@ -630,9 +630,10 @@ export class RubberButton {
             const dz = pos[i + 2] - cz;
             const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-            // Heavy-Tail Decay: 1 / (1 + distance / softness)
-            // Sharp peak (derivative = -1/s at 0), but long tail (gooey)
-            let w = 1.0 / (1.0 + dist / this.config.softness);
+            // Squared Heavy-Tail Decay: 1 / (1 + distance / softness)^2
+            // Faster decay (better isolation) but still smooth (no sharp cutoff)
+            let x = dist / this.config.softness;
+            let w = 1.0 / ((1.0 + x) * (1.0 + x));
 
             if (pos[i + 1] < grabY) {
                 let pin = Math.max(0, pos[i + 1] / grabY);
@@ -756,8 +757,9 @@ export class RubberButton {
                 positions[i * 3] = ox + (localDrag.x * w) + sx;
                 positions[i * 3 + 2] = oz + (localDrag.z * w) + sz;
                 let newY = this.originalPositions[i * 3 + 1] + (effDragY * w);
-                const limitY = (2.0 - P.pressY) / this.mesh.scale.y;
-                newY = Math.max(limitY, newY);
+
+                // Removed limitY clamping to fix base artifacts
+                // The 'pin' logic in calculateWeights handles base stability
                 positions[i * 3 + 1] = newY;
             }
             this.mesh.geometry.attributes.position.needsUpdate = true;
