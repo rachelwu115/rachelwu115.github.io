@@ -448,6 +448,8 @@ export class RubberButton {
 
                 // Repulsion Logic (Restored)
                 const distSq = ray.distanceSqToPoint(p.mesh.position);
+                if (Math.random() < 0.001) console.log('DistSq:', distSq.toFixed(2), 'RadiusSq:', C.REPULSE_RADIUS_SQ);
+
                 if (distSq < C.REPULSE_RADIUS_SQ) {
                     const target = new THREE.Vector3();
                     ray.closestPointToPoint(p.mesh.position, target);
@@ -538,7 +540,9 @@ export class RubberButton {
 
         const onMove = (e) => {
             const { x, y } = getNDC(e);
-            this.mouse.set(x, y); // Always update mouse for global effects (confetti)
+            this.mouse.set(x, y);
+            // DEBUG: Trace mouse movement
+            if (Math.random() < 0.05) console.log('Mouse NDC:', x.toFixed(2), y.toFixed(2));
 
             if (!this.state.isDragging || this.state.isExploded) return;
 
