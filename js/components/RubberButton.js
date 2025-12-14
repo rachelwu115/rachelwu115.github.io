@@ -233,7 +233,8 @@ export class RubberButton {
         let center = new THREE.Vector3(0, -60, 0);
 
         // Confetti Burst
-        const batchSize = 250; // TUNED: Max Density (Fill Screen)
+        const C = APP_CONFIG.CONFETTI;
+        const batchSize = C.BATCH_SIZE;
         const total = this.particles.length;
 
         for (let i = 0; i < batchSize; i++) {
@@ -246,9 +247,9 @@ export class RubberButton {
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
             p.vel.set(
-                (Math.random() - 0.5) * 8.0, // TUNED: Wide Spread (Curtain)
-                5.0 + Math.random() * 4.0, // TUNED: Short/Low (5-9)
-                (Math.random() - 0.5) * 8.0
+                (Math.random() - 0.5) * C.SPREAD,
+                C.VELOCITY_Y_BASE + Math.random() * C.VELOCITY_Y_VAR,
+                (Math.random() - 0.5) * C.SPREAD
             );
 
             p.rotVel.set(Math.random() * 0.2, Math.random() * 0.2, Math.random() * 0.2);
@@ -386,25 +387,24 @@ export class RubberButton {
     updateConfetti() {
         this.updateDrips();
         const now = Date.now();
+        const C = APP_CONFIG.CONFETTI;
 
         // INTERACTIVITY: Cursor Repulsion
         // Update raycaster with current mouse pos
         this.raycaster.setFromCamera(this.mouse, this.camera);
         const ray = this.raycaster.ray;
-        const repulseRadiusSq = 2500; // 50^2
-        const repulseStrength = 2.0;
 
         this.particles.forEach((p) => {
             if (p.life > 0) {
                 // Physics
                 p.mesh.position.add(p.vel);
-                p.vel.y -= 0.04; // TUNED: Feather Gravity (Slow Drift)
-                p.vel.multiplyScalar(0.99);
+                p.vel.y -= C.GRAVITY;
+                p.vel.multiplyScalar(C.DRAG); // AIR RESISTANCE: Decelerates fast
 
                 // Sway
-                const sSpeed = p.swaySpeed || 0.005;
+                const sSpeed = p.swaySpeed || C.SWAY_SPEED;
                 const sOffset = p.swayOffset || 0;
-                const sway = Math.sin(now * sSpeed + sOffset) * 0.1;
+                const sway = Math.sin(now * sSpeed + sOffset) * C.SWAY_AMP;
                 p.mesh.position.x += sway; p.mesh.position.z += sway;
 
                 // Rotation
@@ -416,7 +416,7 @@ export class RubberButton {
                 // Calculate distance squared from particle to the infinite ray
                 const distSq = ray.distanceSqToPoint(p.mesh.position);
 
-                if (distSq < repulseRadiusSq) {
+                if (distSq < C.REPULSE_RADIUS_SQ) {
                     // Find closest point on ray
                     const target = new THREE.Vector3();
                     ray.closestPointToPoint(p.mesh.position, target);
@@ -426,16 +426,16 @@ export class RubberButton {
 
                     // Force falls off with distance interaction
                     // Add to velocity
-                    p.vel.add(dir.multiplyScalar(repulseStrength));
+                    p.vel.add(dir.multiplyScalar(C.REPULSE_STRENGTH));
                 }
 
-                p.life -= 0.005;
+                p.life -= C.LIFE_DECAY;
 
-                if (p.life <= 0 || p.mesh.position.y < -100) {
+                if (p.life <= 0 || p.mesh.position.y < C.DEATH_Y) {
                     p.mesh.visible = false;
                     p.life = 0;
                 }
-                const s = Math.min(1.0, p.life * 5.0);
+                const s = Math.min(1.0, p.life * C.SCALE_FACTOR);
                 p.mesh.scale.set(s, s, s);
             }
         });
