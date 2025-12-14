@@ -31,8 +31,8 @@ export const APP_CONFIG = {
         FLUTTER_SPEED: 0.15,
         FLUTTER_AMP: 5.0,
         WOBBLE_SPEED: 0.1,
-        REPULSE_RADIUS_SQ: 25000, // TUNED: Massive touch radius
-        REPULSE_STRENGTH: 50.0,   // TUNED: Super Strong Push
+        REPULSE_RADIUS_SQ: 6000, // TUNED: Gentle touch radius
+        REPULSE_STRENGTH: 8.0,   // TUNED: Gentle Push
         LIFE_DECAY: 0.002,
         DEATH_Y: -2000,
         SCALE_FACTOR: 5.0,
