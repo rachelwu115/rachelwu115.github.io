@@ -191,7 +191,7 @@ export class RubberButton {
     }
 
     initConfetti() {
-        const count = 8000; // Safe limit for simple plane geometry
+        const count = 3000; // Reduced pool for giant sheets
         this.confettiIndex = 0;
         this.confettiGroup = new THREE.Group();
         this.scene.add(this.confettiGroup);
