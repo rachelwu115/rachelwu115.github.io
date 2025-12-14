@@ -581,8 +581,8 @@ export class RubberButton {
             if (!this.state.isDragging || this.state.isExploded) return;
 
             if (Math.abs(x) > 0.95 || Math.abs(y) > 0.95) {
-                // this.explode(); // DISABLED: Prevent disappearance
-                // this.canvas.style.cursor = 'grab';
+                this.explode();
+                this.canvas.style.cursor = 'grab';
                 return;
             }
             const ray = new THREE.Ray();
@@ -593,7 +593,7 @@ export class RubberButton {
             this.physics.dragOffset.copy(targetPos).sub(this.physics.grabPoint);
             if (this.physics.dragOffset.y > 5) this.physics.targetPressY = 0;
             if (this.physics.dragOffset.length() > this.config.snapLimit) {
-                // this.explode(); // DISABLED: Prevent disappearance
+                this.explode();
                 this.canvas.style.cursor = 'grab';
             }
         };

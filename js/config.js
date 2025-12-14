@@ -23,7 +23,7 @@ export const APP_CONFIG = {
         softness: 12.0,   // TUNED: Localized Slime necking
         stiffness: 0.1,   // TUNED: Stretchy
         damping: 0.85,    // TUNED: Viscous/Sticky
-        snapLimit: 10000.0, // TUNED: Effectively infinite (No explosion)
+        snapLimit: 500.0, // TUNED: Safe for deep press, burstable on extreme pull
         bulgeStrength: 6.0, // TUNED: Strong muffin top
         beatRate: 3000
     },
