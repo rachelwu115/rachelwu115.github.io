@@ -24,6 +24,7 @@ export const APP_CONFIG = {
         stiffness: 0.1,   // TUNED: Stretchy
         damping: 0.85,    // TUNED: Viscous/Sticky
         snapLimit: 150.0, // TUNED: Allow more stretch
+        bulgeStrength: 4.0, // TUNED: Muffin top expansion
         beatRate: 3000
     },
     CONFETTI: {

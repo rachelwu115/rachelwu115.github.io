@@ -742,10 +742,12 @@ export class RubberButton {
             let effDragY = localDrag.y;
             let radialSquash = 0;
 
+            let globalCompression = 0;
             if (localDrag.y < 0) {
                 // SQUASH (Push Down)
                 effDragY *= 0.1;
                 radialSquash = -localDrag.y * 0.4;
+                globalCompression = -localDrag.y; // Track how much we are squashing
             } else {
                 // NECKING (Push Up) - "Slime Strand" effect
                 // Contract the width as we stretch up (Poisson ratio)
@@ -763,10 +765,24 @@ export class RubberButton {
                 }
                 const ox = this.originalPositions[i * 3];
                 const oz = this.originalPositions[i * 3 + 2];
-                const sx = ox * radialSquash * 0.01 * w;
-                const sz = oz * radialSquash * 0.01 * w;
-                positions[i * 3] = ox + (localDrag.x * w) + sx;
-                positions[i * 3 + 2] = oz + (localDrag.z * w) + sz;
+                const oy = this.originalPositions[i * 3 + 1]; // Need Y for profile
+
+                // Local Squash (Pinch)
+                const sxLocal = ox * radialSquash * 0.01 * w;
+                const szLocal = oz * radialSquash * 0.01 * w;
+
+                // Global Bulge (Volumetric Spread)
+                // Expands the "belly" when compressed to cover the bezel
+                // Profile peaks at mid-height (approx 33, button height 66)
+                // Sine wave ensures base and top don't bulge excessively
+                const profile = Math.sin((Math.max(0, oy) / 66.0) * Math.PI);
+                const gSquashFactor = globalCompression * this.config.bulgeStrength * 0.01 * Math.max(0, profile);
+                const sxGlobal = ox * gSquashFactor;
+                const szGlobal = oz * gSquashFactor;
+
+                positions[i * 3] = ox + (localDrag.x * w) + sxLocal + sxGlobal;
+                positions[i * 3 + 2] = oz + (localDrag.z * w) + szLocal + szGlobal;
+
                 let newY = this.originalPositions[i * 3 + 1] + (effDragY * w);
 
                 // Removed limitY clamping to fix base artifacts
