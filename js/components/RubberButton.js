@@ -250,10 +250,14 @@ export class RubberButton {
             p.mesh.visible = true;
             p.life = 1.0;
 
-            // SPAWN: Volumetric Sphere (Globe)
+            // SPAWN: Volumetric Sphere (Globe) - UPPER HEMISPHERE ONLY
             const spawnRadius = C.SPAWN_RADIUS || 80.0; // Fallback for safety
             const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(2 * Math.random() - 1); // Uniform sphere dist
+
+            // Upper Hemisphere: phi from 0 (top) to PI/2 (equator)
+            // Math.random() gives 0..1 => acos gives PI/2..0
+            const phi = Math.acos(Math.random());
+
             const r = Math.cbrt(Math.random()) * spawnRadius; // Uniform volume
 
             const x = r * Math.sin(phi) * Math.cos(theta);
@@ -277,8 +281,6 @@ export class RubberButton {
 
             p.vel.copy(dir).multiplyScalar(speed);
             p.vel.y += velBase + Math.random() * velVar;
-
-            p.grounded = false; // Reset state
 
             // Init Flutter State
             p.tiltAngle = Math.random() * Math.PI;
@@ -304,7 +306,7 @@ export class RubberButton {
             const sMax = C.SCALE_MAX || 2.5;
 
             const depthNorm = (z + rMax) / (2 * rMax);
-            const clampedDepth = Math.max(0, Math.min(1, depthNorm));
+            const clampedDepth = Math.max(0, Math.min(1, depthNorm);
 
             const baseScale = sMin + clampedDepth * (sMax - sMin);
             p.baseScale = baseScale;
@@ -471,28 +473,9 @@ export class RubberButton {
                 p.mesh.rotation.x = p.wobble;
                 p.mesh.rotation.z = p.tiltAngle;
                 p.mesh.rotation.x = p.wobble;
+                p.mesh.rotation.z = p.tiltAngle;
+                p.mesh.rotation.x = p.wobble;
                 p.mesh.rotation.y += 0.02;
-
-                // COLLISION: Pillar Top (Rigid Body)
-                // Pillar Top is at Y = -20
-                if (p.mesh.position.y < -20.0 && p.mesh.position.y > -50.0) {
-                    if (Math.abs(p.mesh.position.x) < 115.0 && Math.abs(p.mesh.position.z) < 115.0) {
-                        p.mesh.position.y = -20.0;
-                        p.vel.y = 0;
-                        // Slide Friction (Paper drag)
-                        // Higher friction (0.6) prevents excessive sliding/bouncing
-                        p.vel.x *= 0.6;
-                        p.vel.z *= 0.6;
-
-                        // Grounded State
-                        p.grounded = true;
-                        p.tiltAngleIncrement *= 0.1; // Stop fluttering
-                    } else {
-                        p.grounded = false;
-                    }
-                } else {
-                    p.grounded = false;
-                }
 
                 // Repulsion Logic
                 const distSq = ray.distanceSqToPoint(p.mesh.position);
@@ -501,13 +484,10 @@ export class RubberButton {
                     ray.closestPointToPoint(p.mesh.position, target);
                     const dir = new THREE.Vector3().subVectors(p.mesh.position, target).normalize();
                     p.vel.add(dir.multiplyScalar(C.REPULSE_STRENGTH));
-                    p.grounded = false; // Lift off
                 }
 
-                // Persistence: Only decay if NOT grounded
-                if (!p.grounded) {
-                    p.life -= C.LIFE_DECAY;
-                }
+                // Simple Decay (No grounded logic)
+                p.life -= C.LIFE_DECAY;
 
                 if (p.life <= 0 || p.mesh.position.y < C.DEATH_Y) {
                     p.mesh.visible = false;
