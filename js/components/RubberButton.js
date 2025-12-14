@@ -246,9 +246,9 @@ export class RubberButton {
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
             p.vel.set(
-                (Math.random() - 0.5) * 12.0,
-                8.0 + Math.random() * 4.0, // TUNED: Intermediate Low (8-12)
-                (Math.random() - 0.5) * 12.0
+                (Math.random() - 0.5) * 4.0, // TUNED: Tighter Cone (Vertical Fountain)
+                6.0 + Math.random() * 3.0, // TUNED: Gentle Fountain (6-9)
+                (Math.random() - 0.5) * 4.0
             );
 
             p.rotVel.set(Math.random() * 0.2, Math.random() * 0.2, Math.random() * 0.2);
@@ -398,7 +398,7 @@ export class RubberButton {
             if (p.life > 0) {
                 // Physics
                 p.mesh.position.add(p.vel);
-                p.vel.y -= 0.1; // TUNED: Lower Gravity (Slower Fall)
+                p.vel.y -= 0.08; // TUNED: Floaty Gravity
                 p.vel.multiplyScalar(0.99);
 
                 // Sway
