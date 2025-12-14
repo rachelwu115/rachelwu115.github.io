@@ -21,18 +21,19 @@ export const APP_CONFIG = {
     },
     CONFETTI: {
         BATCH_SIZE: 250,
-        SPREAD: 6.0,
-        VELOCITY_Y_BASE: 12.0, // Launch fast
+        SPAWN_RADIUS_XZ: 50.0, // Cylinder Spawn
+        SPREAD: 3.0,          // Tight vertical column
+        VELOCITY_Y_BASE: 10.0, // Controlled Firework Launch
         VELOCITY_Y_VAR: 4.0,
         GRAVITY: 0.15,
-        DRAG: 0.96,           // Transitional drag
-        TERMINAL_VEL: 3.0,    // Max fall speed (Paper)
+        DRAG: 0.96,
+        TERMINAL_VEL: 3.0,
         FLUTTER_SPEED: 0.15,
-        FLUTTER_AMP: 2.0,     // Horizontal drift amp
-        WOBBLE_SPEED: 0.1,    // 3D Tumble speed
+        FLUTTER_AMP: 3.0,     // High drift to fill screen
+        WOBBLE_SPEED: 0.1,
         REPULSE_RADIUS_SQ: 2500,
         REPULSE_STRENGTH: 2.0,
-        LIFE_DECAY: 0.005,    // Slower decay for long fall
+        LIFE_DECAY: 0.005,
         DEATH_Y: -100,
         SCALE_FACTOR: 5.0
     },

@@ -249,9 +249,18 @@ export class RubberButton {
 
             p.mesh.visible = true;
             p.life = 1.0;
-            p.mesh.position.copy(center).addScalar((Math.random() - 0.5) * 5);
+
+            // VOLUMETRIC SPAWN: Cylinder around button
+            // Solves "empty space" issue by pre-filling the volume
+            const r = Math.sqrt(Math.random()) * C.SPAWN_RADIUS_XZ;
+            const theta = Math.random() * 2 * Math.PI;
+            const bx = Math.cos(theta) * r;
+            const bz = Math.sin(theta) * r;
+
+            p.mesh.position.set(center.x + bx, center.y, center.z + bz);
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
+            // Velocity: Tight vertical shot (Firework)
             p.vel.set(
                 (Math.random() - 0.5) * C.SPREAD,
                 C.VELOCITY_Y_BASE + Math.random() * C.VELOCITY_Y_VAR,
