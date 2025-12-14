@@ -29,7 +29,10 @@ export const APP_CONFIG = {
         SWAY_SPEED: 0.005,
         SWAY_AMP: 0.1,
         REPULSE_RADIUS_SQ: 2500,
-        REPULSE_STRENGTH: 2.0
+        REPULSE_STRENGTH: 2.0,
+        LIFE_DECAY: 0.005,
+        DEATH_Y: -100,
+        SCALE_FACTOR: 5.0
     },
 
     // -------------------------------------------------------------------------
