@@ -247,7 +247,7 @@ export class RubberButton {
 
             p.vel.set(
                 (Math.random() - 0.5) * 12.0,
-                10.0 + Math.random() * 6.0, // TUNED: Higher burst (Fill Screen)
+                8.0 + Math.random() * 4.0, // TUNED: Intermediate Low (8-12)
                 (Math.random() - 0.5) * 12.0
             );
 
@@ -398,7 +398,7 @@ export class RubberButton {
             if (p.life > 0) {
                 // Physics
                 p.mesh.position.add(p.vel);
-                p.vel.y -= 0.15; // Gravity
+                p.vel.y -= 0.1; // TUNED: Lower Gravity (Slower Fall)
                 p.vel.multiplyScalar(0.99);
 
                 // Sway
