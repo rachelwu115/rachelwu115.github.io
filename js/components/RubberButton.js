@@ -747,7 +747,7 @@ export class RubberButton {
                 // SQUASH (Push Down)
                 effDragY *= 0.1;
                 radialSquash = -localDrag.y * 0.4;
-                globalCompression = -localDrag.y; // Track how much we are squashing
+                globalCompression = Math.min(80.0, -localDrag.y); // Clamped to prevent math explosion
             } else {
                 // NECKING (Push Up) - "Slime Strand" effect
                 // Contract the width as we stretch up (Poisson ratio)

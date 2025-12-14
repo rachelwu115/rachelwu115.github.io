@@ -23,8 +23,8 @@ export const APP_CONFIG = {
         softness: 12.0,   // TUNED: Localized Slime necking
         stiffness: 0.1,   // TUNED: Stretchy
         damping: 0.85,    // TUNED: Viscous/Sticky
-        snapLimit: 150.0, // TUNED: Allow more stretch
-        bulgeStrength: 4.0, // TUNED: Muffin top expansion
+        snapLimit: 300.0, // TUNED: Allow deep squash without popping
+        bulgeStrength: 6.0, // TUNED: Strong muffin top
         beatRate: 3000
     },
     CONFETTI: {
