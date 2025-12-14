@@ -19,6 +19,13 @@ export const APP_CONFIG = {
         ECHO_FEEDBACK: 0.05,
         ECHO_WET: 0.15
     },
+    BUTTON: {
+        softness: 20.0,   // TUNED: Sharp "tent" pull (Gooey)
+        stiffness: 0.1,   // TUNED: Stretchy
+        damping: 0.85,    // TUNED: Viscous/Sticky
+        snapLimit: 150.0, // TUNED: Allow more stretch
+        beatRate: 3000
+    },
     CONFETTI: {
         BATCH_SIZE: 650,      // TUNED: Reduced density for clarity
         SPAWN_RADIUS: 100.0,  // TUNED: Wider Start
