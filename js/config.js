@@ -20,11 +20,11 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     CONFETTI: {
-        BATCH_SIZE: 2500,     // 10x Density
-        SPAWN_RADIUS_XZ: 60.0, // TUNED: Tight source (Pillar)
-        SPREAD: 3.0,
-        VELOCITY_Y_BASE: 0.0, // TUNED: Zero Launch (Just tumble)
-        VELOCITY_Y_VAR: 18.0, // TUNED: Extreme Variance
+        BATCH_SIZE: 2500,
+        SPAWN_RADIUS_XZ: 60.0,
+        SPREAD: 1.0,          // TUNED: Tight Vertical Column
+        VELOCITY_Y_BASE: 5.0, // TUNED: Vertical Bias
+        VELOCITY_Y_VAR: 15.0,
         GRAVITY: 0.15,
         DRAG: 0.96,
         TERMINAL_VEL: 3.0,
@@ -33,11 +33,11 @@ export const APP_CONFIG = {
         WOBBLE_SPEED: 0.1,
         REPULSE_RADIUS_SQ: 2500,
         REPULSE_STRENGTH: 2.0,
-        LIFE_DECAY: 0.002,    // Long life for infinite fall
-        DEATH_Y: -2000,       // Off-screen kill floor
+        LIFE_DECAY: 0.002,
+        DEATH_Y: -2000,
         SCALE_FACTOR: 5.0,
-        SCALE_MIN: 0.12,      // TUNED: No dust
-        SCALE_MAX: 0.35       // TUNED: Fake "Close" depth
+        SCALE_MIN: 0.5,       // TUNED: "Ticket" size
+        SCALE_MAX: 1.0        // TUNED: Huge chunks
     },
 
     // -------------------------------------------------------------------------
