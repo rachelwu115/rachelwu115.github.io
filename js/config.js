@@ -20,7 +20,7 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     BUTTON: {
-        softness: 14.0,   // TUNED: Squared Heavy-Tail decay
+        softness: 18.0,   // TUNED: Lorentzian (Round Tip) decay
         stiffness: 0.1,   // TUNED: Stretchy
         damping: 0.85,    // TUNED: Viscous/Sticky
         snapLimit: 150.0, // TUNED: Allow more stretch

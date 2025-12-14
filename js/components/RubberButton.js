@@ -630,10 +630,11 @@ export class RubberButton {
             const dz = pos[i + 2] - cz;
             const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-            // Squared Heavy-Tail Decay: 1 / (1 + distance / softness)^2
-            // Faster decay (better isolation) but still smooth (no sharp cutoff)
+            // Lorentzian (Cauchy) Distribution: 1 / (1 + (distance/softness)^2)
+            // Round peak (derivative is 0 at distance 0) eliminates sharp point
+            // Smooth tail eliminates sharp corners on sides
             let x = dist / this.config.softness;
-            let w = 1.0 / ((1.0 + x) * (1.0 + x));
+            let w = 1.0 / (1.0 + x * x);
 
             if (pos[i + 1] < grabY) {
                 let pin = Math.max(0, pos[i + 1] / grabY);
