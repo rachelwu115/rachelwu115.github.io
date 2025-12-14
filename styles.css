@@ -16,6 +16,13 @@
 
 body {
     background-color: var(--bg-color);
+    background-image:
+        radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.7) 100%),
+        url('./assets/images/wallpaper_pattern.png');
+    background-repeat: repeat;
+    background-size: 500px;
+    /* Adjust size for pattern scale */
+    background-position: center;
     font-family: 'Courier New', Courier, monospace;
     /* Typewriter feel */
     height: 100vh;
