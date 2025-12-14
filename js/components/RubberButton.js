@@ -12,6 +12,7 @@ import { audioManager } from '../utils/AudioManager.js';
  */
 export class RubberButton {
     constructor() {
+        // Build Trigger: 2025-12-14
         this.canvas = document.getElementById('buttonCanvas');
         if (!this.canvas) return;
 
