@@ -21,7 +21,7 @@ export const APP_CONFIG = {
     },
     CONFETTI: {
         BATCH_SIZE: 2500,     // 10x Density
-        SPAWN_RADIUS_XZ: 300.0, // TUNED: 3D Depth (Near/Far)
+        SPAWN_RADIUS_XZ: 60.0, // TUNED: Tight source (Pillar)
         SPREAD: 3.0,
         VELOCITY_Y_BASE: 0.0, // TUNED: Zero Launch (Just tumble)
         VELOCITY_Y_VAR: 18.0, // TUNED: Extreme Variance
@@ -36,8 +36,8 @@ export const APP_CONFIG = {
         LIFE_DECAY: 0.002,    // Long life for infinite fall
         DEATH_Y: -2000,       // Off-screen kill floor
         SCALE_FACTOR: 5.0,
-        SCALE_MIN: 0.05,      // TUNED: Size Variety
-        SCALE_MAX: 0.20
+        SCALE_MIN: 0.12,      // TUNED: No dust
+        SCALE_MAX: 0.35       // TUNED: Fake "Close" depth
     },
 
     // -------------------------------------------------------------------------
