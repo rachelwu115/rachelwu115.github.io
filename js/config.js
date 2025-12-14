@@ -20,24 +20,24 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     CONFETTI: {
-        BATCH_SIZE: 600,      // TUNED: Less density for giant particles
+        BATCH_SIZE: 1000,     // TUNED: Increased quantity
         SPAWN_RADIUS_XZ: 60.0,
-        SPREAD: 8.0,          // TUNED: Wide Blast (Corner to Corner)
-        VELOCITY_Y_BASE: 12.0, // TUNED: High energy launch
+        SPREAD: 12.0,         // TUNED: Max Spread (Explosion)
+        VELOCITY_Y_BASE: 12.0,
         VELOCITY_Y_VAR: 15.0,
-        GRAVITY: 0.15,
-        DRAG: 0.96,
-        TERMINAL_VEL: 3.0,
+        GRAVITY: 0.05,        // TUNED: Feather Fall (Floaty)
+        DRAG: 0.95,           // TUNED: Air resistance
+        TERMINAL_VEL: 1.5,    // TUNED: Slow Motion
         FLUTTER_SPEED: 0.15,
-        FLUTTER_AMP: 5.0,     // TUNED: Wide Drift
+        FLUTTER_AMP: 8.0,     // TUNED: Wide Drift
         WOBBLE_SPEED: 0.1,
         REPULSE_RADIUS_SQ: 2500,
         REPULSE_STRENGTH: 2.0,
         LIFE_DECAY: 0.002,
         DEATH_Y: -2000,
         SCALE_FACTOR: 5.0,
-        SCALE_MIN: 1.0,       // TUNED: Giant Sheets
-        SCALE_MAX: 2.0
+        SCALE_MIN: 0.2,       // TUNED: Small bits
+        SCALE_MAX: 2.5        // TUNED: Massive Sheets
     },
 
     // -------------------------------------------------------------------------
