@@ -36,8 +36,8 @@ export const APP_CONFIG = {
         LIFE_DECAY: 0.002,
         DEATH_Y: -2000,
         SCALE_FACTOR: 5.0,
-        SCALE_MIN: 0.3,       // TUNED: Back (Small)
-        SCALE_MAX: 2.5        // TUNED: Front (Big)
+        SCALE_MIN: 0.6,       // TUNED: Uniform "Tickets"
+        SCALE_MAX: 1.4        // TUNED: Uniform "Tickets"
     },
 
     // -------------------------------------------------------------------------

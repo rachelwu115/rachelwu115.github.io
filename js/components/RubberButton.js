@@ -463,7 +463,24 @@ export class RubberButton {
                 // Rotation: Couple rotation with flutter phase
                 p.mesh.rotation.z = p.tiltAngle;
                 p.mesh.rotation.x = p.wobble;
+                p.mesh.rotation.z = p.tiltAngle;
+                p.mesh.rotation.x = p.wobble;
                 p.mesh.rotation.y += 0.02;
+
+                // COLLISION: Pillar Top (Rigid Body)
+                // Pillar Top is at Y = -20
+                // Pillar Width/Depth is 220 (+/- 110). Using 115 for slight overhang coverage.
+                if (p.mesh.position.y < -20.0 && p.mesh.position.y > -50.0) {
+                    if (Math.abs(p.mesh.position.x) < 115.0 && Math.abs(p.mesh.position.z) < 115.0) {
+                        p.mesh.position.y = -20.0;
+                        p.vel.y = 0;
+                        // Slide Friction (Paper doesn't bounce, it slides)
+                        p.vel.x *= 0.8;
+                        p.vel.z *= 0.8;
+                        // Hinder rotation when grounded
+                        p.tiltAngleIncrement *= 0.5;
+                    }
+                }
 
                 // Repulsion Logic
                 const distSq = ray.distanceSqToPoint(p.mesh.position);
