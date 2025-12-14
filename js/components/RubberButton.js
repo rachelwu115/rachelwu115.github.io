@@ -251,9 +251,10 @@ export class RubberButton {
             p.life = 1.0;
 
             // SPAWN: Volumetric Sphere (Globe)
+            const spawnRadius = C.SPAWN_RADIUS || 80.0; // Fallback for safety
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(2 * Math.random() - 1); // Uniform sphere dist
-            const r = Math.cbrt(Math.random()) * C.SPAWN_RADIUS; // Uniform volume
+            const r = Math.cbrt(Math.random()) * spawnRadius; // Uniform volume
 
             const x = r * Math.sin(phi) * Math.cos(theta);
             const y = r * Math.sin(phi) * Math.sin(theta);
@@ -263,12 +264,15 @@ export class RubberButton {
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
             // VELOCITY: Radial Explosion + Upward Bias
-            // Direction is from center to particle
-            const dir = new THREE.Vector3(x, y, z).normalize();
-            if (dir.lengthSq() === 0) dir.set(0, 1, 0); // Handle exact center
+            const power = C.EXPLOSION_POWER || 20.0;
+            const velBase = C.VELOCITY_Y_BASE || 8.0;
+            const velVar = C.VELOCITY_Y_VAR || 10.0;
 
-            p.vel.copy(dir).multiplyScalar(C.EXPLOSION_POWER);
-            p.vel.y += C.VELOCITY_Y_BASE + Math.random() * C.VELOCITY_Y_VAR;
+            const dir = new THREE.Vector3(x, y, z).normalize();
+            if (dir.lengthSq() === 0) dir.set(0, 1, 0);
+
+            p.vel.copy(dir).multiplyScalar(power);
+            p.vel.y += velBase + Math.random() * velVar;
 
             // Init Flutter State
             p.tiltAngle = Math.random() * Math.PI;
@@ -289,10 +293,14 @@ export class RubberButton {
             // Front (Z+) -> Big, Back (Z-) -> Small
             // Normalize Z (~ -Radius to +Radius) to 0..1
             // Adding a slight offset to ensure even back particles aren't invisible
-            const depthNorm = (z + C.SPAWN_RADIUS) / (2 * C.SPAWN_RADIUS);
+            const rMax = C.SPAWN_RADIUS || 80.0;
+            const sMin = C.SCALE_MIN || 0.3;
+            const sMax = C.SCALE_MAX || 2.5;
+
+            const depthNorm = (z + rMax) / (2 * rMax);
             const clampedDepth = Math.max(0, Math.min(1, depthNorm));
 
-            const baseScale = C.SCALE_MIN + clampedDepth * (C.SCALE_MAX - C.SCALE_MIN);
+            const baseScale = sMin + clampedDepth * (sMax - sMin);
             p.baseScale = baseScale;
             p.mesh.scale.set(baseScale, baseScale, baseScale);
         }
