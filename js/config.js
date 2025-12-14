@@ -20,11 +20,11 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     CONFETTI: {
-        BATCH_SIZE: 250,
-        SPAWN_RADIUS_XZ: 40.0, // Tighter Center
+        BATCH_SIZE: 500,      // Blizzard
+        SPAWN_RADIUS_XZ: 40.0,
         SPREAD: 3.0,
-        VELOCITY_Y_BASE: 10.0,
-        VELOCITY_Y_VAR: 8.0,   // High Variance (Some low, some high)
+        VELOCITY_Y_BASE: 2.0, // Trickle floor (2.0)
+        VELOCITY_Y_VAR: 14.0, // Blast ceiling (16.0)
         GRAVITY: 0.15,
         DRAG: 0.96,
         TERMINAL_VEL: 3.0,

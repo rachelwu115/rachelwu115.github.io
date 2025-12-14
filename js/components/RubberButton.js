@@ -191,7 +191,7 @@ export class RubberButton {
     }
 
     initConfetti() {
-        const count = 600;
+        const count = 2000; // Increased pool for high density
         this.confettiIndex = 0;
         this.confettiGroup = new THREE.Group();
         this.scene.add(this.confettiGroup);
