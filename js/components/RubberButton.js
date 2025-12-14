@@ -191,7 +191,7 @@ export class RubberButton {
     }
 
     initConfetti() {
-        const count = 2000; // Increased pool for high density
+        const count = 8000; // Safe limit for simple plane geometry
         this.confettiIndex = 0;
         this.confettiGroup = new THREE.Group();
         this.scene.add(this.confettiGroup);

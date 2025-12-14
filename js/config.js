@@ -20,21 +20,21 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     CONFETTI: {
-        BATCH_SIZE: 500,      // Blizzard
+        BATCH_SIZE: 2500,     // 10x Density
         SPAWN_RADIUS_XZ: 40.0,
         SPREAD: 3.0,
-        VELOCITY_Y_BASE: 2.0, // Trickle floor (2.0)
-        VELOCITY_Y_VAR: 14.0, // Blast ceiling (16.0)
+        VELOCITY_Y_BASE: 2.0,
+        VELOCITY_Y_VAR: 14.0,
         GRAVITY: 0.15,
         DRAG: 0.96,
         TERMINAL_VEL: 3.0,
         FLUTTER_SPEED: 0.15,
-        FLUTTER_AMP: 3.0,     // High drift to fill screen
+        FLUTTER_AMP: 3.0,
         WOBBLE_SPEED: 0.1,
         REPULSE_RADIUS_SQ: 2500,
         REPULSE_STRENGTH: 2.0,
-        LIFE_DECAY: 0.005,
-        DEATH_Y: -100,
+        LIFE_DECAY: 0.002,    // Long life for infinite fall
+        DEATH_Y: -2000,       // Off-screen kill floor
         SCALE_FACTOR: 5.0
     },
 
