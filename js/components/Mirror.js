@@ -28,12 +28,19 @@ export class Mirror {
             this.ghostContainer.appendChild(this.cursor);
         }
         this.bind();
+
+        // Resize initial layout
         this.resize();
 
         try {
+            // Start loading immediately
             const raw = await this.loadImage(APP_CONFIG.IMAGE_URL);
+
+            // Process transparency
             this.img = await this.processImage(raw);
-            this.resize(); // Resize again with loaded image
+
+            // Render immediately
+            this.resize();
             this.startLoop();
 
             if (this.input) this.input.value = "";
@@ -56,6 +63,7 @@ export class Mirror {
 
     processImage(source) {
         return new Promise(resolve => {
+            // Offscreen processing
             const buffer = document.createElement('canvas');
             const w = source.width;
             const h = source.height;
@@ -68,86 +76,33 @@ export class Mirror {
             const idata = ctx.getImageData(0, 0, w, h);
             const data = idata.data;
             const bg = { r: data[0], g: data[1], b: data[2] };
-            const visited = new Uint8Array(w * h);
-            const stack = [0];
-            visited[0] = 1;
 
-            const match = (idx) => {
-                const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+            // Optimized Transparency Loop
+            // Using a simple threshold check against top-left pixel color
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+
                 const diff = Math.abs(r - bg.r) + Math.abs(g - bg.g) + Math.abs(b - bg.b);
-                return diff < APP_CONFIG.CHROMA_TOLERANCE;
-            };
 
-            while (stack.length > 0) {
-                const idx4 = stack.pop();
-                const idx = idx4 / 4;
-                const x = idx % w;
-                const y = Math.floor(idx / w);
-
-                const neighbors = [
-                    { nx: x, ny: y - 1 }, { nx: x, ny: y + 1 },
-                    { nx: x - 1, ny: y }, { nx: x + 1, ny: y }
-                ];
-
-                for (const { nx, ny } of neighbors) {
-                    if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-                        const nIdx = ny * w + nx;
-                        if (visited[nIdx] === 0) {
-                            const nIdx4 = nIdx * 4;
-                            if (match(nIdx4)) {
-                                visited[nIdx] = 1;
-                                stack.push(nIdx4);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // EXTRACT CONTOUR & MAKE TRANSPARENT
-            this.contour = []; // Store normalized (0..1) coordinates of edge pixels
-
-            for (let i = 0; i < w * h; i++) {
-                const idx = i * 4;
-                const x = i % w;
-                const y = Math.floor(i / w);
-
-                if (visited[i] === 1) {
-                    data[idx + 3] = 0; // Make background transparent
+                if (diff < APP_CONFIG.CHROMA_TOLERANCE) {
+                    // Background -> Transparent
+                    data[i + 3] = 0;
                 } else {
-                    // It's part of the shadowman
-                    data[idx] = 0; data[idx + 1] = 0; data[idx + 2] = 0; data[idx + 3] = 255; // Force black
-
-                    // Edge Check: If any neighbor is visited (transparent background), this is an edge
-                    let isEdge = false;
-                    const neighbors = [
-                        { nx: x, ny: y - 1 }, { nx: x, ny: y + 1 },
-                        { nx: x - 1, ny: y }, { nx: x + 1, ny: y }
-                    ];
-                    for (const { nx, ny } of neighbors) {
-                        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-                            const nIdx = ny * w + nx;
-                            if (visited[nIdx] === 1) {
-                                isEdge = true;
-                                break;
-                            }
-                        } else {
-                            // Border is also edge
-                            isEdge = true;
-                            break;
-                        }
-                    }
-
-                    if (isEdge) {
-                        // Store normalized coordinates for resolution independence
-                        this.contour.push({ x: x / w, y: y / h });
-                    }
+                    // Silhouette -> Black
+                    data[i] = 0;
+                    data[i + 1] = 0;
+                    data[i + 2] = 0;
+                    data[i + 3] = 255;
                 }
             }
 
             ctx.putImageData(idata, 0, 0);
+
             const final = new Image();
             final.onload = () => resolve(final);
-            final.src = buffer.toDataURL();
+            final.src = buffer.toDataURL(); // Convert to fast-rendering Image object
         });
     }
 
@@ -191,7 +146,7 @@ export class Mirror {
             this.ghostContainer.appendChild(span);
         }
 
-        // Remove after animation (0.8s)
+        // Remove after animation
         setTimeout(() => {
             if (span.parentNode) span.parentNode.removeChild(span);
 
@@ -272,61 +227,13 @@ export class Mirror {
                 this.particles.splice(i, 1);
             }
         }
-
-        // Update Bubbles
-        this.updateBubbles();
-    }
-
-    updateBubbles() {
-        if (!this.contour || this.contour.length === 0) return;
-        if (!this.bubbles) this.bubbles = [];
-
-        // Spawn new bubbles repeatedly
-        // Spawn rate: 0-3 bubbles per frame
-        const spawnCount = Math.floor(Math.random() * 2);
-        for (let i = 0; i < spawnCount; i++) {
-            // Pick random point on contour
-            const pt = this.contour[Math.floor(Math.random() * this.contour.length)];
-
-            // Map normalized pt to screen space
-            const bx = this.layout.x + pt.x * this.layout.w;
-            const by = this.layout.y + pt.y * this.layout.h;
-
-            this.bubbles.push({
-                x: bx,
-                y: by,
-                r: 0.5 + Math.random() * 1.5, // Start tiny
-                maxR: 2 + Math.random() * 3, // Max small
-                growth: 0.05 + Math.random() * 0.1, // Slower growth
-                life: 1.0,
-                decay: 0.01 + Math.random() * 0.03
-            });
-        }
-
-        // Update existing
-        for (let i = this.bubbles.length - 1; i >= 0; i--) {
-            const b = this.bubbles[i];
-            if (b.r < b.maxR) {
-                b.r += b.growth;
-            }
-            b.life -= b.decay;
-
-            // Slight rise
-            b.y -= 0.1;
-
-            if (b.life <= 0) {
-                this.bubbles.splice(i, 1);
-            }
-        }
     }
 
     draw() {
         if (!this.ctx) return;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Draw Bubbles BEHIND image (or on top? User asked for outline effect. On top looks "boiling")
-        // Let's draw on top to mask edge glitches and look like growing tumors/bubbles
-
+        // Draw Shadowman (Clean, no effects)
         if (this.img) {
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
 
@@ -334,21 +241,6 @@ export class Mirror {
             const { LEFT, RIGHT } = APP_CONFIG.EYES;
             this.drawEye(LEFT.x, LEFT.y);
             this.drawEye(RIGHT.x, RIGHT.y);
-        }
-
-        // Draw Bubbles
-        if (this.bubbles) {
-            this.ctx.save();
-            this.ctx.fillStyle = '#000000';
-            this.ctx.shadowBlur = 4; // Make them fuzzy
-            this.ctx.shadowColor = '#000000';
-
-            this.bubbles.forEach(b => {
-                this.ctx.beginPath();
-                this.ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                this.ctx.fill();
-            });
-            this.ctx.restore();
         }
 
         // Draw Tears
