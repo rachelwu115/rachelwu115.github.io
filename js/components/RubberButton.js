@@ -306,7 +306,7 @@ export class RubberButton {
             const sMax = C.SCALE_MAX || 2.5;
 
             const depthNorm = (z + rMax) / (2 * rMax);
-            const clampedDepth = Math.max(0, Math.min(1, depthNorm);
+            const clampedDepth = Math.max(0, Math.min(1, depthNorm));
 
             const baseScale = sMin + clampedDepth * (sMax - sMin);
             p.baseScale = baseScale;
