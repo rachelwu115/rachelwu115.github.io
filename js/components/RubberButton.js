@@ -18,12 +18,12 @@ export class RubberButton {
         if (!this.canvas) return;
 
         // Configuration
-        this.config = {
-            snapLimit: 120.0, // Sticky/Stretchy Balance
-            softness: 200.0, // Liquid/Gooey Feel
+        this.config = Object.assign({
+            snapLimit: 500.0,
+            softness: 15.0,
             gravity: 0.15,
-            beatRate: 1200,
-        };
+            beatRate: 3000,
+        }, APP_CONFIG.BUTTON);
 
         // State
         this.isActive = false; // Start inactive (Exhibit 1 is default)
@@ -43,8 +43,7 @@ export class RubberButton {
             localGrabPoint: new THREE.Vector3(),
             returnVelocity: new THREE.Vector3(),
             pressY: 0,
-            targetPressY: 0,
-            drips: []
+            targetPressY: 0
         };
 
         // Systems
@@ -181,14 +180,7 @@ export class RubberButton {
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
 
-        // Drip Assets (Reusable)
-        this.dripGeo = new THREE.SphereGeometry(3, 8, 8);
-        this.dripMat = new THREE.MeshPhysicalMaterial({
-            color: 0x8a0303, roughness: 0.1, metalness: 0.1,
-            transmission: 0.2, thickness: 2.0 // Viscous look
-        });
-        this.dripGroup = new THREE.Group();
-        this.pivot.add(this.dripGroup);
+
     }
 
     initConfetti() {
@@ -334,107 +326,13 @@ export class RubberButton {
         }, 50); // Tuned Delay
     }
 
-    spawnDrip() {
-        const count = 1 + Math.floor(Math.random() * 2); // 1-3 drips
-        for (let i = 0; i < count; i++) {
-            const mesh = new THREE.Mesh(this.dripGeo, this.dripMat);
 
-            // POOLING: Spawn on top surface (Pillar top is ~ -20)
-            // Spawn around the button base (radius ~70)
-            const angle = Math.random() * Math.PI * 2;
-            const r = 60 + Math.random() * 15;
-            const x = Math.cos(angle) * r;
-            const z = Math.sin(angle) * r;
 
-            mesh.position.set(x, -20.2, z); // Just above surface
 
-            // Random Scale
-            const s = 0.8 + Math.random() * 1.2; // Slightly bigger puddles
-            mesh.scale.set(s, s * 0.1, s); // Flattened initially
-
-            this.dripGroup.add(mesh);
-
-            // Velocity: Outward spread
-            const speed = 0.5 + Math.random() * 2.0;
-
-            this.physics.drips.push({
-                mesh: mesh,
-                vx: Math.cos(angle) * speed,
-                vz: Math.sin(angle) * speed,
-                vy: 0,
-                state: 'pooling', // 'pooling' or 'falling'
-                active: true,
-                friction: 0.92 + Math.random() * 0.04,
-                stopY: -100 - Math.random() * 400
-            });
-        }
-    }
-
-    updateDrips() {
-        // Pillar edges are +/- 110
-        const EDGE = 110;
-
-        for (let i = this.physics.drips.length - 1; i >= 0; i--) {
-            const d = this.physics.drips[i];
-            if (!d.active) continue;
-
-            if (d.state === 'pooling') {
-                // Spread
-                d.mesh.position.x += d.vx;
-                d.mesh.position.z += d.vz;
-
-                // Friction
-                d.vx *= d.friction;
-                d.vz *= d.friction;
-
-                // Check Edges
-                const x = d.mesh.position.x;
-                const z = d.mesh.position.z;
-
-                if (Math.abs(x) > EDGE || Math.abs(z) > EDGE) {
-                    // OVERFLOW!
-                    d.state = 'falling';
-
-                    // Snap to edge
-                    if (Math.abs(x) > EDGE) d.mesh.position.x = Math.sign(x) * EDGE;
-                    if (Math.abs(z) > EDGE) d.mesh.position.z = Math.sign(z) * EDGE;
-
-                    // Kill horizontal velocity, start gravity
-                    d.vx = 0; d.vz = 0;
-
-                    // Plump up shape (was flat puddle, now drop)
-                    const s = d.mesh.scale.x;
-                    d.mesh.scale.set(s, s, s);
-                }
-
-                // Stop pooling if too slow? 
-                // No, keep them "wet" until they fall or exist forever. 
-                // Maybe extremely slow stop?
-                if (Math.abs(d.vx) < 0.01 && Math.abs(d.vz) < 0.01) {
-                    // Stays as a static puddle
-                }
-
-            } else if (d.state === 'falling') {
-                d.vy -= 0.15; // Gravity
-                d.mesh.position.y += d.vy;
-                d.vy *= d.friction; // Viscosity on side
-
-                // Stop logic
-                if (d.mesh.position.y < d.stopY || Math.abs(d.vy) < 0.01) {
-                    d.active = false; // Freeze
-                }
-            }
-
-            // Limit count logic
-            if (this.physics.drips.length > 200) {
-                const old = this.physics.drips.shift();
-                if (old && old.mesh.parent) old.mesh.parent.remove(old.mesh);
-            }
-        }
-    }
 
     updateConfetti() {
-        this.updateDrips();
+        // this.updateDrips(); // REMOVED
+
         const now = Date.now();
         const C = APP_CONFIG.CONFETTI;
 
@@ -600,9 +498,9 @@ export class RubberButton {
 
         const onUp = () => {
             if (this.state.isDragging) {
-                this.canvas.style.cursor = 'grabbing';
-                // Note: outline comes back only when completely reset, or we can bring it back here if not exploded
-                // Re-enable in resetPhysics is cleaner for the "snap back" feel
+                this.state.isDragging = false; // RELEASE THE DRAG
+                this.physics.targetPressY = 0; // Return to neutral
+                this.canvas.style.cursor = 'grab';
             }
         };
 
@@ -731,8 +629,8 @@ export class RubberButton {
         const positions = this.mesh.geometry.attributes.position.array;
 
         if (!this.state.isDragging) {
-            const force = P.dragOffset.clone().multiplyScalar(-0.1);
-            P.returnVelocity.add(force).multiplyScalar(0.85);
+            const force = P.dragOffset.clone().multiplyScalar(-0.05);
+            P.returnVelocity.add(force).multiplyScalar(0.90);
             P.dragOffset.add(P.returnVelocity);
             if (P.dragOffset.lengthSq() < 0.01 && P.returnVelocity.lengthSq() < 0.01) {
                 P.dragOffset.set(0, 0, 0); P.returnVelocity.set(0, 0, 0);
@@ -807,8 +705,9 @@ export class RubberButton {
                 positions[i * 3] = px;
                 positions[i * 3 + 2] = pz;
 
-                // Removed limitY clamping to fix base artifacts
-                // The 'pin' logic in calculateWeights handles base stability
+                // Restored limitY clamping to fix bottom clipping
+                // Ensure vertices don't go below the base (y=0 or specific limit)
+                if (py < -15) py = -15;
                 positions[i * 3 + 1] = py;
             }
             this.mesh.geometry.attributes.position.needsUpdate = true;

@@ -52,9 +52,6 @@ export class GalleryNav {
             // Safe Init (Though usually init happens at main)
             try {
                 // If we want lazy loading, we could do it here, but keeping it simple for now.
-                if (window.rubberButton) {
-                    window.rubberButton.setActive(true);
-                }
             } catch (err) {
                 console.error("Exhibit Switch Failed:", err);
             }
