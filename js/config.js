@@ -21,10 +21,10 @@ export const APP_CONFIG = {
     },
     CONFETTI: {
         BATCH_SIZE: 250,
-        SPAWN_RADIUS_XZ: 50.0, // Cylinder Spawn
-        SPREAD: 3.0,          // Tight vertical column
-        VELOCITY_Y_BASE: 10.0, // Controlled Firework Launch
-        VELOCITY_Y_VAR: 4.0,
+        SPAWN_RADIUS_XZ: 40.0, // Tighter Center
+        SPREAD: 3.0,
+        VELOCITY_Y_BASE: 10.0,
+        VELOCITY_Y_VAR: 8.0,   // High Variance (Some low, some high)
         GRAVITY: 0.15,
         DRAG: 0.96,
         TERMINAL_VEL: 3.0,

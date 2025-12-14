@@ -251,11 +251,11 @@ export class RubberButton {
             p.life = 1.0;
 
             // VOLUMETRIC SPAWN: Cylinder around button
-            // Solves "empty space" issue by pre-filling the volume
-            const r = Math.sqrt(Math.random()) * C.SPAWN_RADIUS_XZ;
+            // CENTER BIASED: Linear Random (Math.random() * R) clusters points in the center
+            const dist = Math.random() * C.SPAWN_RADIUS_XZ;
             const theta = Math.random() * 2 * Math.PI;
-            const bx = Math.cos(theta) * r;
-            const bz = Math.sin(theta) * r;
+            const bx = Math.cos(theta) * dist;
+            const bz = Math.sin(theta) * dist;
 
             p.mesh.position.set(center.x + bx, center.y, center.z + bz);
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
@@ -274,10 +274,10 @@ export class RubberButton {
             p.wobbleIncrement = (Math.random() * 0.1) + 0.05;
 
             // Random Colors
-            const r = Math.random();
-            if (r < 0.4) p.mesh.material.color.setHex(0x8a0303);
-            else if (r < 0.6) p.mesh.material.color.setHex(0x111111);
-            else if (r < 0.8) p.mesh.material.color.setHex(0xe3dac9);
+            const rndColor = Math.random();
+            if (rndColor < 0.4) p.mesh.material.color.setHex(0x8a0303);
+            else if (rndColor < 0.6) p.mesh.material.color.setHex(0x111111);
+            else if (rndColor < 0.8) p.mesh.material.color.setHex(0xe3dac9);
             else p.mesh.material.color.setHex(0x2f4f4f);
 
             p.life = 2.0 + Math.random() * 1.5;
