@@ -1,5 +1,6 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 import { audioManager } from '../utils/AudioManager.js';
+import { APP_CONFIG } from '../config.js';
 
 /**
  * COMPONENT: Sticky Rubber Button (Three.js WebGL)
