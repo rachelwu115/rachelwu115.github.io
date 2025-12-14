@@ -446,14 +446,21 @@ export class RubberButton {
                 // PHASE 1: BALLISTIC (Launch) - Use Velocity
                 // PHASE 2: FLUTTER (Fall) - Use Position Update
 
-                // Repulsion Logic (Restored)
+                // Dual-Zone Interaction Logic
                 const distSq = ray.distanceSqToPoint(p.mesh.position);
 
                 if (distSq < C.REPULSE_RADIUS_SQ) {
+                    // ZONE 1: REPULSION (The Hole)
                     const target = new THREE.Vector3();
                     ray.closestPointToPoint(p.mesh.position, target);
                     const dir = new THREE.Vector3().subVectors(p.mesh.position, target).normalize();
                     p.vel.add(dir.multiplyScalar(C.REPULSE_STRENGTH));
+                } else if (distSq < C.ATTRACT_RADIUS_SQ) {
+                    // ZONE 2: ATTRACTION (The Wake)
+                    const target = new THREE.Vector3();
+                    ray.closestPointToPoint(p.mesh.position, target);
+                    const dir = new THREE.Vector3().subVectors(target, p.mesh.position).normalize();
+                    p.vel.add(dir.multiplyScalar(C.ATTRACT_STRENGTH));
                 }
 
                 // Integration
