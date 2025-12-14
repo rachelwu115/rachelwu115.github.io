@@ -281,7 +281,11 @@ export class RubberButton {
             else p.mesh.material.color.setHex(0x2f4f4f);
 
             p.life = 2.0 + Math.random() * 1.5;
-            p.mesh.scale.set(0.1, 0.1, 0.1);
+
+            // Random Scale (Big & Small)
+            const baseScale = C.SCALE_MIN + Math.random() * (C.SCALE_MAX - C.SCALE_MIN);
+            p.baseScale = baseScale;
+            p.mesh.scale.set(baseScale, baseScale, baseScale);
         }
 
         // REGENERATE FAST
@@ -459,7 +463,8 @@ export class RubberButton {
                     p.mesh.visible = false;
                     p.life = 0;
                 }
-                const s = Math.min(1.0, p.life * C.SCALE_FACTOR);
+                const lifeScale = Math.min(1.0, p.life * C.SCALE_FACTOR);
+                const s = (p.baseScale || 0.1) * lifeScale;
                 p.mesh.scale.set(s, s, s);
             }
         });
