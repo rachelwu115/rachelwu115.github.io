@@ -77,24 +77,61 @@ export class Mirror {
             const data = idata.data;
             const bg = { r: data[0], g: data[1], b: data[2] };
 
-            // Optimized Transparency Loop
-            // Using a simple threshold check against top-left pixel color
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
 
-                const diff = Math.abs(r - bg.r) + Math.abs(g - bg.g) + Math.abs(b - bg.b);
+            // Optimized Flood Fill for Robust Background Removal
+            // (Prevents "holes" in the silhouette by checking connectivity)
+            const visited = new Uint8Array(w * h);
+            const stack = [0]; // Start at (0,0)
+            visited[0] = 1; // Mark as background
 
-                if (diff < APP_CONFIG.CHROMA_TOLERANCE) {
-                    // Background -> Transparent
-                    data[i + 3] = 0;
+            const tolerance = APP_CONFIG.CHROMA_TOLERANCE;
+
+            while (stack.length > 0) {
+                const idx = stack.pop();
+                const x = idx % w;
+                const y = Math.floor(idx / w);
+
+                const neighbors = [
+                    { nx: x + 1, ny: y },
+                    { nx: x - 1, ny: y },
+                    { nx: x, ny: y + 1 },
+                    { nx: x, ny: y - 1 }
+                ];
+
+                for (let i = 0; i < neighbors.length; i++) {
+                    const { nx, ny } = neighbors[i];
+                    if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                        const nIdx = ny * w + nx;
+                        if (visited[nIdx] === 0) {
+                            const pIdx = nIdx * 4;
+                            const r = data[pIdx];
+                            const g = data[pIdx + 1];
+                            const b = data[pIdx + 2];
+
+                            const diff = Math.abs(r - bg.r) + Math.abs(g - bg.g) + Math.abs(b - bg.b);
+
+                            if (diff < tolerance) {
+                                visited[nIdx] = 1; // It is background
+                                stack.push(nIdx);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply processed data
+            for (let i = 0; i < w * h; i++) {
+                const isBackground = visited[i] === 1;
+                const idx = i * 4;
+
+                if (isBackground) {
+                    data[idx + 3] = 0; // Transparent
                 } else {
-                    // Silhouette -> Black
-                    data[i] = 0;
-                    data[i + 1] = 0;
-                    data[i + 2] = 0;
-                    data[i + 3] = 255;
+                    // Silhouette -> Solid Black
+                    data[idx] = 0;
+                    data[idx + 1] = 0;
+                    data[idx + 2] = 0;
+                    data[idx + 3] = 255;
                 }
             }
 
