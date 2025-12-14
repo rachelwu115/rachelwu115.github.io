@@ -165,7 +165,8 @@ export class RubberButton {
         this.pivot.add(bezel);
 
         // Button Dome
-        const domeGeo = new THREE.SphereGeometry(66, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        // Increased resolution to 128, 64 to prevent visible polygon edges during extreme stretch
+        const domeGeo = new THREE.SphereGeometry(66, 128, 64, 0, Math.PI * 2, 0, Math.PI / 2);
         this.mesh = new THREE.Mesh(domeGeo, matRubber);
         this.mesh.castShadow = true; this.mesh.receiveShadow = true;
         this.mesh.scale.set(1, 0.7, 1);
@@ -638,7 +639,9 @@ export class RubberButton {
 
             if (pos[i + 1] < grabY) {
                 let pin = Math.max(0, pos[i + 1] / grabY);
-                w *= Math.pow(pin, 0.8);
+                // Relaxed pinning from 0.8 to 0.3 to remove "shoulder" artifacts
+                // Allows deformation to gently fade out down the shaft
+                w *= Math.pow(pin, 0.3);
             }
             this.weights[i / 3] = w;
         }
