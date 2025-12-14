@@ -14,6 +14,9 @@ export class Mirror {
         this.particles = [];
         this.layout = { x: 0, y: 0, w: 0, h: 0, s: 1 };
 
+        // Glitch/Shake State
+        this.shake = { x: 0, y: 0, intensity: 1.5 };
+
         this.init();
     }
 
@@ -236,6 +239,10 @@ export class Mirror {
                 this.particles.splice(i, 1);
             }
         }
+
+        // Update constant shake
+        this.shake.x = (Math.random() - 0.5) * this.shake.intensity;
+        this.shake.y = (Math.random() - 0.5) * this.shake.intensity;
     }
 
     draw() {
@@ -244,6 +251,8 @@ export class Mirror {
 
         if (this.img) {
             this.ctx.save();
+            // Apply Glitch Shake
+            this.ctx.translate(this.shake.x, this.shake.y);
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
             this.ctx.restore();
 
