@@ -271,8 +271,14 @@ export class RubberButton {
             const dir = new THREE.Vector3(x, y, z).normalize();
             if (dir.lengthSq() === 0) dir.set(0, 1, 0);
 
-            p.vel.copy(dir).multiplyScalar(power);
+            // Randomize speed to break "shell" layering
+            // range: 0.2x to 1.0x of max power
+            const speed = power * (0.2 + Math.random() * 0.8);
+
+            p.vel.copy(dir).multiplyScalar(speed);
             p.vel.y += velBase + Math.random() * velVar;
+
+            p.grounded = false; // Reset state
 
             // Init Flutter State
             p.tiltAngle = Math.random() * Math.PI;
@@ -469,17 +475,23 @@ export class RubberButton {
 
                 // COLLISION: Pillar Top (Rigid Body)
                 // Pillar Top is at Y = -20
-                // Pillar Width/Depth is 220 (+/- 110). Using 115 for slight overhang coverage.
                 if (p.mesh.position.y < -20.0 && p.mesh.position.y > -50.0) {
                     if (Math.abs(p.mesh.position.x) < 115.0 && Math.abs(p.mesh.position.z) < 115.0) {
                         p.mesh.position.y = -20.0;
                         p.vel.y = 0;
-                        // Slide Friction (Paper doesn't bounce, it slides)
-                        p.vel.x *= 0.8;
-                        p.vel.z *= 0.8;
-                        // Hinder rotation when grounded
-                        p.tiltAngleIncrement *= 0.5;
+                        // Slide Friction (Paper drag)
+                        // Higher friction (0.6) prevents excessive sliding/bouncing
+                        p.vel.x *= 0.6;
+                        p.vel.z *= 0.6;
+
+                        // Grounded State
+                        p.grounded = true;
+                        p.tiltAngleIncrement *= 0.1; // Stop fluttering
+                    } else {
+                        p.grounded = false;
                     }
+                } else {
+                    p.grounded = false;
                 }
 
                 // Repulsion Logic
@@ -489,9 +501,13 @@ export class RubberButton {
                     ray.closestPointToPoint(p.mesh.position, target);
                     const dir = new THREE.Vector3().subVectors(p.mesh.position, target).normalize();
                     p.vel.add(dir.multiplyScalar(C.REPULSE_STRENGTH));
+                    p.grounded = false; // Lift off
                 }
 
-                p.life -= C.LIFE_DECAY;
+                // Persistence: Only decay if NOT grounded
+                if (!p.grounded) {
+                    p.life -= C.LIFE_DECAY;
+                }
 
                 if (p.life <= 0 || p.mesh.position.y < C.DEATH_Y) {
                     p.mesh.visible = false;
