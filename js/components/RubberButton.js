@@ -250,22 +250,25 @@ export class RubberButton {
             p.mesh.visible = true;
             p.life = 1.0;
 
-            // VOLUMETRIC SPAWN: Cylinder around button
-            // CENTER BIASED: Linear Random (Math.random() * R) clusters points in the center
-            const dist = Math.random() * C.SPAWN_RADIUS_XZ;
-            const theta = Math.random() * 2 * Math.PI;
-            const bx = Math.cos(theta) * dist;
-            const bz = Math.sin(theta) * dist;
+            // SPAWN: Volumetric Sphere (Globe)
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1); // Uniform sphere dist
+            const r = Math.cbrt(Math.random()) * C.SPAWN_RADIUS; // Uniform volume
 
-            p.mesh.position.set(center.x + bx, center.y, center.z + bz);
+            const x = r * Math.sin(phi) * Math.cos(theta);
+            const y = r * Math.sin(phi) * Math.sin(theta);
+            const z = r * Math.cos(phi);
+
+            p.mesh.position.set(center.x + x, center.y + y, center.z + z);
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
-            // Velocity: Tight vertical shot (Firework)
-            p.vel.set(
-                (Math.random() - 0.5) * C.SPREAD,
-                C.VELOCITY_Y_BASE + Math.random() * C.VELOCITY_Y_VAR,
-                (Math.random() - 0.5) * C.SPREAD
-            );
+            // VELOCITY: Radial Explosion + Upward Bias
+            // Direction is from center to particle
+            const dir = new THREE.Vector3(x, y, z).normalize();
+            if (dir.lengthSq() === 0) dir.set(0, 1, 0); // Handle exact center
+
+            p.vel.copy(dir).multiplyScalar(C.EXPLOSION_POWER);
+            p.vel.y += C.VELOCITY_Y_BASE + Math.random() * C.VELOCITY_Y_VAR;
 
             // Init Flutter State
             p.tiltAngle = Math.random() * Math.PI;
@@ -282,8 +285,14 @@ export class RubberButton {
 
             p.life = 2.0 + Math.random() * 1.5;
 
-            // Random Scale (Big & Small)
-            const baseScale = C.SCALE_MIN + Math.random() * (C.SCALE_MAX - C.SCALE_MIN);
+            // DEPTH SCALING: Map Z-position to Scale
+            // Front (Z+) -> Big, Back (Z-) -> Small
+            // Normalize Z (~ -Radius to +Radius) to 0..1
+            // Adding a slight offset to ensure even back particles aren't invisible
+            const depthNorm = (z + C.SPAWN_RADIUS) / (2 * C.SPAWN_RADIUS);
+            const clampedDepth = Math.max(0, Math.min(1, depthNorm));
+
+            const baseScale = C.SCALE_MIN + clampedDepth * (C.SCALE_MAX - C.SCALE_MIN);
             p.baseScale = baseScale;
             p.mesh.scale.set(baseScale, baseScale, baseScale);
         }
