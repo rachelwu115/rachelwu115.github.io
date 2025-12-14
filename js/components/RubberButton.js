@@ -446,6 +446,15 @@ export class RubberButton {
                 // PHASE 1: BALLISTIC (Launch) - Use Velocity
                 // PHASE 2: FLUTTER (Fall) - Use Position Update
 
+                // Repulsion Logic (Restored)
+                const distSq = ray.distanceSqToPoint(p.mesh.position);
+                if (distSq < C.REPULSE_RADIUS_SQ) {
+                    const target = new THREE.Vector3();
+                    ray.closestPointToPoint(p.mesh.position, target);
+                    const dir = new THREE.Vector3().subVectors(p.mesh.position, target).normalize();
+                    p.vel.add(dir.multiplyScalar(C.REPULSE_STRENGTH));
+                }
+
                 // Integration
                 p.mesh.position.add(p.vel);
 
@@ -528,8 +537,11 @@ export class RubberButton {
         };
 
         const onMove = (e) => {
-            if (!this.state.isDragging || this.state.isExploded) return;
             const { x, y } = getNDC(e);
+            this.mouse.set(x, y); // Always update mouse for global effects (confetti)
+
+            if (!this.state.isDragging || this.state.isExploded) return;
+
             if (Math.abs(x) > 0.95 || Math.abs(y) > 0.95) {
                 this.explode();
                 this.canvas.style.cursor = 'grab';

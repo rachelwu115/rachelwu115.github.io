@@ -25,14 +25,14 @@ export const APP_CONFIG = {
         EXPLOSION_POWER: 30.0, // TUNED: Wide Burst
         VELOCITY_Y_BASE: 0.0,  // TUNED: No artificial boost
         VELOCITY_Y_VAR: 6.0,
-        GRAVITY: 0.12,
+        GRAVITY: 0.06,        // TUNED: Floaty Fall
         DRAG: 0.95,
-        TERMINAL_VEL: 2.8,
+        TERMINAL_VEL: 1.5,    // TUNED: Floaty Fall
         FLUTTER_SPEED: 0.15,
         FLUTTER_AMP: 5.0,
         WOBBLE_SPEED: 0.1,
-        REPULSE_RADIUS_SQ: 2500,
-        REPULSE_STRENGTH: 2.0,
+        REPULSE_RADIUS_SQ: 5000, // TUNED: Easier touch
+        REPULSE_STRENGTH: 5.0,   // TUNED: Strong Push
         LIFE_DECAY: 0.002,
         DEATH_Y: -2000,
         SCALE_FACTOR: 5.0,
