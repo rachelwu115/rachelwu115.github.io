@@ -31,8 +31,10 @@ export const APP_CONFIG = {
         FLUTTER_SPEED: 0.15,
         FLUTTER_AMP: 5.0,
         WOBBLE_SPEED: 0.1,
-        REPULSE_RADIUS_SQ: 1500,  // TUNED: Tighter Cushion
-        REPULSE_STRENGTH: 0.15,   // TUNED: Subtle hold
+        REPULSE_RADIUS_SQ: 2000,  // TUNED: Inner Hole
+        REPULSE_STRENGTH: 0.5,    // TUNED: Strong Push
+        ATTRACT_RADIUS_SQ: 20000, // TUNED: Outer Wake
+        ATTRACT_STRENGTH: 0.05,   // TUNED: Gentle Pull
         LIFE_DECAY: 0.002,
         DEATH_Y: -2000,
         SCALE_FACTOR: 5.0,
