@@ -233,7 +233,7 @@ export class RubberButton {
         let center = new THREE.Vector3(0, -60, 0);
 
         // Confetti Burst
-        const batchSize = 150;
+        const batchSize = 200; // TUNED: Increased density
         const total = this.particles.length;
 
         for (let i = 0; i < batchSize; i++) {
@@ -246,9 +246,9 @@ export class RubberButton {
             p.mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
             p.vel.set(
-                (Math.random() - 0.5) * 2.0, // TUNED: Strict Vertical (2.0)
-                7.0 + Math.random() * 4.0, // TUNED: Short/Controlled (7-11)
-                (Math.random() - 0.5) * 2.0
+                (Math.random() - 0.5) * 5.0, // TUNED: Balanced Spread (V-Shape)
+                8.0 + Math.random() * 4.0, // TUNED: Controlled Height (8-12)
+                (Math.random() - 0.5) * 5.0
             );
 
             p.rotVel.set(Math.random() * 0.2, Math.random() * 0.2, Math.random() * 0.2);
@@ -398,7 +398,7 @@ export class RubberButton {
             if (p.life > 0) {
                 // Physics
                 p.mesh.position.add(p.vel);
-                p.vel.y -= 0.05; // TUNED: Very Low Gravity (Floaty)
+                p.vel.y -= 0.08; // TUNED: Balanced Gravity
                 p.vel.multiplyScalar(0.99);
 
                 // Sway
