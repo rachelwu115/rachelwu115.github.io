@@ -20,24 +20,19 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     CONFETTI: {
-        CONFETTI: {
-            BATCH_SIZE: 250,
-            SPREAD: 6.0,
-            VELOCITY_Y_BASE: 12.0, // Launch fast
-            VELOCITY_Y_VAR: 4.0,
-            GRAVITY: 0.15,
-            DRAG: 0.96,           // Transitional drag
-            TERMINAL_VEL: 3.0,    // Max fall speed (Paper)
-            FLUTTER_SPEED: 0.15,
-            FLUTTER_AMP: 2.0,     // Horizontal drift amp
-            WOBBLE_SPEED: 0.1,    // 3D Tumble speed
-            REPULSE_RADIUS_SQ: 2500,
-            REPULSE_STRENGTH: 2.0,
-            LIFE_DECAY: 0.005,    // Slower decay for long fall
-            DEATH_Y: -100,
-            SCALE_FACTOR: 5.0
-        },
-        LIFE_DECAY: 0.005,
+        BATCH_SIZE: 250,
+        SPREAD: 6.0,
+        VELOCITY_Y_BASE: 12.0, // Launch fast
+        VELOCITY_Y_VAR: 4.0,
+        GRAVITY: 0.15,
+        DRAG: 0.96,           // Transitional drag
+        TERMINAL_VEL: 3.0,    // Max fall speed (Paper)
+        FLUTTER_SPEED: 0.15,
+        FLUTTER_AMP: 2.0,     // Horizontal drift amp
+        WOBBLE_SPEED: 0.1,    // 3D Tumble speed
+        REPULSE_RADIUS_SQ: 2500,
+        REPULSE_STRENGTH: 2.0,
+        LIFE_DECAY: 0.005,    // Slower decay for long fall
         DEATH_Y: -100,
         SCALE_FACTOR: 5.0
     },
