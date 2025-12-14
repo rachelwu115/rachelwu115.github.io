@@ -535,6 +535,9 @@ export class RubberButton {
                 this.physics.targetPressY = -10.0;
                 const hit = hits[0];
 
+                // GUARD: Ensure face exists to prevent crash
+                if (!hit.face) return;
+
                 // VERTEX ANCHORING: Find closest vertex on the face to lock the grab
                 // This prevents "drift" as the mesh deforms
                 const face = hit.face;
@@ -777,17 +780,34 @@ export class RubberButton {
                 // Sine wave ensures base and top don't bulge excessively
                 const profile = Math.sin((Math.max(0, oy) / 66.0) * Math.PI);
                 const gSquashFactor = globalCompression * this.config.bulgeStrength * 0.01 * Math.max(0, profile);
-                const sxGlobal = ox * gSquashFactor;
-                const szGlobal = oz * gSquashFactor;
 
-                positions[i * 3] = ox + (localDrag.x * w) + sxLocal + sxGlobal;
-                positions[i * 3 + 2] = oz + (localDrag.z * w) + szLocal + szGlobal;
+                // SAFETY: Prevent Mesh Inversion or NaN
+                // Combine local and global squash factors
+                // If sum < -0.9, we are inverting the mesh (turning it inside out) -> Clamp it
+                let totalSquash = (radialSquash * 0.01 * w) + gSquashFactor;
+                if (totalSquash < -0.9) totalSquash = -0.9;
 
-                let newY = this.originalPositions[i * 3 + 1] + (effDragY * w);
+                if (isNaN(totalSquash) || isNaN(w)) continue;
+
+                // Apply safe squash
+                const sxTotal = ox * totalSquash;
+                const szTotal = oz * totalSquash;
+
+                let px = ox + (localDrag.x * w) + sxTotal;
+                let pz = oz + (localDrag.z * w) + szTotal;
+                let py = this.originalPositions[i * 3 + 1] + (effDragY * w);
+
+                // Final NaN Guard
+                if (isNaN(px) || isNaN(py) || isNaN(pz)) {
+                    px = ox; py = oy; pz = oz;
+                }
+
+                positions[i * 3] = px;
+                positions[i * 3 + 2] = pz;
 
                 // Removed limitY clamping to fix base artifacts
                 // The 'pin' logic in calculateWeights handles base stability
-                positions[i * 3 + 1] = newY;
+                positions[i * 3 + 1] = py;
             }
             this.mesh.geometry.attributes.position.needsUpdate = true;
             this.mesh.geometry.computeVertexNormals();
