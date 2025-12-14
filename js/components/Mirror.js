@@ -295,22 +295,24 @@ export class Mirror {
             this.bubbles.push({
                 x: bx,
                 y: by,
-                r: 1 + Math.random() * 3, // Start small
-                maxR: 4 + Math.random() * 8, // Target size (sludge bubbles)
-                growth: 0.1 + Math.random() * 0.2,
+                r: 0.5 + Math.random() * 1.5, // Start tiny
+                maxR: 2 + Math.random() * 3, // Max small
+                growth: 0.05 + Math.random() * 0.1, // Slower growth
                 life: 1.0,
-                decay: 0.01 + Math.random() * 0.02
+                decay: 0.01 + Math.random() * 0.03
             });
         }
 
         // Update existing
         for (let i = this.bubbles.length - 1; i >= 0; i--) {
             const b = this.bubbles[i];
-            b.r += b.growth;
+            if (b.r < b.maxR) {
+                b.r += b.growth;
+            }
             b.life -= b.decay;
 
             // Slight rise
-            b.y -= 0.2;
+            b.y -= 0.1;
 
             if (b.life <= 0) {
                 this.bubbles.splice(i, 1);
@@ -336,12 +338,17 @@ export class Mirror {
 
         // Draw Bubbles
         if (this.bubbles) {
+            this.ctx.save();
             this.ctx.fillStyle = '#000000';
+            this.ctx.shadowBlur = 4; // Make them fuzzy
+            this.ctx.shadowColor = '#000000';
+
             this.bubbles.forEach(b => {
                 this.ctx.beginPath();
                 this.ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                 this.ctx.fill();
             });
+            this.ctx.restore();
         }
 
         // Draw Tears
