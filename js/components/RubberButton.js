@@ -196,7 +196,8 @@ export class RubberButton {
         this.confettiGroup = new THREE.Group();
         this.scene.add(this.confettiGroup);
 
-        const geo = new THREE.PlaneGeometry(6, 6);
+        // Rectangular "Strip" Geometry for tumbling effect
+        const geo = new THREE.PlaneGeometry(8, 4);
         const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
 
         for (let i = 0; i < count; i++) {
@@ -208,8 +209,11 @@ export class RubberButton {
                 mesh: mesh,
                 vel: new THREE.Vector3(),
                 rotVel: new THREE.Vector3(),
-                swaySpeed: 0.005 + Math.random() * 0.01,
-                swayOffset: Math.random() * Math.PI * 2,
+                // Paper Physics State
+                tiltAngle: 0,
+                tiltAngleIncrement: 0,
+                wobble: 0,
+                wobbleIncrement: 0,
                 life: 0
             });
         }
@@ -254,7 +258,11 @@ export class RubberButton {
                 (Math.random() - 0.5) * C.SPREAD
             );
 
-            p.rotVel.set(Math.random() * 0.2, Math.random() * 0.2, Math.random() * 0.2);
+            // Init Flutter State
+            p.tiltAngle = Math.random() * Math.PI;
+            p.tiltAngleIncrement = (Math.random() * 0.1) + 0.05;
+            p.wobble = Math.random() * Math.PI * 2;
+            p.wobbleIncrement = (Math.random() * 0.1) + 0.05;
 
             // Random Colors
             const r = Math.random();
@@ -392,42 +400,47 @@ export class RubberButton {
         const C = APP_CONFIG.CONFETTI;
 
         // INTERACTIVITY: Cursor Repulsion
-        // Update raycaster with current mouse pos
         this.raycaster.setFromCamera(this.mouse, this.camera);
         const ray = this.raycaster.ray;
 
         this.particles.forEach((p) => {
             if (p.life > 0) {
-                // Physics
+                // PHASE 1: BALLISTIC (Launch) - Use Velocity
+                // PHASE 2: FLUTTER (Fall) - Use Position Update
+
+                // Integration
                 p.mesh.position.add(p.vel);
+
+                // Aerodynamics
                 p.vel.y -= C.GRAVITY;
-                p.vel.multiplyScalar(C.DRAG); // AIR RESISTANCE: Decelerates fast
+                p.vel.multiplyScalar(C.DRAG);
 
-                // Sway
-                const sSpeed = p.swaySpeed || C.SWAY_SPEED;
-                const sOffset = p.swayOffset || 0;
-                const sway = Math.sin(now * sSpeed + sOffset) * C.SWAY_AMP;
-                p.mesh.position.x += sway; p.mesh.position.z += sway;
+                // Terminal Velocity Cap
+                if (p.vel.y < -C.TERMINAL_VEL) p.vel.y = -C.TERMINAL_VEL;
 
-                // Rotation
-                p.mesh.rotation.x += p.rotVel.x * 0.5;
-                p.mesh.rotation.y += p.rotVel.y * 0.5;
-                p.mesh.rotation.z += p.rotVel.z * 0.5;
+                // Flutter Physics
+                // As upward velocity decays, flutter takes over
+                p.tiltAngle += p.tiltAngleIncrement;
+                p.wobble += p.wobbleIncrement;
 
-                // Repulsion Logic (Push away from Ray)
-                // Calculate distance squared from particle to the infinite ray
+                // Drift X based on Tilt (Simulate planing)
+                const flutterX = Math.sin(p.tiltAngle) * C.FLUTTER_AMP * 0.1;
+                const flutterZ = Math.cos(p.tiltAngle) * C.FLUTTER_AMP * 0.1;
+
+                p.mesh.position.x += flutterX;
+                p.mesh.position.z += flutterZ;
+
+                // Rotation: Couple rotation with flutter phase
+                p.mesh.rotation.z = p.tiltAngle;
+                p.mesh.rotation.x = p.wobble;
+                p.mesh.rotation.y += 0.02;
+
+                // Repulsion Logic
                 const distSq = ray.distanceSqToPoint(p.mesh.position);
-
                 if (distSq < C.REPULSE_RADIUS_SQ) {
-                    // Find closest point on ray
                     const target = new THREE.Vector3();
                     ray.closestPointToPoint(p.mesh.position, target);
-
-                    // Direction: Target -> Particle
                     const dir = new THREE.Vector3().subVectors(p.mesh.position, target).normalize();
-
-                    // Force falls off with distance interaction
-                    // Add to velocity
                     p.vel.add(dir.multiplyScalar(C.REPULSE_STRENGTH));
                 }
 
