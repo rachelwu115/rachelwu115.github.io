@@ -477,15 +477,6 @@ export class RubberButton {
                 p.mesh.rotation.x = p.wobble;
                 p.mesh.rotation.y += 0.02;
 
-                // Repulsion Logic
-                const distSq = ray.distanceSqToPoint(p.mesh.position);
-                if (distSq < C.REPULSE_RADIUS_SQ) {
-                    const target = new THREE.Vector3();
-                    ray.closestPointToPoint(p.mesh.position, target);
-                    const dir = new THREE.Vector3().subVectors(p.mesh.position, target).normalize();
-                    p.vel.add(dir.multiplyScalar(C.REPULSE_STRENGTH));
-                }
-
                 // Simple Decay (No grounded logic)
                 p.life -= C.LIFE_DECAY;
 

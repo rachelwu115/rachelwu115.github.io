@@ -22,9 +22,9 @@ export const APP_CONFIG = {
     CONFETTI: {
         BATCH_SIZE: 650,      // TUNED: Reduced density for clarity
         SPAWN_RADIUS: 80.0,   // TUNED: Globe Size
-        EXPLOSION_POWER: 20.0, // TUNED: Radial Burst Speed
-        VELOCITY_Y_BASE: 8.0,  // TUNED: Upward Bias
-        VELOCITY_Y_VAR: 10.0,
+        EXPLOSION_POWER: 15.0, // TUNED: Lower Ceiling
+        VELOCITY_Y_BASE: 5.0,  // TUNED: Lower Ceiling
+        VELOCITY_Y_VAR: 6.0,   // TUNED: Tighter variance
         GRAVITY: 0.12,
         DRAG: 0.95,
         TERMINAL_VEL: 2.8,
@@ -36,8 +36,8 @@ export const APP_CONFIG = {
         LIFE_DECAY: 0.002,
         DEATH_Y: -2000,
         SCALE_FACTOR: 5.0,
-        SCALE_MIN: 0.6,       // TUNED: Uniform "Tickets"
-        SCALE_MAX: 1.4        // TUNED: Uniform "Tickets"
+        SCALE_MIN: 0.3,       // TUNED: Back (Small)
+        SCALE_MAX: 2.5        // TUNED: Front (Big)
     },
 
     // -------------------------------------------------------------------------
