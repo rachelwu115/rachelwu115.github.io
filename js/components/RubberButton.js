@@ -743,7 +743,14 @@ export class RubberButton {
             let radialSquash = 0;
 
             if (localDrag.y < 0) {
-                effDragY *= 0.1; radialSquash = -localDrag.y * 0.4;
+                // SQUASH (Push Down)
+                effDragY *= 0.1;
+                radialSquash = -localDrag.y * 0.4;
+            } else {
+                // NECKING (Push Up) - "Slime Strand" effect
+                // Contract the width as we stretch up (Poisson ratio)
+                // This prevents the "lipstick cylinder" look
+                radialSquash = -localDrag.y * 0.3;
             }
 
             for (let i = 0; i < this.weights.length; i++) {

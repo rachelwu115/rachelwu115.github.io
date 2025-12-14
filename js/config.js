@@ -20,7 +20,7 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     BUTTON: {
-        softness: 25.0,   // TUNED: Wide smooth blend (High-Poly)
+        softness: 12.0,   // TUNED: Localized Slime necking
         stiffness: 0.1,   // TUNED: Stretchy
         damping: 0.85,    // TUNED: Viscous/Sticky
         snapLimit: 150.0, // TUNED: Allow more stretch
