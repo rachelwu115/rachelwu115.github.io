@@ -20,7 +20,7 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     BUTTON: {
-        softness: 20.0,   // TUNED: Sharp "tent" pull (Gooey)
+        softness: 15.0,   // TUNED: Acute "Spike" decay length
         stiffness: 0.1,   // TUNED: Stretchy
         damping: 0.85,    // TUNED: Viscous/Sticky
         snapLimit: 150.0, // TUNED: Allow more stretch

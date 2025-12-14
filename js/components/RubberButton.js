@@ -596,7 +596,12 @@ export class RubberButton {
             const dy = pos[i + 1] - localGrab.y;
             const dz = pos[i + 2] - localGrab.z;
             const distSq = dx * dx + dy * dy + dz * dz;
-            let w = Math.exp(-distSq / (2 * this.config.softness * this.config.softness));
+
+            // Exponential Falloff for "Spike" shape (no flat top)
+            // w = e^(-distance / softness)
+            // Distance is sqrt(distSq)
+            let w = Math.exp(-Math.sqrt(distSq) / this.config.softness);
+
             if (pos[i + 1] < grabY) {
                 let pin = Math.max(0, pos[i + 1] / grabY);
                 w *= Math.pow(pin, 0.8);
