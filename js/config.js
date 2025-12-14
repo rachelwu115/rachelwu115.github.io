@@ -22,10 +22,10 @@ export const APP_CONFIG = {
     CONFETTI: {
         BATCH_SIZE: 250,
         SPREAD: 6.0,          // Conical spread
-        VELOCITY_Y_BASE: 12.0, // High launch
+        VELOCITY_Y_BASE: 8.0,  // TUNED: Slower launch (Gentle Toss)
         VELOCITY_Y_VAR: 3.0,   // Variance
-        GRAVITY: 0.05,        // Low gravity (Snowflake)
-        DRAG: 0.94,           // High drag (Air resistance)
+        GRAVITY: 0.15,        // TUNED: Normal gravity (Paper Fall)
+        DRAG: 0.98,           // TUNED: Standard drag (Natural Arc)
         SWAY_SPEED: 0.005,
         SWAY_AMP: 0.1,
         REPULSE_RADIUS_SQ: 2500,
