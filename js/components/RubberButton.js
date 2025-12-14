@@ -533,9 +533,34 @@ export class RubberButton {
                 this.physics.returnVelocity.set(0, 0, 0);
                 this.physics.targetPressY = -10.0;
                 const hit = hits[0];
+
+                // VERTEX ANCHORING: Find closest vertex on the face to lock the grab
+                // This prevents "drift" as the mesh deforms
+                const face = hit.face;
+                const indices = [face.a, face.b, face.c];
+                let minDistSq = Infinity;
+                let closestIndex = -1;
+
+                const posAttr = this.mesh.geometry.attributes.position;
+                const vPos = new THREE.Vector3();
+
+                // We must use CURRENT world positions to match the raycast hit
+                // But we store the INDEX to reference ORIGINAL positions later
+                indices.forEach(idx => {
+                    vPos.fromBufferAttribute(posAttr, idx);
+                    vPos.applyMatrix4(this.mesh.matrixWorld);
+                    const dSq = vPos.distanceToSquared(hit.point);
+                    if (dSq < minDistSq) {
+                        minDistSq = dSq;
+                        closestIndex = idx;
+                    }
+                });
+
+                this.physics.grabIndex = closestIndex;
                 this.physics.grabPoint.copy(hit.point);
                 this.physics.localGrabPoint.copy(this.mesh.worldToLocal(hit.point.clone()));
                 this.physics.dragOffset.set(0, 0, 0);
+
                 this.calculateWeights();
                 audioManager.playTone(150, 'square', 0.1, 0.3);
                 this.canvas.style.cursor = 'grabbing';
@@ -588,19 +613,26 @@ export class RubberButton {
 
     calculateWeights() {
         const pos = this.originalPositions;
-        const localGrab = this.physics.localGrabPoint;
-        const grabY = Math.max(0.1, localGrab.y);
+
+        // Use the ORIGINAL position of the anchored vertex as field center
+        // This ensures the weight field moves WITH the material point, not space
+        const idx = this.physics.grabIndex;
+        if (idx === -1 || idx === undefined) return;
+
+        const cx = pos[idx * 3];
+        const cy = pos[idx * 3 + 1];
+        const cz = pos[idx * 3 + 2];
+        const grabY = Math.max(0.1, cy); // Use original Y reference
 
         for (let i = 0; i < pos.length; i += 3) {
-            const dx = pos[i] - localGrab.x;
-            const dy = pos[i + 1] - localGrab.y;
-            const dz = pos[i + 2] - localGrab.z;
-            const distSq = dx * dx + dy * dy + dz * dz;
+            const dx = pos[i] - cx;
+            const dy = pos[i + 1] - cy;
+            const dz = pos[i + 2] - cz;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-            // Exponential Falloff for "Spike" shape (no flat top)
-            // w = e^(-distance / softness)
-            // Distance is sqrt(distSq)
-            let w = Math.exp(-Math.sqrt(distSq) / this.config.softness);
+            // Heavy-Tail Decay: 1 / (1 + distance / softness)
+            // Sharp peak (derivative = -1/s at 0), but long tail (gooey)
+            let w = 1.0 / (1.0 + dist / this.config.softness);
 
             if (pos[i + 1] < grabY) {
                 let pin = Math.max(0, pos[i + 1] / grabY);
