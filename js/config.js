@@ -20,24 +20,24 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     CONFETTI: {
-        BATCH_SIZE: 750,      // TUNED: Reduced density for clarity
-        SPAWN_RADIUS_XZ: 120.0, // TUNED: De-clumping (Wider Tube)
-        SPREAD: 18.0,         // TUNED: Wide coverage
-        VELOCITY_Y_BASE: 10.0, // TUNED: Controlled Launch (Not over-screen)
+        BATCH_SIZE: 650,      // TUNED: Reduced density for clarity
+        SPAWN_RADIUS: 80.0,   // TUNED: Globe Size
+        EXPLOSION_POWER: 20.0, // TUNED: Radial Burst Speed
+        VELOCITY_Y_BASE: 8.0,  // TUNED: Upward Bias
         VELOCITY_Y_VAR: 10.0,
-        GRAVITY: 0.12,        // TUNED: Cardboard Fall (Not moon)
+        GRAVITY: 0.12,
         DRAG: 0.95,
-        TERMINAL_VEL: 2.8,    // TUNED: Normal fall speed
+        TERMINAL_VEL: 2.8,
         FLUTTER_SPEED: 0.15,
-        FLUTTER_AMP: 15.0,    // Hurricane Drift
+        FLUTTER_AMP: 5.0,
         WOBBLE_SPEED: 0.1,
         REPULSE_RADIUS_SQ: 2500,
         REPULSE_STRENGTH: 2.0,
         LIFE_DECAY: 0.002,
         DEATH_Y: -2000,
         SCALE_FACTOR: 5.0,
-        SCALE_MIN: 0.2,
-        SCALE_MAX: 2.5
+        SCALE_MIN: 0.3,       // TUNED: Back (Small)
+        SCALE_MAX: 2.5        // TUNED: Front (Big)
     },
 
     // -------------------------------------------------------------------------
