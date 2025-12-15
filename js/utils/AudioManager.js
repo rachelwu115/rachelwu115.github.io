@@ -12,22 +12,24 @@ export class AudioManager {
         // Noise Buffer for "Breath" sounds
         this.noiseBuffer = this.createNoiseBuffer();
 
-        // Melody: Fur Elise (Full Section A - LOWER OCTAVE)
+        // Melody: Fur Elise (Recurring Theme + Section B)
         this.melody = [
-            // Phrase 1 (E4 range)
-            329.63, 311.13, 329.63, 311.13, 329.63, 246.94, 293.66, 261.63, 220.00, // E D# E D# E B D C A
-            // Arpeggio 1 (Lower)
-            130.81, 164.81, 220.00, 246.94, // C E A B
-            // Arpeggio 2
-            164.81, 207.65, 246.94, 261.63, // E G# B C
-            // Phrase 2
-            164.81, 329.63, 311.13, 329.63, 311.13, 329.63, 246.94, 293.66, 261.63, 220.00 // E E(high) D# E D# E B D C A
+            // Section A
+            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
+            261.63, 329.63, 440.00, 493.88, // C E A B
+            329.63, 415.30, 493.88, 523.25, // E G# B C
+            329.63, 415.30, 493.88, 523.25, // E G# B C
+            // Section B (Transition)
+            493.88, 523.25, 587.33, 659.25, // B C D E
+            392.00, 698.46, 659.25, 587.33, // G F E D
+            349.23, 659.25, 587.33, 523.25, // F E D C
+            293.66, 587.33, 523.25, 493.88  // D D C B
         ];
         this.melodyIndex = 0;
 
-        // Echo / Delay System (Subtle Reverb)
+        // Echo / Delay System
         this.delayNode = this.ctx.createDelay();
-        this.delayNode.delayTime.value = 0.3; // 300ms Echo
+        this.delayNode.delayTime.value = 0.4;
 
         this.feedbackGain = this.ctx.createGain();
         this.wetGain = this.ctx.createGain();
@@ -38,8 +40,8 @@ export class AudioManager {
         this.delayNode.connect(this.wetGain);
         this.wetGain.connect(this.masterGain);
 
-        this.feedbackGain.gain.value = 0.3;
-        this.wetGain.gain.value = 0.15;
+        this.feedbackGain.gain.value = 0.5;
+        this.wetGain.gain.value = 0.4;
 
         // Map to track active oscillators for Sustain (Desktop)
         this.activeNotes = new Map();
@@ -166,10 +168,7 @@ export class AudioManager {
     playNextNote() {
         const freq = this.melody[this.melodyIndex % this.melody.length];
         this.melodyIndex++;
-
-        // TUNED: Original "Dev Branch Start" Feel
-        // Lower Octave (via melody array) + Sine Wave + Long Duration (0.8s) + Lower Vol (0.25)
-        this.playTone(freq, 'sine', 0.8, 0.25);
+        this.playTone(freq, 'sine', 0.8, 0.25); // TUNED: Balanced Volume (0.25)
     }
 
     /**
@@ -187,19 +186,11 @@ export class AudioManager {
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
-        // STANDARD SINE ENVELOPE (Glassy)
-        gain.gain.setValueAtTime(0, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05); // Standard Attack
-        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration); // Standard Decay
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
 
         osc.connect(gain);
         gain.connect(this.masterGain);
-
-        // Connect to Echo as well
-        const echoSend = this.ctx.createGain();
-        echoSend.gain.value = 1.0; // Send full signal to wet/dry mix
-        gain.connect(echoSend);
-        echoSend.connect(this.delayNode);
 
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
