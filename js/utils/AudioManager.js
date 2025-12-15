@@ -166,6 +166,10 @@ export class AudioManager {
         this.playTone(freq, 'sine', 0.8, 0.25);
     }
 
+    resetMelody() {
+        this.melodyIndex = 0;
+    }
+
     /**
      * Plays a simple tone.
      * @param {number} freq Frequency in Hz

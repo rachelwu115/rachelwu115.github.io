@@ -113,6 +113,13 @@ export class Mirror {
             });
 
             this.input.addEventListener('input', (e) => {
+                // THROTTLE: Prevent double-firing events (IME/Mobile) from skipping notes
+                const now = Date.now();
+                if (this.lastInputTime && (now - this.lastInputTime < 50)) {
+                    return; // Skip duplicate/rapid-fire events
+                }
+                this.lastInputTime = now;
+
                 const char = e.data || this.input.value.slice(-1);
 
                 if (char) {
