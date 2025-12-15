@@ -150,12 +150,7 @@ export class Mirror {
 
         if (!this.img) return;
 
-        // "Contain" Logic: Fit image entirely within the canvas
-        // This ensures that when height shrinks (keyboard open), the image zooms out
-        const scaleW = rect.width / this.img.width;
-        const scaleH = rect.height / this.img.height;
-        const rawScale = Math.min(scaleW, scaleH); // Use whichever is smaller
-
+        const rawScale = rect.width / this.img.width; // Use CSS width (rect) for logic
         const scale = rawScale * APP_CONFIG.VIEWPORT.ZOOM;
 
         // Logic Layout uses CSS coordinates (virtual pixels)
@@ -163,13 +158,9 @@ export class Mirror {
             s: scale,
             w: this.img.width * scale,
             h: this.img.height * scale,
-            x: (rect.width - (this.img.width * scale)) / 2, // Always center horizontally
-            y: (rect.height - (this.img.height * scale)) / 2 // Center vertically too
+            x: ((rect.width - (this.img.width * scale)) / 2) + (rect.width * APP_CONFIG.VIEWPORT.OFFSET_X),
+            y: rect.height * APP_CONFIG.VIEWPORT.TOP_OFFSET
         };
-
-        // Offset Logic (Optional: If we still want to nudge it up/down via config)
-        this.layout.x += rect.width * APP_CONFIG.VIEWPORT.OFFSET_X;
-        this.layout.y += rect.height * APP_CONFIG.VIEWPORT.TOP_OFFSET;
     }
 
     spawnTear(char) {

@@ -91,8 +91,18 @@ canvas {
 /* --- THE ART FRAME (CSS Styled) --- */
 .art-frame {
     position: relative;
-    width: 450px;
-    height: 600px;
+    /* Responsive Sizing */
+    width: auto;
+    height: auto;
+    aspect-ratio: 450 / 600;
+    /* Maintain ratio */
+    max-height: 85dvh;
+    /* Never taller than 85% of screen */
+    max-width: 90vw;
+    /* Never wider than 90% of screen */
+    min-height: 300px;
+    /* Don't get too tiny */
+
     background: #706c61;
 
     /* COMPLEX FRAME STYLING (The "Hand Painted" Look) */
