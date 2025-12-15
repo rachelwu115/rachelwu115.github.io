@@ -15,9 +15,9 @@ export class RubberButton {
     constructor() {
         // Build Trigger: 2025-12-14
         // Build Trigger: 2025-12-14
+        // Build Trigger: 2025-12-14
         this.canvas = document.getElementById('buttonCanvas');
-        this.confettiCanvas = document.getElementById('confettiCanvas'); // NEW: Top Layer
-        if (!this.canvas || !this.confettiCanvas) return;
+        if (!this.canvas) return;
 
         // Configuration
         this.config = Object.assign({
@@ -52,8 +52,7 @@ export class RubberButton {
         this.scene = null;
         this.camera = null;
         this.renderer = null;
-        this.rendererConfetti = null; // NEW
-        this.sceneConfetti = null;    // NEW
+        this.renderer = null;
         this.mesh = null;
         this.particles = []; // For confetti
 
@@ -90,18 +89,7 @@ export class RubberButton {
         this.renderer.setSize(w, h);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-        // RENDERER 2: CONFETTI (Top Layer)
-        this.rendererConfetti = new THREE.WebGLRenderer({
-            canvas: this.confettiCanvas,
-            alpha: true, // IMPORTANT: Must be transparent
-            antialias: true
-        });
-        this.rendererConfetti.setSize(w, h);
-        this.rendererConfetti.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.rendererConfetti.setClearColor(0x000000, 0); // EXPLICIT: Transparent
 
         window.addEventListener('resize', () => this.onResize());
     }
@@ -201,13 +189,8 @@ export class RubberButton {
     initConfetti() {
         const count = 3000; // Reduced pool for giant sheets
         this.confettiIndex = 0;
-
-        // Use Independent Scene for Confetti to render on top canvas
-        this.sceneConfetti = new THREE.Scene();
-        this.sceneConfetti.background = null;
-
         this.confettiGroup = new THREE.Group();
-        this.sceneConfetti.add(this.confettiGroup); // Add to NEW scene
+        this.scene.add(this.confettiGroup);
 
         // Rectangular "Strip" Geometry for tumbling effect
         const geo = new THREE.PlaneGeometry(8, 4);
@@ -587,17 +570,10 @@ export class RubberButton {
                 this.updateDeformation();
             }
             this.updatePhysics(dt);
+            this.updatePhysics(dt);
             if (this.isActive) {
-                // Render Main Scene (Bottom)
+                if (this.state.isExploded) this.confettiGroup.visible = true;
                 this.renderer.render(this.scene, this.camera);
-
-                // Render Confetti Scene (Top)
-                if (this.state.isExploded) {
-                    this.confettiGroup.visible = true;
-                    this.rendererConfetti.render(this.sceneConfetti, this.camera);
-                } else {
-                    this.rendererConfetti.clear(); // Ensure clear when not exploded
-                }
             }
         };
         animate();
@@ -790,7 +766,6 @@ export class RubberButton {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
-        if (this.rendererConfetti) this.rendererConfetti.setSize(w, h);
     }
 
     setActive(active) {
@@ -801,10 +776,8 @@ export class RubberButton {
             this.onResize();
             this.onResize();
             if (this.canvas) this.canvas.style.display = 'block';
-            if (this.confettiCanvas) this.confettiCanvas.style.display = 'block';
         } else {
             if (this.canvas) this.canvas.style.display = 'none';
-            if (this.confettiCanvas) this.confettiCanvas.style.display = 'none';
         }
     }
 }
