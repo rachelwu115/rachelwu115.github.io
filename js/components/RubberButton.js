@@ -356,11 +356,13 @@ export class RubberButton {
 
 
 
-    updateConfetti() {
+    updateConfetti(dt) {
         // this.updateDrips(); // REMOVED
 
-        const now = Date.now();
         const C = APP_CONFIG.CONFETTI;
+        // Time Scaling: Normalize to 60FPS (approx 0.016s per frame)
+        // If dt is high (lag), timeScale > 1, physics runs "faster" to catch up.
+        const timeScale = dt / 0.01666;
 
         // INTERACTIVITY: Cursor Repulsion
         this.raycaster.setFromCamera(this.mouse, this.camera);
@@ -379,33 +381,35 @@ export class RubberButton {
                     const target = new THREE.Vector3();
                     ray.closestPointToPoint(p.mesh.position, target);
                     const dir = new THREE.Vector3().subVectors(p.mesh.position, target).normalize();
-                    p.vel.add(dir.multiplyScalar(C.REPULSE_STRENGTH));
+                    p.vel.add(dir.multiplyScalar(C.REPULSE_STRENGTH * timeScale));
                 } else if (distSq < C.ATTRACT_RADIUS_SQ) {
                     // ZONE 2: ATTRACTION (The Wake)
                     const target = new THREE.Vector3();
                     ray.closestPointToPoint(p.mesh.position, target);
                     const dir = new THREE.Vector3().subVectors(target, p.mesh.position).normalize();
-                    p.vel.add(dir.multiplyScalar(C.ATTRACT_STRENGTH));
+                    p.vel.add(dir.multiplyScalar(C.ATTRACT_STRENGTH * timeScale));
                 }
 
                 // Integration
-                p.mesh.position.add(p.vel);
+                // p.mesh.position.add(p.vel); // OLD (Frame bound)
+                p.mesh.position.add(p.vel.clone().multiplyScalar(timeScale)); // NEW (Time bound)
 
                 // Aerodynamics
-                p.vel.y -= C.GRAVITY;
-                p.vel.multiplyScalar(C.DRAG);
+                p.vel.y -= C.GRAVITY * timeScale;
+                // Power drag: simulate air resistance (approximate)
+                p.vel.multiplyScalar(Math.pow(C.DRAG, timeScale));
 
                 // Terminal Velocity Cap
                 if (p.vel.y < -C.TERMINAL_VEL) p.vel.y = -C.TERMINAL_VEL;
 
                 // Flutter Physics
                 // As upward velocity decays, flutter takes over
-                p.tiltAngle += p.tiltAngleIncrement;
-                p.wobble += p.wobbleIncrement;
+                p.tiltAngle += p.tiltAngleIncrement * timeScale;
+                p.wobble += p.wobbleIncrement * timeScale;
 
                 // Drift X based on Tilt (Simulate planing)
-                const flutterX = Math.sin(p.tiltAngle) * C.FLUTTER_AMP * 0.1;
-                const flutterZ = Math.cos(p.tiltAngle) * C.FLUTTER_AMP * 0.1;
+                const flutterX = Math.sin(p.tiltAngle) * C.FLUTTER_AMP * 0.1 * timeScale;
+                const flutterZ = Math.cos(p.tiltAngle) * C.FLUTTER_AMP * 0.1 * timeScale;
 
                 p.mesh.position.x += flutterX;
                 p.mesh.position.z += flutterZ;
@@ -413,14 +417,10 @@ export class RubberButton {
                 // Rotation: Couple rotation with flutter phase
                 p.mesh.rotation.z = p.tiltAngle;
                 p.mesh.rotation.x = p.wobble;
-                p.mesh.rotation.z = p.tiltAngle;
-                p.mesh.rotation.x = p.wobble;
-                p.mesh.rotation.z = p.tiltAngle;
-                p.mesh.rotation.x = p.wobble;
-                p.mesh.rotation.y += 0.02;
+                p.mesh.rotation.y += 0.02 * timeScale;
 
                 // Simple Decay (No grounded logic)
-                p.life -= C.LIFE_DECAY;
+                p.life -= C.LIFE_DECAY * timeScale;
 
                 if (p.life <= 0 || p.mesh.position.y < C.DEATH_Y) {
                     p.mesh.visible = false;
@@ -580,7 +580,7 @@ export class RubberButton {
             const dt = Math.min(clock.getDelta(), 0.1);
             if (this.isActive) this.localTime += dt * 1000;
 
-            this.updateConfetti();
+            this.updateConfetti(dt); // Pass dt for time-scaling
 
             if (this.isActive && this.mesh.visible) {
                 this.updateHeartbeat();
