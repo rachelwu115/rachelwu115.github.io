@@ -84,6 +84,17 @@ export class Mirror {
                 }, 500); // Increased delay for first-time safety
             });
 
+            // 0b. Reset Layout on Keyboard Dismiss (Blur)
+            this.input.addEventListener('blur', () => {
+                // If keyboard is gone (viewport large), reset scroll to top
+                setTimeout(() => {
+                    const dpr = window.devicePixelRatio || 1;
+                    // Heuristic: If height > 600 or window.innerHeight approx screen.height
+                    // Just reset scroll to be safe.
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 200);
+            });
+
             // 1. Auto-Focus on Init (Immediate Typing)
             setTimeout(() => {
                 if (this.input.offsetParent !== null) this.input.focus();
