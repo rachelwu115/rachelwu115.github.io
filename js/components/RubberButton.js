@@ -602,21 +602,42 @@ export class RubberButton {
             }
         }
 
+        // Heartbeat Pulse Visualization
         let pulse = 1.0;
-        if (phase < 300) {
-            pulse = 1.0 + Math.sin((phase / 300) * Math.PI) * 0.008;
+        // Pulse duration: 300ms
+        const pulseDur = 300;
+
+        if (phase < pulseDur) {
+            // Sine wave for smooth expansion/contraction
+            // Increased amplitude 0.008 -> 0.05 for clear visibility
+            pulse = 1.0 + Math.sin((phase / pulseDur) * Math.PI) * 0.05;
         }
         this.mesh.scale.set(pulse, 0.7 * pulse, pulse);
-        this.mesh.position.x = (Math.random() - 0.5) * 0.2;
-        this.mesh.position.z = (Math.random() - 0.5) * 0.2;
+
+        // Jitter Effect during beat
+        // Only jitter during the pulse window
+        if (phase < pulseDur) {
+            this.mesh.position.x = (Math.random() - 0.5) * 0.5; // Increased jitter
+            this.mesh.position.z = (Math.random() - 0.5) * 0.5;
+        } else {
+            this.mesh.position.x = 0;
+            this.mesh.position.z = 0;
+        }
         this.mesh.position.y = this.physics.pressY;
 
-        if (phase < 50 && this.state.beatPhase === 0) {
-            const vol = this.state.isRegenerating ? 0.1 : 0.2;
-            audioManager.playTone(55, 'sine', 0.2, vol);
-            this.state.beatPhase = 1;
+        // Audio Trigger - Robust Check
+        // Reset beatPhase only when we are far past the beat window to prevent multi-trigger
+        if (phase > pulseDur && this.state.beatPhase === 1) {
+            this.state.beatPhase = 0;
         }
-        if (phase > 500) this.state.beatPhase = 0;
+
+        // Trigger beat at the start of the phase
+        if (phase < 50 && this.state.beatPhase === 0) {
+            const vol = this.state.isRegenerating ? 0.3 : 0.6; // TUNED: Louder (0.6)
+            // Use a low sine tone for a "thump"
+            audioManager.playTone(55, 'sine', 0.2, vol);
+            this.state.beatPhase = 1; // Mark as played
+        }
     }
 
     updatePhysics(dt) {
