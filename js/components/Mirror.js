@@ -63,6 +63,21 @@ export class Mirror {
 
         // --- TEXT INPUT HANDLING ---
         if (this.input) {
+            // 1. Auto-Focus on Init (Immediate Typing)
+            setTimeout(() => {
+                if (this.input.offsetParent !== null) this.input.focus();
+            }, 100);
+
+            // 2. Keep Focus (Immersion)
+            // If user clicks background, re-focus input so they don't lose typing state
+            document.addEventListener('click', (e) => {
+                // Don't steal focus from navigation or links
+                const isInteractive = e.target.closest('a, button, .nav-arrow');
+                if (!isInteractive && this.input.offsetParent !== null) {
+                    this.input.focus();
+                }
+            });
+
             this.input.addEventListener('input', (e) => {
                 const char = e.data || this.input.value.slice(-1);
 
@@ -81,6 +96,12 @@ export class Mirror {
                     this.input.value = "";
                 }, 0);
             });
+
+            // Force focus on click of the dialog box itself (UX)
+            const dialog = document.querySelector('.dialog-box');
+            if (dialog) {
+                dialog.addEventListener('click', () => this.input.focus());
+            }
         }
     }
 
