@@ -104,47 +104,86 @@ export class AudioManager {
         const t = this.ctx.currentTime;
         const dur = 2.0;
 
-        // 1. Web Speech API (The "Human" Voice)
-        if ('speechSynthesis' in window) {
-            // Cancel any current speech to ensure immediate trigger
-            window.speechSynthesis.cancel();
+        // 1. GHOST WHISPER SYNTHESIS
+        // Source: White Noise -> Lowpass (to make it Pink/Airy)
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
 
-            const u = new SpeechSynthesisUtterance("Eye");
-            u.pitch = 0.1; // Deep, slow, sad
-            u.rate = 0.4;  // Prolonged sigh
-            u.volume = 1.0;
-            window.speechSynthesis.speak(u);
-        }
+        // Pre-Filter: Soften the harsh white noise into "Air"
+        const airFilter = this.ctx.createBiquadFilter();
+        airFilter.type = 'lowpass';
+        airFilter.frequency.value = 1500; // Muffled air
 
-        // 2. Ambiance (Simple Sine Drop with Echo)
-        // Fallback or Layering for the "Ghostly" atmosphere
-        const osc = this.ctx.createOscillator();
-        const oscGain = this.ctx.createGain();
-        osc.type = 'sine'; // Pure tone back to simpler sine
+        noise.connect(airFilter);
 
-        // Pitch Drop
-        osc.frequency.setValueAtTime(300, t);
-        osc.frequency.exponentialRampToValueAtTime(100, t + dur);
+        // 2. DUAL FORMANT ARTICULATION (The "Mouth")
+        // We filter the AIR (not a tone) to shape it into vowels.
+        // This creates a "Whisper".
 
-        // Volume Envelope
-        oscGain.gain.setValueAtTime(0, t);
-        oscGain.gain.linearRampToValueAtTime(0.5, t + 0.1);
-        oscGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        // F1 (Jaw): 700Hz (Ah) -> 300Hz (Ee)
+        const f1 = this.ctx.createBiquadFilter();
+        f1.type = 'bandpass';
+        f1.Q.value = 3.0;
+        f1.frequency.setValueAtTime(700, t);
+        f1.frequency.exponentialRampToValueAtTime(300, t + dur);
 
-        // Routing
-        osc.connect(oscGain);
+        // F2 (Tongue): 1200Hz (Ah) -> 2400Hz (Ee)
+        const f2 = this.ctx.createBiquadFilter();
+        f2.type = 'bandpass';
+        f2.Q.value = 4.0;
+        f2.frequency.setValueAtTime(1200, t);
+        f2.frequency.exponentialRampToValueAtTime(2400, t + dur);
 
-        // Dry
-        oscGain.connect(this.masterGain);
+        // Gains (Massive boost for Subtractive Synthesis)
+        const f1Gain = this.ctx.createGain();
+        f1Gain.gain.value = 8.0;
 
-        // Echo Send
+        const f2Gain = this.ctx.createGain();
+        f2Gain.gain.value = 12.0; // Highs need more energy to be heard
+
+        // Envelope (Slow, sad breath)
+        const envGain = this.ctx.createGain();
+        envGain.gain.setValueAtTime(0, t);
+        envGain.gain.linearRampToValueAtTime(0.8, t + 0.5); // Slow inhale
+        envGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+        // Routing: Noise -> AirFilter -> Envelope -> Formants
+        airFilter.connect(envGain);
+        envGain.connect(f1);
+        envGain.connect(f2);
+
+        f1.connect(f1Gain);
+        f2.connect(f2Gain);
+
+        // Output
+        f1Gain.connect(this.masterGain);
+        f2Gain.connect(this.masterGain);
+
+        // Echo (Long, sad reverb)
         const echoSend = this.ctx.createGain();
-        echoSend.gain.value = 0.5;
-        oscGain.connect(echoSend);
+        echoSend.gain.value = 0.8;
+        f1Gain.connect(echoSend);
+        f2Gain.connect(echoSend);
         echoSend.connect(this.delayNode);
 
-        osc.start();
-        osc.stop(t + dur + 0.5);
+        // 3. UNDERTONE (Subtle Sad Sine)
+        // Just a tiny tonal element to give it pitch/sadness without sounding like a robot
+        const sub = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        sub.type = 'sine';
+        sub.frequency.setValueAtTime(150, t); // Low sad note
+        sub.frequency.linearRampToValueAtTime(100, t + dur); // Falling
+        subGain.gain.setValueAtTime(0, t);
+        subGain.gain.linearRampToValueAtTime(0.1, t + 0.5); // Very quiet
+        subGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+        sub.connect(subGain);
+        subGain.connect(this.masterGain);
+
+        noise.start();
+        noise.stop(t + dur + 0.5);
+        sub.start();
+        sub.stop(t + dur + 0.5);
     }
 
     /**
