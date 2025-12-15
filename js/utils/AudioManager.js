@@ -178,9 +178,13 @@ export class AudioManager {
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
-        // Attack Envelope
+        // PIANO ENVELOPE:
+        // 1. Attack: Instant (0.02s) to peak
+        // 2. Decay/Sustain: Slowly fade over 4s (String vibration energy loss)
+        // This ensures "Holding" sounds distinct (long decay) vs "Tapping" (quick release)
         gain.gain.setValueAtTime(0, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05); // 50ms Attack
+        gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 4.0);
 
         osc.connect(gain);
         gain.connect(this.masterGain);
@@ -196,16 +200,16 @@ export class AudioManager {
         if (!note) return;
 
         const { osc, gain } = note;
-        const releaseTime = 0.3; // 300ms Fade Out
+        const releaseTime = 0.8; // 800ms "Linger" after release (Piano Damper isn't instant)
 
-        // Release Envelope using cancelScheduledValues to override any ongoing attack
+        // Release Phase: Smoothly dampen the string
         gain.gain.cancelScheduledValues(this.ctx.currentTime);
         gain.gain.setValueAtTime(gain.gain.value, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + releaseTime);
 
         osc.stop(this.ctx.currentTime + releaseTime);
 
-        // Cleanup Map immediately (audio stops later)
+        // Cleanup Map immediately
         this.activeNotes.delete(id);
     }
 
