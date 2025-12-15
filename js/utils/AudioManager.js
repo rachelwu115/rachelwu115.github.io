@@ -6,8 +6,11 @@ export class AudioManager {
     constructor() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = 0.3; // safe master volume
+        this.masterGain.gain.value = 0.8; // TUNED: Max Volume (User requested "Even Louder")
         this.masterGain.connect(this.ctx.destination);
+
+        // Noise Buffer for "Breath" sounds
+        this.noiseBuffer = this.createNoiseBuffer();
 
         // Melody: Fur Elise (Recurring Theme + Section B)
         this.melody = [
@@ -16,7 +19,6 @@ export class AudioManager {
             261.63, 329.63, 440.00, 493.88, // C E A B
             329.63, 415.30, 493.88, 523.25, // E G# B C
             329.63, 415.30, 493.88, 523.25, // E G# B C
-            // REMOVED Reprise to avoid "reset" feeling
             // Section B (Transition)
             493.88, 523.25, 587.33, 659.25, // B C D E
             392.00, 698.46, 659.25, 587.33, // G F E D
@@ -27,27 +29,29 @@ export class AudioManager {
 
         // Echo / Delay System
         this.delayNode = this.ctx.createDelay();
-        this.delayNode.delayTime.value = 0.4; // 400ms echo
+        this.delayNode.delayTime.value = 0.4;
 
         this.feedbackGain = this.ctx.createGain();
-        this.feedbackGain.gain.value = 0.0; // TUNED: No Echo (User Check)
-
-        // Wet Gain (Controls volume of ALL echoes)
         this.wetGain = this.ctx.createGain();
-        this.wetGain.gain.value = 0.0; // TUNED: No Echo
 
-        // Internal Routing (Feedback Loop)
-        // ENABLED: Standard Delay/Echo loop
+        // Echo Routing
         this.delayNode.connect(this.feedbackGain);
         this.feedbackGain.connect(this.delayNode);
-
-        // Output Routing
         this.delayNode.connect(this.wetGain);
         this.wetGain.connect(this.masterGain);
 
-        // TUNED: Enable the Echo Bus
-        this.feedbackGain.gain.value = 0.5; // Medium decay
-        this.wetGain.gain.value = 0.4; // Audible echo
+        this.feedbackGain.gain.value = 0.5;
+        this.wetGain.gain.value = 0.4;
+    }
+
+    createNoiseBuffer() {
+        const bufferSize = this.ctx.sampleRate * 2.0; // 2 seconds
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * 0.5; // Soft White Noise
+        }
+        return buffer;
     }
 
     resume() {
@@ -57,45 +61,64 @@ export class AudioManager {
     }
 
     /**
-     * Plays a "Sad Sigh" - Falling pitch with echo.
-     * Mimics a human "Haaaaaah" drop.
+     * Plays a "Humanized Sad Sigh".
+     * Mixes Breath (Noise) + Vocal Cord (Tone) + Formant Filter (Mouth Shape).
      */
     playSadSigh() {
         this.resume();
+        const t = this.ctx.currentTime;
+        const dur = 2.0;
+
+        // 1. VOCAL CORDS (Tone)
         const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
+        const oscGain = this.ctx.createGain();
+        osc.type = 'triangle'; // Rich harmonics
 
-        // Filter to soften the "robot" edge of the triangle wave
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 800; // Muffle it slightly
+        // Pitch Drop: Human sigh drops significantly at the end
+        osc.frequency.setValueAtTime(350, t);
+        osc.frequency.exponentialRampToValueAtTime(120, t + dur);
 
-        osc.type = 'triangle'; // Closest primitive to a vocal hum
+        // Vocal Volume: Fade in/out
+        oscGain.gain.setValueAtTime(0, t);
+        oscGain.gain.linearRampToValueAtTime(0.3, t + 0.3); // Soft attack
+        oscGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
-        // Pitch Drop: Start Mid-High, slide to Low
-        const now = this.ctx.currentTime;
-        osc.frequency.setValueAtTime(400, now); // "Ah"
-        osc.frequency.exponentialRampToValueAtTime(150, now + 1.5); // "...oh"
+        // 2. BREATH (Noise)
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+        const noiseGain = this.ctx.createGain();
 
-        // Volume Envelope: Slow attack (breath in), Long release (breath out)
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.6, now + 0.2); // Attack
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0); // Release
+        // Noise Volume: Breath is softer than voice
+        noiseGain.gain.setValueAtTime(0, t);
+        noiseGain.gain.linearRampToValueAtTime(0.15, t + 0.2);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
-        osc.connect(filter);
-        filter.connect(gain);
+        // 3. MOUTH SHAPE (Formant Filter)
+        // Bandpass at 700Hz gives an "Ahhh" vowel sound
+        const formant = this.ctx.createBiquadFilter();
+        formant.type = 'bandpass';
+        formant.frequency.setValueAtTime(700, t);
+        formant.Q.value = 0.8; // Wide mouth
 
-        // Dry Signal (Direct)
-        gain.connect(this.masterGain);
+        // Routing
+        osc.connect(oscGain);
+        noise.connect(noiseGain);
 
-        // Wet Signal (Heavy Echo)
+        oscGain.connect(formant);
+        noiseGain.connect(formant);
+
+        formant.connect(this.masterGain);
+
+        // Echo Send for "Ghostly" feel
         const echoSend = this.ctx.createGain();
-        echoSend.gain.value = 0.8; // Strong send to echo
-        gain.connect(echoSend);
+        echoSend.gain.value = 0.6;
+        formant.connect(echoSend);
         echoSend.connect(this.delayNode);
 
         osc.start();
-        osc.stop(now + 2.5);
+        osc.stop(t + dur + 0.5);
+        noise.start();
+        noise.stop(t + dur + 0.5);
     }
 
     /**
