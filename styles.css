@@ -17,8 +17,8 @@
 body {
     background-color: var(--bg-color);
     background-image:
-        radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.85) 100%),
-        url('./assets/images/wallpaper_full.png');
+        radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%),
+        url('./assets/images/vintage_wallpaper_light.png');
     background-repeat: no-repeat;
     background-size: cover;
     /* Adjust size for pattern scale */
