@@ -129,12 +129,15 @@ export class AudioManager {
         noiseGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
         // 3. MOUTH SHAPE (Formant Filter)
-        // Glide from 700Hz (Ah) to 1500Hz (Eh/Ay) to create "Ayyy"
+        // Glide from 700Hz (Ah) to 2500Hz (Ee) to create strong "EYE" diphthong
         const formant = this.ctx.createBiquadFilter();
         formant.type = 'bandpass';
         formant.frequency.setValueAtTime(700, t);
-        formant.frequency.linearRampToValueAtTime(1500, t + dur); // Articulation
-        formant.Q.value = 0.8;
+        formant.frequency.exponentialRampToValueAtTime(2500, t + dur); // Stronger "Ee"
+
+        // Sharpen the resonant peak (Q) as we reach "Ee" to emphasize the "Y" sound
+        formant.Q.setValueAtTime(0.8, t);
+        formant.Q.linearRampToValueAtTime(3.0, t + dur); // Resonant/Nasal finish
 
         // Routing
         osc.connect(oscGain);
