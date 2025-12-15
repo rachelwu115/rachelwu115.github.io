@@ -12,21 +12,16 @@ export class AudioManager {
         // Noise Buffer for "Breath" sounds
         this.noiseBuffer = this.createNoiseBuffer();
 
-        // Melody: Fur Elise (Iconic Loop - Section A Only)
-        // High Pitch (Original Dev Version)
+        // Melody: Fur Elise (Recurring Theme - EXACT ORIGINAL)
         this.melody = [
-            // Phrase 1: E D# E D# E B D C A
-            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00,
-            // Bridge 1: C E A B
-            261.63, 329.63, 440.00, 493.88,
-            // Bridge 2: E G# B C
-            329.63, 415.30, 493.88, 523.25,
-            // Ending: E C B A (Resolution)
-            329.63, 523.25, 493.88, 440.00
+            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
+            261.63, 329.63, 440.00, 493.88, // C E A B
+            329.63, 415.30, 493.88, 523.25, // E G# B C
+            329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00 // E E(high) D# E D# E B D C A
         ];
         this.melodyIndex = 0;
 
-        // Echo / Delay System
+        // Echo / Delay System (Original Heavy Ethereal Echo)
         this.delayNode = this.ctx.createDelay();
         this.delayNode.delayTime.value = 0.4;
 
@@ -39,8 +34,8 @@ export class AudioManager {
         this.delayNode.connect(this.wetGain);
         this.wetGain.connect(this.masterGain);
 
-        this.feedbackGain.gain.value = 0.5;
-        this.wetGain.gain.value = 0.4;
+        this.feedbackGain.gain.value = 0.5; // High Feedback
+        this.wetGain.gain.value = 0.4;      // Strong Mix
 
         // Map to track active oscillators for Sustain (Desktop)
         this.activeNotes = new Map();
@@ -167,7 +162,8 @@ export class AudioManager {
     playNextNote() {
         const freq = this.melody[this.melodyIndex % this.melody.length];
         this.melodyIndex++;
-        this.playTone(freq, 'sine', 0.8, 0.25); // TUNED: Balanced Volume (0.25)
+        // TUNED: Original High Pitch Sine with Long Duration
+        this.playTone(freq, 'sine', 0.8, 0.25);
     }
 
     /**
