@@ -33,11 +33,8 @@ export class Mirror {
         this.resize();
 
         try {
-            // Start loading immediately
-            const raw = await this.loadImage(APP_CONFIG.IMAGE_URL);
-
-            // Process transparency
-            this.img = await this.processImage(raw);
+            // Load the pre-processed silhouette
+            this.img = await this.loadImage(APP_CONFIG.IMAGE_URL);
 
             // Render immediately
             this.resize();
@@ -58,88 +55,6 @@ export class Mirror {
             img.onload = () => resolve(img);
             img.onerror = reject;
             img.src = src;
-        });
-    }
-
-    processImage(source) {
-        return new Promise(resolve => {
-            // Offscreen processing
-            const buffer = document.createElement('canvas');
-            const w = source.width;
-            const h = source.height;
-            buffer.width = w;
-            buffer.height = h;
-
-            const ctx = buffer.getContext('2d');
-            ctx.drawImage(source, 0, 0);
-
-            const idata = ctx.getImageData(0, 0, w, h);
-            const data = idata.data;
-            const bg = { r: data[0], g: data[1], b: data[2] };
-
-
-            // Optimized Flood Fill for Robust Background Removal
-            // (Prevents "holes" in the silhouette by checking connectivity)
-            const visited = new Uint8Array(w * h);
-            const stack = [0]; // Start at (0,0)
-            visited[0] = 1; // Mark as background
-
-            const tolerance = APP_CONFIG.CHROMA_TOLERANCE;
-
-            while (stack.length > 0) {
-                const idx = stack.pop();
-                const x = idx % w;
-                const y = Math.floor(idx / w);
-
-                const neighbors = [
-                    { nx: x + 1, ny: y },
-                    { nx: x - 1, ny: y },
-                    { nx: x, ny: y + 1 },
-                    { nx: x, ny: y - 1 }
-                ];
-
-                for (let i = 0; i < neighbors.length; i++) {
-                    const { nx, ny } = neighbors[i];
-                    if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-                        const nIdx = ny * w + nx;
-                        if (visited[nIdx] === 0) {
-                            const pIdx = nIdx * 4;
-                            const r = data[pIdx];
-                            const g = data[pIdx + 1];
-                            const b = data[pIdx + 2];
-
-                            const diff = Math.abs(r - bg.r) + Math.abs(g - bg.g) + Math.abs(b - bg.b);
-
-                            if (diff < tolerance) {
-                                visited[nIdx] = 1; // It is background
-                                stack.push(nIdx);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Apply processed data
-            for (let i = 0; i < w * h; i++) {
-                const isBackground = visited[i] === 1;
-                const idx = i * 4;
-
-                if (isBackground) {
-                    data[idx + 3] = 0; // Transparent
-                } else {
-                    // Silhouette -> Solid Black
-                    data[idx] = 0;
-                    data[idx + 1] = 0;
-                    data[idx + 2] = 0;
-                    data[idx + 3] = 255;
-                }
-            }
-
-            ctx.putImageData(idata, 0, 0);
-
-            const final = new Image();
-            final.onload = () => resolve(final);
-            final.src = buffer.toDataURL(); // Convert to fast-rendering Image object
         });
     }
 

@@ -18,11 +18,11 @@ body {
     background-color: var(--bg-color);
     background-image:
         radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.85) 100%),
-        url('./assets/images/wallpaper_seamless.png');
-    background-repeat: repeat;
-    background-size: 500px;
+        url('./assets/images/wallpaper_full.png');
+    background-repeat: no-repeat;
+    background-size: cover;
     /* Adjust size for pattern scale */
-    background-position: center;
+    background-position: center fixed;
     font-family: 'Courier New', Courier, monospace;
     /* Typewriter feel */
     height: 100vh;
