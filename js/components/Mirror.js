@@ -27,6 +27,10 @@ export class Mirror {
             this.cursor.className = 'ghost-cursor';
             this.ghostContainer.appendChild(this.cursor);
         }
+
+        // Ensure Audio starts fresh (Index 0)
+        audioManager.resetMelody();
+
         this.bind();
 
         // Resize initial layout
@@ -88,9 +92,6 @@ export class Mirror {
             this.input.addEventListener('blur', () => {
                 // If keyboard is gone (viewport large), reset scroll to top
                 setTimeout(() => {
-                    const dpr = window.devicePixelRatio || 1;
-                    // Heuristic: If height > 600 or window.innerHeight approx screen.height
-                    // Just reset scroll to be safe.
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }, 200);
             });
@@ -102,45 +103,61 @@ export class Mirror {
             }
 
             // --- NAVIGATION AUTO-FOCUS ---
-            // Listen for Exhibit Switch events (from GalleryNav)
             window.addEventListener('exhibit-changed', (e) => {
                 if (e.detail.id === 1) {
-                    // Wait for visibility/transition
                     setTimeout(() => {
                         this.input.focus();
                     }, 100);
                 }
             });
 
-            this.input.addEventListener('input', (e) => {
-                // THROTTLE: Prevent double-firing events (IME/Mobile) from skipping notes
-                const now = Date.now();
-                if (this.lastInputTime && (now - this.lastInputTime < 50)) {
-                    return; // Skip duplicate/rapid-fire events
-                }
-                this.lastInputTime = now;
-
-                const char = e.data || this.input.value.slice(-1);
-
-                if (char) {
-                    this.spawnTear(char);
-                    this.spawnGhost(char);
-
-                    // Play Audio (Standard One-Shot)
-                    audioManager.playNextNote();
-
-                    // Hide placeholder immediately
-                    if (this.placeholder) {
-                        this.placeholder.classList.add('placeholder-hidden');
-                    }
-                }
-
-                // Clear input
-                setTimeout(() => {
-                    this.input.value = "";
-                }, 0);
-            });
+            // --- INPUT HANDLING ---
+            // Use bound method for clarity and potential removability
+            this.input.addEventListener('input', (e) => this.handleInput(e));
         }
+    }
+
+    /**
+     * Handles text input events with filtering for IME and rapid-fire glitches.
+     * Ensures strict 1-to-1 mapping between user strokes and melody notes.
+     */
+    handleInput(e) {
+        // 1. FILTER: Ignore IME Composition events (e.g. Mobile/CJK unfinished inputs)
+        // This is the #1 cause of "double notes" (CompositionUpdate + Input)
+        if (e.isComposing) return;
+
+        // 2. FILTER: Ignore Deletions (Backspace shouldn't advance melody)
+        if (e.inputType && e.inputType.includes('delete')) return;
+
+        // 3. THROTTLE: Safety net for hardware bounce / rapid-fire anomalies
+        const now = Date.now();
+        if (this.lastInputTime && (now - this.lastInputTime < 50)) {
+            return;
+        }
+        this.lastInputTime = now;
+
+        // 4. PROCESS CONTENT
+        // Use e.data for inserted text, fallback to value slice for robustness
+        const char = e.data || this.input.value.slice(-1);
+
+        if (char) {
+            this.spawnTear(char);
+            this.spawnGhost(char);
+
+            // Play Logic: One Note per Valid Character
+            audioManager.playNextNote();
+
+            // Hide placeholder
+            if (this.placeholder) {
+                this.placeholder.classList.add('placeholder-hidden');
+            }
+        }
+
+        // 5. CLEANUP: Clear input to keep "Ghost Typing" illusion
+        // We delay slightly to strictly respect the browser's event loop
+        setTimeout(() => {
+            if (this.input) this.input.value = "";
+        }, 0);
     }
 
     spawnGhost(char) {
