@@ -12,20 +12,20 @@ export class AudioManager {
         // Noise Buffer for "Breath" sounds
         this.noiseBuffer = this.createNoiseBuffer();
 
-        // Melody: Fur Elise (Full Section A)
+        // Melody: Fur Elise (Full Section A - LOWER OCTAVE)
         this.melody = [
-            // Phrase 1
-            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
-            // Arpeggio 1
-            261.63, 329.63, 440.00, 493.88, // C E A B
+            // Phrase 1 (E4 range)
+            329.63, 311.13, 329.63, 311.13, 329.63, 246.94, 293.66, 261.63, 220.00, // E D# E D# E B D C A
+            // Arpeggio 1 (Lower)
+            130.81, 164.81, 220.00, 246.94, // C E A B
             // Arpeggio 2
-            329.63, 415.30, 493.88, 523.25, // E G# B C
-            // Phrase 2 (Loop back roughly to A)
-            329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00 // E E(high) D# E D# E B D C A
+            164.81, 207.65, 246.94, 261.63, // E G# B C
+            // Phrase 2
+            164.81, 329.63, 311.13, 329.63, 311.13, 329.63, 246.94, 293.66, 261.63, 220.00 // E E(high) D# E D# E B D C A
         ];
         this.melodyIndex = 0;
 
-        // Echo / Delay System (Subtle "Beautiful" Reverb)
+        // Echo / Delay System (Subtle Reverb)
         this.delayNode = this.ctx.createDelay();
         this.delayNode.delayTime.value = 0.3; // 300ms Echo
 
@@ -38,8 +38,8 @@ export class AudioManager {
         this.delayNode.connect(this.wetGain);
         this.wetGain.connect(this.masterGain);
 
-        this.feedbackGain.gain.value = 0.3; // Low Feedback (1-2 repeats)
-        this.wetGain.gain.value = 0.15;     // Subtle Mix
+        this.feedbackGain.gain.value = 0.3;
+        this.wetGain.gain.value = 0.15;
 
         // Map to track active oscillators for Sustain (Desktop)
         this.activeNotes = new Map();
@@ -167,9 +167,9 @@ export class AudioManager {
         const freq = this.melody[this.melodyIndex % this.melody.length];
         this.melodyIndex++;
 
-        // TUNED: Beautiful, Soft, Slightly Echoey
-        // Using 'triangle' for warmer, bell-like tone compared to sine
-        this.playTone(freq, 'triangle', 0.6, 0.35);
+        // TUNED: Original "Dev Branch Start" Feel
+        // Lower Octave (via melody array) + Sine Wave + Long Duration (0.8s) + Lower Vol (0.25)
+        this.playTone(freq, 'sine', 0.8, 0.25);
     }
 
     /**
@@ -187,10 +187,10 @@ export class AudioManager {
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
-        // BEAUTIFUL ENVELOPE (Soft Piano)
+        // STANDARD SINE ENVELOPE (Glassy)
         gain.gain.setValueAtTime(0, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.03); // Soft Attack (No click)
-        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration); // Smooth Release
+        gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05); // Standard Attack
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration); // Standard Decay
 
         osc.connect(gain);
         gain.connect(this.masterGain);
