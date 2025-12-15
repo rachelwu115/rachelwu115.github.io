@@ -6,7 +6,9 @@ export class GalleryNav {
             1: document.getElementById('exhibit-1'),
             2: document.getElementById('exhibit-2')
         };
+        this.buttonCanvas = document.getElementById('buttonCanvas');
         this.currentExhibit = 1;
+        this.isTransitioning = false;
         this.init();
     }
 
@@ -16,9 +18,6 @@ export class GalleryNav {
 
         // KEYBOARD NAVIGATION
         window.addEventListener('keydown', (e) => {
-            // Only navigate if we aren't typing in a tangible input (though our input is invisible)
-            // But allow Left/Right to switch even if typing?
-            // User Request: "switch between the two pieces for me"
             if (e.key === 'ArrowRight') this.switchExhibit(2);
             if (e.key === 'ArrowLeft') this.switchExhibit(1);
         });
@@ -35,53 +34,58 @@ export class GalleryNav {
         // 1. SELECT ELEMENTS
         const currentEl = this.exhibits[currentId];
         const nextEl = this.exhibits[id];
+        const canvas = this.buttonCanvas;
 
         // 2. DETERMINE CLASSES
-        // Next: Current goes Left, Next comes from Right
-        // Prev: Current goes Right, Next comes from Left
         const outClass = direction === 'next' ? 'slide-out-left' : 'slide-out-right';
         const inClass = direction === 'next' ? 'slide-in-right' : 'slide-in-left';
 
-        // 3. APPLY ANIMATION STATES
-        // Ensure next element is visible for animation
-        if (nextEl) {
-            nextEl.classList.add(inClass);
-            // nextEl.classList.add('active'); // Wait, let's keep it 'active' managed by logic
+        // 3. PREPARE CANVAS STATE (Render before Slide In)
+        if (id === 2 && window.rubberButton) {
+            window.rubberButton.setActive(true); // Start rendering off-screen
+            if (canvas) canvas.classList.add(inClass);
         }
-        if (currentEl) {
-            currentEl.classList.add(outClass);
+        if (currentId === 2 && canvas) {
+            canvas.classList.add(outClass);
         }
 
-        // 4. CLEANUP ON END
+        // 4. APPLY ANIMATION STATES
+        if (nextEl) nextEl.classList.add(inClass);
+        if (currentEl) currentEl.classList.add(outClass);
+
+        // 5. CLEANUP ON END
         const onEnd = () => {
             this.isTransitioning = false;
 
-            // Clean classes
-            if (currentEl) {
-                currentEl.classList.remove('active', 'slide-out-left', 'slide-out-right');
-            }
+            // Clean classes (HTML)
+            if (currentEl) currentEl.classList.remove('active', 'slide-out-left', 'slide-out-right');
             if (nextEl) {
                 nextEl.classList.remove('slide-in-right', 'slide-in-left');
-                nextEl.classList.add('active'); // Now officially active
+                nextEl.classList.add('active');
             }
 
-            // Remove listeners (safeguard)
+            // Clean classes (Canvas)
+            if (canvas) canvas.classList.remove('slide-in-right', 'slide-in-left', 'slide-out-left', 'slide-out-right');
+
+            // Stop Rendering if we left the Button exhibit
+            if (currentId === 2 && window.rubberButton) {
+                window.rubberButton.setActive(false);
+            }
+
+            // Cleanup listeners
             if (currentEl) currentEl.removeEventListener('animationend', onEnd);
             if (nextEl) nextEl.removeEventListener('animationend', onEnd);
         };
 
-        // Attach listener to the Incoming element (it determines the 'arrival')
+        // Attach listener
         if (nextEl) {
             nextEl.addEventListener('animationend', onEnd, { once: true });
         } else {
-            // Fallback if no next element (shouldn't happen)
             onEnd();
         }
 
-        // 5. UPDATE STATE
+        // 6. UPDATE STATE
         this.currentExhibit = id;
-
-        // Notify other systems
         window.dispatchEvent(new CustomEvent('exhibit-changed', { detail: { id } }));
 
         // Update Arrows
@@ -91,11 +95,6 @@ export class GalleryNav {
         } else if (id === 2) {
             if (this.nextBtn) this.nextBtn.style.display = 'none';
             if (this.prevBtn) this.prevBtn.style.display = 'block';
-        }
-
-        // Manage Button State
-        if (window.rubberButton) {
-            window.rubberButton.setActive(id === 2);
         }
     }
 }
