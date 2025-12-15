@@ -493,14 +493,13 @@ canvas {
 }
 
 #tearInput {
-    position: fixed;
-    /* HACK: Fix to top to prevent keyboard scroll jumping */
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 300px;
-    /* Wide enough to tap if needed */
-    height: 50px;
+    position: absolute;
+    /* Relative to art-frame */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
     background: transparent;
     border: none;
     outline: none;
@@ -512,10 +511,10 @@ canvas {
     caret-color: transparent;
     /* Hide Native Caret */
     z-index: 10;
-    /* Ensure clickable if top area is tapped */
+    /* Ensure clickable */
     cursor: text;
-    pointer-events: none;
-    /* Let clicks pass through, focus is handled by JS binding */
+    pointer-events: auto;
+    /* Capture clicks to focus */
 }
 
 /* Custom Cursor */
