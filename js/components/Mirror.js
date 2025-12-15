@@ -235,7 +235,7 @@ export class Mirror {
             onFace: true
         });
 
-        audioManager.playNextNote();
+        // Audio already played in handleInput
     }
 
     update() {
