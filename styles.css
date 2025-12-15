@@ -138,15 +138,88 @@ canvas {
 }
 
 /* --- EXHIBIT SWITCHING --- */
+/* --- EXHIBIT SWITCHING (Animation) --- */
 .exhibit-section {
     display: none;
+    position: absolute;
+    /* Allow overlap for transition */
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 100vh;
-
+    height: 100%;
+    /* overflow: hidden; */
+    /* Optional, depending on if we want clipping */
 }
 
 .exhibit-section.active {
     display: block;
+    z-index: 5;
+    /* Active sits on top by default */
+}
+
+/* Entering/Leaving States */
+.slide-in-right {
+    animation: slideInRight 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    z-index: 10;
+    display: block;
+}
+
+.slide-out-left {
+    animation: slideOutLeft 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    z-index: 0;
+    display: block;
+}
+
+.slide-in-left {
+    animation: slideInLeft 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    z-index: 10;
+    display: block;
+}
+
+.slide-out-right {
+    animation: slideOutRight 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    z-index: 0;
+    display: block;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutLeft {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-100%);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(100%);
+    }
 }
 
 @keyframes fadeIn {

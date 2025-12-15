@@ -25,14 +25,64 @@ export class GalleryNav {
     }
 
     switchExhibit(id) {
-        // 1. UPDATE NAVIGATION & NAV STATE
+        if (id === this.currentExhibit) return;
+        if (this.isTransitioning) return; // Prevent spamming
+
+        this.isTransitioning = true;
+        const currentId = this.currentExhibit;
+        const direction = id > currentId ? 'next' : 'prev';
+
+        // 1. SELECT ELEMENTS
+        const currentEl = this.exhibits[currentId];
+        const nextEl = this.exhibits[id];
+
+        // 2. DETERMINE CLASSES
+        // Next: Current goes Left, Next comes from Right
+        // Prev: Current goes Right, Next comes from Left
+        const outClass = direction === 'next' ? 'slide-out-left' : 'slide-out-right';
+        const inClass = direction === 'next' ? 'slide-in-right' : 'slide-in-left';
+
+        // 3. APPLY ANIMATION STATES
+        // Ensure next element is visible for animation
+        if (nextEl) {
+            nextEl.classList.add(inClass);
+            // nextEl.classList.add('active'); // Wait, let's keep it 'active' managed by logic
+        }
+        if (currentEl) {
+            currentEl.classList.add(outClass);
+        }
+
+        // 4. CLEANUP ON END
+        const onEnd = () => {
+            this.isTransitioning = false;
+
+            // Clean classes
+            if (currentEl) {
+                currentEl.classList.remove('active', 'slide-out-left', 'slide-out-right');
+            }
+            if (nextEl) {
+                nextEl.classList.remove('slide-in-right', 'slide-in-left');
+                nextEl.classList.add('active'); // Now officially active
+            }
+
+            // Remove listeners (safeguard)
+            if (currentEl) currentEl.removeEventListener('animationend', onEnd);
+            if (nextEl) nextEl.removeEventListener('animationend', onEnd);
+        };
+
+        // Attach listener to the Incoming element (it determines the 'arrival')
+        if (nextEl) {
+            nextEl.addEventListener('animationend', onEnd, { once: true });
+        } else {
+            // Fallback if no next element (shouldn't happen)
+            onEnd();
+        }
+
+        // 5. UPDATE STATE
         this.currentExhibit = id;
 
-        // Notify other systems (Decoupled Architecture)
+        // Notify other systems
         window.dispatchEvent(new CustomEvent('exhibit-changed', { detail: { id } }));
-
-        // BACKGROUND COLOR: Managed by CSS (Sage Green per User Request)
-        document.body.style.background = '';
 
         // Update Arrows
         if (id === 1) {
@@ -43,30 +93,9 @@ export class GalleryNav {
             if (this.prevBtn) this.prevBtn.style.display = 'block';
         }
 
-        // Hide all exhibits
-        Object.values(this.exhibits).forEach(el => {
-            if (el) el.classList.remove('active');
-        });
-
-        // Show Target CSS Section
-        const target = this.exhibits[id];
-        if (target) {
-            target.classList.add('active');
-        }
-
-        // 2. EXHIBIT SPECIFIC LOGIC
-        // 3. MANAGE BUTTON STATE (Audio/Physics)
+        // Manage Button State
         if (window.rubberButton) {
             window.rubberButton.setActive(id === 2);
-        }
-
-        if (id === 2) {
-            // Safe Init (Though usually init happens at main)
-            try {
-                // If we want lazy loading, we could do it here, but keeping it simple for now.
-            } catch (err) {
-                console.error("Exhibit Switch Failed:", err);
-            }
         }
     }
 }
