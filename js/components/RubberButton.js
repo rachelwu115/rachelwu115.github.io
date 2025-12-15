@@ -64,6 +64,7 @@ export class RubberButton {
         this.initScene();
         this.initLighting();
         this.initGeometry();
+        this.initLabel();
         this.initConfetti();
         this.initAudio();
         this.bindEvents();
@@ -184,8 +185,98 @@ export class RubberButton {
 
         this.originalPositions = Float32Array.from(domeGeo.attributes.position.array);
         this.weights = new Float32Array(this.originalPositions.length / 3);
+    }
 
+    initLabel() {
+        // Create Canvas for Texture
+        const scale = 2; // High-DPI
+        const width = 256 * scale;
+        const height = 180 * scale;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
 
+        // Styles
+        const bgColor = '#eeebdf'; // Darker "Old Paper"
+        const textColor = '#222222';
+        const borderColor = '#e3e3e3';
+
+        // 1. Background (Paper)
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, width, height);
+
+        // 2. Border (Crisp Edge)
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 2 * scale;
+        ctx.strokeRect(2 * scale, 2 * scale, width - 4 * scale, height - 4 * scale);
+
+        // 3. Text
+        ctx.fillStyle = textColor;
+        ctx.textBaseline = 'top';
+
+        // Helper for multi-line
+        const drawText = (text, x, y, size, weight = 'normal') => {
+            ctx.font = `${weight} ${size * scale}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+            ctx.fillText(text, x * scale, y * scale);
+        };
+        const wrapText = (text, x, y, maxWidth, lineHeight, size) => {
+            ctx.font = `normal ${size * scale}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+            const words = text.split(' ');
+            let line = '';
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const metrics = ctx.measureText(testLine);
+                const testWidth = metrics.width / scale; // Normalize back
+                if (testWidth > maxWidth && n > 0) {
+                    ctx.fillText(line, x * scale, y * scale);
+                    line = words[n] + ' ';
+                    y += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            ctx.fillText(line, x * scale, y * scale);
+        };
+
+        const pad = 20;
+        // Header
+        drawText('Exhibit 2', pad, pad, 14, 'bold');
+
+        // Title
+        drawText('The Rubber Button', pad, pad + 24, 24, 'bold');
+
+        // Description
+        const desc = "A study in tension and release. Pull to distort, release to snap.";
+        wrapText(desc, pad, pad + 60, 210, 20, 14);
+
+        // 4. Create Texture
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+
+        // 5. Create Mesh (Plane)
+        // Aspect Ratio: 256/180 = 1.42
+        // Physical Size on Pillar: Width = 180? (Pillar is 220 total)
+        const phyW = 180;
+        const phyH = phyW * (height / width); // Maintain aspect
+
+        const mat = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: false // Opaque card
+        });
+
+        const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(phyW, phyH), mat);
+
+        // POS: Front of Pillar (Z=110 + epsilon)
+        // Y: Below the button. Button is at 0/-20-ish?
+        // Pillar Center y = -320. Top y = -20.
+        // Label Y = -220 (visual guess matching 'top: 180px')
+        labelMesh.position.set(0, -220, 111);
+        labelMesh.receiveShadow = true; // Let shadows fall ON the label (cool effect)
+
+        this.pivot.add(labelMesh);
     }
 
     initConfetti() {
