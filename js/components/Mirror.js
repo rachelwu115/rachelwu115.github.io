@@ -63,12 +63,25 @@ export class Mirror {
 
         // --- TEXT INPUT HANDLING ---
         if (this.input) {
-            // 0. Scroll to Center on Focus (Mobile Fix)
+            // 0. Robust Mobile Scroll Logic (VisualViewport API)
+            // Monitors when the keyboard actually shrinks the screen
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => {
+                    // If we are focused and height is small (keyboard likely open), scroll to center
+                    if (document.activeElement === this.input) {
+                        // Small delay to let CSS layout (max-height) stabilize
+                        setTimeout(() => {
+                            this.input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                    }
+                });
+            }
+
+            // Fallback for older browsers or initial focus
             this.input.addEventListener('focus', () => {
-                // Wait for keyboard to animate up
                 setTimeout(() => {
                     this.input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 300);
+                }, 500); // Increased delay for first-time safety
             });
 
             // 1. Auto-Focus on Init (Immediate Typing)
