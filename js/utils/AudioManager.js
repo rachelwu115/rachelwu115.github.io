@@ -128,31 +128,52 @@ export class AudioManager {
         noiseGain.gain.linearRampToValueAtTime(0.15, t + 0.2);
         noiseGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
-        // 3. MOUTH SHAPE (Formant Filter)
-        // Glide from 700Hz (Ah) to 2500Hz (Ee) to create strong "EYE" diphthong
-        const formant = this.ctx.createBiquadFilter();
-        formant.type = 'bandpass';
-        formant.frequency.setValueAtTime(700, t);
-        formant.frequency.exponentialRampToValueAtTime(2500, t + dur); // Stronger "Ee"
+        // 3. MOUTH SHAPE (Dual Formant Synthesis for /aɪ/)
+        // "Eye" is a diphthong: /a/ (Ah) -> /ɪ/ (Ih/Ee)
 
-        // Sharpen the resonant peak (Q) as we reach "Ee" to emphasize the "Y" sound
-        formant.Q.setValueAtTime(0.8, t);
-        formant.Q.linearRampToValueAtTime(3.0, t + dur); // Resonant/Nasal finish
+        // F1 (Jaw Openness): Starts Open (750Hz) -> Closes (300Hz)
+        const f1 = this.ctx.createBiquadFilter();
+        f1.type = 'bandpass';
+        f1.Q.value = 4.0; // Narrow resonance
+        f1.frequency.setValueAtTime(750, t);
+        f1.frequency.exponentialRampToValueAtTime(300, t + dur);
 
-        // Routing
-        osc.connect(oscGain);
-        noise.connect(noiseGain);
+        // F2 (Tongue Frontness): Starts Back (1100Hz) -> Front (2200Hz)
+        const f2 = this.ctx.createBiquadFilter();
+        f2.type = 'bandpass';
+        f2.Q.value = 5.0; // Sharp formant
+        f2.frequency.setValueAtTime(1100, t);
+        f2.frequency.exponentialRampToValueAtTime(2200, t + dur);
 
-        oscGain.connect(formant);
-        noiseGain.connect(formant);
+        // Parallel Routing
+        // Mix both osc and noise into both formants with specific weights
+        // "Ah" is mostly F1 dominant, "Ee" needs strong F2
 
-        formant.connect(this.masterGain);
+        const f1Gain = this.ctx.createGain();
+        f1Gain.gain.value = 1.0;
 
-        // Echo Send for "Ghostly" feel
-        // Explicitly connect to delayNode here since playTone is disconnected
+        const f2Gain = this.ctx.createGain();
+        f2Gain.gain.value = 0.8; // Boost brightness
+
+        // Connect Sources to Filters
+        oscGain.connect(f1);
+        oscGain.connect(f2);
+        noiseGain.connect(f1);
+        noiseGain.connect(f2);
+
+        // Connect Filters to Output Gains
+        f1.connect(f1Gain);
+        f2.connect(f2Gain);
+
+        // Sum and Send to Master
+        f1Gain.connect(this.masterGain);
+        f2Gain.connect(this.masterGain);
+
+        // Echo Send (Ghostly feel)
         const echoSend = this.ctx.createGain();
         echoSend.gain.value = 0.6;
-        formant.connect(echoSend);
+        f1Gain.connect(echoSend);
+        f2Gain.connect(echoSend);
         echoSend.connect(this.delayNode);
 
         osc.start();
