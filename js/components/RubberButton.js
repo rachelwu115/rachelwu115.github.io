@@ -52,7 +52,6 @@ export class RubberButton {
         this.scene = null;
         this.camera = null;
         this.renderer = null;
-        this.renderer = null;
         this.mesh = null;
         this.particles = []; // For confetti
 
@@ -570,7 +569,6 @@ export class RubberButton {
                 this.updateDeformation();
             }
             this.updatePhysics(dt);
-            this.updatePhysics(dt);
             if (this.isActive) {
                 if (this.state.isExploded) this.confettiGroup.visible = true;
                 this.renderer.render(this.scene, this.camera);
@@ -773,7 +771,6 @@ export class RubberButton {
         if (active) {
             this.localTime = 0;
             this.state.beatPhase = 0;
-            this.onResize();
             this.onResize();
             if (this.canvas) this.canvas.style.display = 'block';
         } else {
