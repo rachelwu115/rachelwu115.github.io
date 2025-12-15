@@ -21,6 +21,43 @@ export class GalleryNav {
             if (e.key === 'ArrowRight') this.switchExhibit(2);
             if (e.key === 'ArrowLeft') this.switchExhibit(1);
         });
+
+        // TOUCH / SWIPE NAVIGATION
+        // Minimal swipe detection for mobile users
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        window.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+
+            this.handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+        }, { passive: true });
+    }
+
+    handleSwipe(startX, startY, endX, endY) {
+        const diffX = startX - endX;
+        const diffY = startY - endY;
+
+        // Thresholds
+        const minSwipeDistance = 50;
+        const maxVerticalVariance = 100; // Ignore if user scrolled weirdly up/down
+
+        // Check horizontal dominance (ensure it's a swipe, not a scroll)
+        if (Math.abs(diffX) > minSwipeDistance && Math.abs(diffY) < maxVerticalVariance) {
+            if (diffX > 0) {
+                // Swiped Left -> Next
+                this.switchExhibit(2);
+            } else {
+                // Swiped Right -> Prev
+                this.switchExhibit(1);
+            }
+        }
     }
 
     switchExhibit(id) {
