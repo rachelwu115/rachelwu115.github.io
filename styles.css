@@ -239,8 +239,8 @@ body {
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     color: #222;
-    z-index: 100;
-    /* Ensure on top of canvas */
+    z-index: 15;
+    /* Ensure BEHIND canvas (z-20) so confetti covers it */
     border: 1px solid #ddd;
     /* Subtle border */
 }
