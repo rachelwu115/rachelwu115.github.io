@@ -23,9 +23,9 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     BUTTON: {
-        softness: 12.0,   // TUNED: Localized Slime necking
-        stiffness: 0.1,   // TUNED: Stretchy
-        damping: 0.85,    // TUNED: Viscous/Sticky
+        softness: 18.0,   // TUNED: Very Gooey/Wide influence
+        stiffness: 0.08,  // TUNED: Looser, taffy-like stretch
+        damping: 0.82,    // TUNED: Fluid but viscous
         snapLimit: 500.0, // TUNED: Safe for deep press, burstable on extreme pull
         bulgeStrength: 6.0, // TUNED: Strong muffin top
         beatRate: 3000

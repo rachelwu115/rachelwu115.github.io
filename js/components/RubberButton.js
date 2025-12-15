@@ -497,11 +497,10 @@ export class RubberButton {
         };
 
         const onUp = () => {
-            if (this.state.isDragging) {
-                this.state.isDragging = false; // RELEASE THE DRAG
-                this.physics.targetPressY = 0; // Return to neutral
-                this.canvas.style.cursor = 'grab';
-            }
+            // "STICKY HAND" BEHAVIOR:
+            // Do NOT release on mouse up. The button stays stuck to the cursor
+            // until it bursts (explode) or resets.
+            this.canvas.style.cursor = 'grabbing'; // Keep distinct cursor
         };
 
         const c = this.canvas;
