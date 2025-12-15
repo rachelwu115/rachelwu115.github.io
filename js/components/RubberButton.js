@@ -634,8 +634,10 @@ export class RubberButton {
         // Trigger beat at the start of the phase
         if (phase < 50 && this.state.beatPhase === 0) {
             const vol = this.state.isRegenerating ? 0.3 : 0.6; // TUNED: Louder (0.6)
-            // Use a low sine tone for a "thump"
-            audioManager.playTone(55, 'sine', 0.2, vol);
+            // Use 'triangle' wave at 80Hz. 
+            // 55Hz sine is sub-bass and often inaudible on laptops/phones.
+            // Triangle adds harmonics, making the "thump" richer and easier to hear.
+            audioManager.playTone(80, 'triangle', 0.15, vol);
             this.state.beatPhase = 1; // Mark as played
         }
     }
