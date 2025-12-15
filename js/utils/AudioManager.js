@@ -12,18 +12,17 @@ export class AudioManager {
         // Noise Buffer for "Breath" sounds
         this.noiseBuffer = this.createNoiseBuffer();
 
-        // Melody: Fur Elise (Recurring Theme + Section B)
+        // Melody: Fur Elise (Iconic Loop - Section A Only)
+        // High Pitch (Original Dev Version)
         this.melody = [
-            // Section A
-            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
-            261.63, 329.63, 440.00, 493.88, // C E A B
-            329.63, 415.30, 493.88, 523.25, // E G# B C
-            329.63, 415.30, 493.88, 523.25, // E G# B C
-            // Section B (Transition)
-            493.88, 523.25, 587.33, 659.25, // B C D E
-            392.00, 698.46, 659.25, 587.33, // G F E D
-            349.23, 659.25, 587.33, 523.25, // F E D C
-            293.66, 587.33, 523.25, 493.88  // D D C B
+            // Phrase 1: E D# E D# E B D C A
+            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00,
+            // Bridge 1: C E A B
+            261.63, 329.63, 440.00, 493.88,
+            // Bridge 2: E G# B C
+            329.63, 415.30, 493.88, 523.25,
+            // Ending: E C B A (Resolution)
+            329.63, 523.25, 493.88, 440.00
         ];
         this.melodyIndex = 0;
 
