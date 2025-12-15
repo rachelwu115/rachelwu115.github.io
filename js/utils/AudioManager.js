@@ -107,7 +107,7 @@ export class AudioManager {
         // 1. VOCAL CORDS (Tone)
         const osc = this.ctx.createOscillator();
         const oscGain = this.ctx.createGain();
-        osc.type = 'triangle';
+        osc.type = 'sawtooth'; // TUNED: Sawtooth has rich harmonics needed for F2 (2200Hz)
 
         // Pitch Drop: Human sigh drops significantly at the end
         osc.frequency.setValueAtTime(350, t);
@@ -115,7 +115,7 @@ export class AudioManager {
 
         // Vocal Volume: Fade in/out
         oscGain.gain.setValueAtTime(0, t);
-        oscGain.gain.linearRampToValueAtTime(0.3, t + 0.3);
+        oscGain.gain.linearRampToValueAtTime(0.25, t + 0.3); // Lower gain for Sawtooth (it's loud)
         oscGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
         // 2. BREATH (Noise)
@@ -123,9 +123,9 @@ export class AudioManager {
         noise.buffer = this.noiseBuffer;
         const noiseGain = this.ctx.createGain();
 
-        // Noise Volume: Breath is softer than voice
+        // Noise Volume: Breath is softer than voice but needs to be audible
         noiseGain.gain.setValueAtTime(0, t);
-        noiseGain.gain.linearRampToValueAtTime(0.15, t + 0.2);
+        noiseGain.gain.linearRampToValueAtTime(0.3, t + 0.2); // Boosted Noise
         noiseGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
         // 3. MOUTH SHAPE (Dual Formant Synthesis for /aɪ/)
@@ -134,14 +134,14 @@ export class AudioManager {
         // F1 (Jaw Openness): Starts Open (750Hz) -> Closes (300Hz)
         const f1 = this.ctx.createBiquadFilter();
         f1.type = 'bandpass';
-        f1.Q.value = 4.0; // Narrow resonance
+        f1.Q.value = 2.0; // TUNED: Wider resonance to catch harmonics
         f1.frequency.setValueAtTime(750, t);
         f1.frequency.exponentialRampToValueAtTime(300, t + dur);
 
         // F2 (Tongue Frontness): Starts Back (1100Hz) -> Front (2200Hz)
         const f2 = this.ctx.createBiquadFilter();
         f2.type = 'bandpass';
-        f2.Q.value = 5.0; // Sharp formant
+        f2.Q.value = 2.0; // TUNED: Wider resonance
         f2.frequency.setValueAtTime(1100, t);
         f2.frequency.exponentialRampToValueAtTime(2200, t + dur);
 
@@ -153,7 +153,7 @@ export class AudioManager {
         f1Gain.gain.value = 1.0;
 
         const f2Gain = this.ctx.createGain();
-        f2Gain.gain.value = 0.8; // Boost brightness
+        f2Gain.gain.value = 1.0; // Boosted F2 Gain
 
         // Connect Sources to Filters
         oscGain.connect(f1);
