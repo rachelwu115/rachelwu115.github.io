@@ -235,20 +235,6 @@ body {
     width: 200px;
     background-color: #eeebdf;
     /* Darker, clearly "off-white" paper */
-    /* Glass Nails (4 Corners) */
-    background-image:
-        radial-gradient(circle at center, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.2) 30%, rgba(0, 0, 0, 0.15) 40%, transparent 45%),
-        radial-gradient(circle at center, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.2) 30%, rgba(0, 0, 0, 0.15) 40%, transparent 45%),
-        radial-gradient(circle at center, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.2) 30%, rgba(0, 0, 0, 0.15) 40%, transparent 45%),
-        radial-gradient(circle at center, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.2) 30%, rgba(0, 0, 0, 0.15) 40%, transparent 45%);
-    background-repeat: no-repeat;
-    background-size: 24px 24px;
-    background-position:
-        4px 4px,
-        calc(100% - 4px) 4px,
-        4px calc(100% - 4px),
-        calc(100% - 4px) calc(100% - 4px);
-
     padding: 20px;
 
     /* "Thickness" Illusion */
@@ -264,6 +250,20 @@ body {
     color: #222;
     z-index: 100;
     /* Ensure on top of canvas */
+}
+
+/* Layer: Top (Confetti) */
+#confettiCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 200;
+    /* Above Label (100) and Button (20) */
+    pointer-events: none;
+    /* Crucial: Let clicks pass through */
+    background: transparent;
 }
 
 /* Override for Button Exhibit (Centered on Pillar) */
