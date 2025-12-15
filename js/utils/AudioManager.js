@@ -149,11 +149,20 @@ export class AudioManager {
         // Mix both osc and noise into both formants with specific weights
         // "Ah" is mostly F1 dominant, "Ee" needs strong F2
 
+        // TUNED: Bandpass filters attenuate signal heavily (Subtractive Synthesis).
+        // We need massive gain boosts to make the filtered bands audible.
+
         const f1Gain = this.ctx.createGain();
-        f1Gain.gain.value = 1.0;
+        f1Gain.gain.value = 5.0; // Boosted 500%
 
         const f2Gain = this.ctx.createGain();
-        f2Gain.gain.value = 1.0; // Boosted F2 Gain
+        f2Gain.gain.value = 8.0; // Boosted 800% (High frequencies need more energy)
+
+        // SAFETY: Add a quiet Dry path to ensure *something* is heard even if filters fail
+        const dryGain = this.ctx.createGain();
+        dryGain.gain.value = 0.05; // Just a hint of the raw sawtooth
+        oscGain.connect(dryGain);
+        dryGain.connect(this.masterGain);
 
         // Connect Sources to Filters
         oscGain.connect(f1);
