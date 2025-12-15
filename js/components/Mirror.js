@@ -63,6 +63,14 @@ export class Mirror {
 
         // --- TEXT INPUT HANDLING ---
         if (this.input) {
+            // 0. Scroll to Center on Focus (Mobile Fix)
+            this.input.addEventListener('focus', () => {
+                // Wait for keyboard to animate up
+                setTimeout(() => {
+                    this.input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            });
+
             // 1. Auto-Focus on Init (Immediate Typing)
             setTimeout(() => {
                 if (this.input.offsetParent !== null) this.input.focus();
