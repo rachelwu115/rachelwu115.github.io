@@ -23,11 +23,11 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     BUTTON: {
-        softness: 60.0,   // TUNED: Balanced softness (not sharp, not global)
+        softness: 85.0,   // TUNED: "Water Balloon" sweet spot (smooth curve, no sharp tip)
         stiffness: 0.08,  // TUNED: Looser, taffy-like stretch
         damping: 0.82,    // TUNED: Fluid but viscous
-        snapLimit: 150.0, // TUNED: Instant burst
-        bulgeStrength: 0.0, // TUNED: No artificial expansion (fixes "huge" squash)
+        snapLimit: 100.0, // TUNED: Extremely easy to burst
+        bulgeStrength: 0.0, // TUNED: No artificial expansion
         beatRate: 3000
     },
     CONFETTI: {
