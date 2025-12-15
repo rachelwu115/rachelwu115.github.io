@@ -128,12 +128,6 @@ export class Mirror {
                     this.input.value = "";
                 }, 0);
             });
-
-            // Force focus on click of the dialog box itself (UX)
-            const dialog = document.querySelector('.dialog-box');
-            if (dialog) {
-                dialog.addEventListener('click', () => this.input.focus());
-            }
         }
     }
 

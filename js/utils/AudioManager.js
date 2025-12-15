@@ -42,6 +42,10 @@ export class AudioManager {
 
         this.feedbackGain.gain.value = 0.5;
         this.wetGain.gain.value = 0.4;
+
+        // Map to track active oscillators for Sustain (Desktop)
+        this.activeNotes = new Map();
+        this.noteCounter = 0;
     }
 
     createNoiseBuffer() {
@@ -59,6 +63,8 @@ export class AudioManager {
             this.ctx.resume();
         }
     }
+
+    // ... (playPop, playTone kept as is for backwards compat/mobile) ...
 
     /**
      * Plays a sharp "pop" sound.
@@ -159,6 +165,68 @@ export class AudioManager {
     }
 
     /**
+     * SUSTAIN SYSTEM (Desktop)
+     * Starts a note that plays indefinitely until stopTone is called.
+     */
+    startTone(freq, type = 'sine', vol = 0.25) {
+        this.resume();
+        const id = this.noteCounter++;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+        // Attack Envelope
+        gain.gain.setValueAtTime(0, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05); // 50ms Attack
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        osc.start();
+
+        this.activeNotes.set(id, { osc, gain });
+        return id;
+    }
+
+    stopTone(id) {
+        const note = this.activeNotes.get(id);
+        if (!note) return;
+
+        const { osc, gain } = note;
+        const releaseTime = 0.3; // 300ms Fade Out
+
+        // Release Envelope using cancelScheduledValues to override any ongoing attack
+        gain.gain.cancelScheduledValues(this.ctx.currentTime);
+        gain.gain.setValueAtTime(gain.gain.value, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + releaseTime);
+
+        osc.stop(this.ctx.currentTime + releaseTime);
+
+        // Cleanup Map immediately (audio stops later)
+        this.activeNotes.delete(id);
+    }
+
+    /**
+     * Starts the next melody note (Sustain Mode).
+     * Returns the note ID for stopping later.
+     */
+    startMelodyNote() {
+        const freq = this.melody[this.melodyIndex % this.melody.length];
+        this.melodyIndex++;
+        return this.startTone(freq, 'sine', 0.25);
+    }
+
+    // Legacy / Mobile One-Shot
+    playNextNote() {
+        const freq = this.melody[this.melodyIndex % this.melody.length];
+        this.melodyIndex++;
+        this.playTone(freq, 'sine', 0.8, 0.25); // TUNED: Balanced Volume (0.25)
+    }
+
+    /**
      * Plays a simple tone.
      * @param {number} freq Frequency in Hz
      * @param {string} type Oscillator type ('sine', 'square', etc.)
@@ -177,29 +245,10 @@ export class AudioManager {
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
 
         osc.connect(gain);
-
-        // Dry Signal
         gain.connect(this.masterGain);
-
-        // Wet Signal (Echo) -- REMOVED per user request
-        // gain.connect(this.delayNode);
 
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
-    }
-
-    /**
-     * Plays the next note in the Fur Elise melody.
-     * Used for typing feedback.
-     */
-    playNextNote() {
-        const freq = this.melody[this.melodyIndex % this.melody.length];
-        this.melodyIndex++;
-
-        // Slight organic variation, but keeping tune recognizable
-        // const detune = (Math.random() - 0.5) * 1; 
-
-        this.playTone(freq, 'sine', 0.8, 0.25); // TUNED: Balanced Volume (0.25)
     }
 }
 
