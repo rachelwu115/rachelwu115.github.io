@@ -28,7 +28,7 @@ export const APP_CONFIG = {
         damping: 0.82,    // TUNED: Fluid but viscous
         snapLimit: 100.0, // TUNED: Extremely easy to burst
         bulgeStrength: 0.0, // TUNED: No artificial expansion
-        beatRate: 3000
+        beatRate: 1200 // TUNED: Faster heartbeat (50 BPM-ish)
     },
     CONFETTI: {
         BATCH_SIZE: 650,      // TUNED: Reduced density for clarity
