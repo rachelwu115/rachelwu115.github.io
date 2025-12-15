@@ -23,11 +23,11 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     BUTTON: {
-        softness: 100.0,  // TUNED: Massive softness for total dome movement
+        softness: 60.0,   // TUNED: Balanced softness (not sharp, not global)
         stiffness: 0.08,  // TUNED: Looser, taffy-like stretch
         damping: 0.82,    // TUNED: Fluid but viscous
-        snapLimit: 220.0, // TUNED: Very easy to burst
-        bulgeStrength: 2.5, // TUNED: Subtle volume conservation (fixes giant squash)
+        snapLimit: 150.0, // TUNED: Instant burst
+        bulgeStrength: 0.0, // TUNED: No artificial expansion (fixes "huge" squash)
         beatRate: 3000
     },
     CONFETTI: {
