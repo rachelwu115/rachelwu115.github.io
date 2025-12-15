@@ -23,11 +23,11 @@ export const APP_CONFIG = {
         ECHO_WET: 0.15
     },
     BUTTON: {
-        softness: 18.0,   // TUNED: Very Gooey/Wide influence
+        softness: 50.0,   // TUNED: High softness for global deformation (no sharp tip)
         stiffness: 0.08,  // TUNED: Looser, taffy-like stretch
         damping: 0.82,    // TUNED: Fluid but viscous
-        snapLimit: 500.0, // TUNED: Safe for deep press, burstable on extreme pull
-        bulgeStrength: 6.0, // TUNED: Strong muffin top
+        snapLimit: 300.0, // TUNED: Easier to burst
+        bulgeStrength: 10.0, // TUNED: High volume conservation
         beatRate: 3000
     },
     CONFETTI: {
