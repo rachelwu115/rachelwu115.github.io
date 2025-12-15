@@ -188,93 +188,129 @@ export class RubberButton {
     }
 
     initLabel() {
-        // Create Canvas for Texture
-        const scale = 2; // High-DPI
-        const width = 256 * scale;
-        const height = 180 * scale;
+        // High-Res Canvas for Sharp Text
+        const scale = 4;
+        const cssW = 200;
+        const cssH = 200; // Fixed height approx
+        const width = cssW * scale;
+        const height = cssH * scale;
+
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
 
-        // Styles
-        const bgColor = '#eeebdf'; // Darker "Old Paper"
+        // Colors
+        const bgColor = '#eeebdf';
         const textColor = '#222222';
         const borderColor = '#e3e3e3';
 
-        // 1. Background (Paper)
+        // --- DRAWING ---
+
+        // 1. Shadows (Simulate CSS box-shadow)
+        // box-shadow: 3px 6px 12px rgba(0, 0, 0, 0.15);
+        ctx.shadowColor = "rgba(0, 0, 0, 0.15)";
+        ctx.shadowBlur = 12 * scale;
+        ctx.shadowOffsetX = 3 * scale;
+        ctx.shadowOffsetY = 6 * scale;
+
+        // Draw Main Card Block (with shadow)
+        // Leave margin for shadow to exist within canvas bounds
+        const margin = 20 * scale;
+        const cw = width - (margin * 2);
+        const ch = height - (margin * 2);
+
         ctx.fillStyle = bgColor;
-        ctx.fillRect(0, 0, width, height);
+        ctx.fillRect(margin, margin, cw, ch);
 
-        // 2. Border (Crisp Edge)
+        // Reset Shadow for internal drawing
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // 2. Physical "Thickness" Edge
+        // box-shadow: 1px 2px 0 rgba(0,0,0,0.1);
+        ctx.fillStyle = "rgba(0,0,0,0.1)";
+        ctx.fillRect(margin + (1 * scale), margin + (2 * scale), cw, ch);
+
+        // Redraw Background over the "thickness" offset (to cut it out)
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(margin, margin, cw, ch);
+
+        // 3. Border
         ctx.strokeStyle = borderColor;
-        ctx.lineWidth = 2 * scale;
-        ctx.strokeRect(2 * scale, 2 * scale, width - 4 * scale, height - 4 * scale);
+        ctx.lineWidth = 1 * scale;
+        ctx.strokeRect(margin, margin, cw, ch);
 
-        // 3. Text
+        // 4. Text Content
         ctx.fillStyle = textColor;
         ctx.textBaseline = 'top';
+        const pad = 20 * scale;
+        const contentX = margin + pad;
+        let contentY = margin + pad;
 
-        // Helper for multi-line
-        const drawText = (text, x, y, size, weight = 'normal') => {
-            ctx.font = `${weight} ${size * scale}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-            ctx.fillText(text, x * scale, y * scale);
-        };
-        const wrapText = (text, x, y, maxWidth, lineHeight, size) => {
-            ctx.font = `normal ${size * scale}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-            const words = text.split(' ');
-            let line = '';
-            for (let n = 0; n < words.length; n++) {
-                const testLine = line + words[n] + ' ';
-                const metrics = ctx.measureText(testLine);
-                const testWidth = metrics.width / scale; // Normalize back
-                if (testWidth > maxWidth && n > 0) {
-                    ctx.fillText(line, x * scale, y * scale);
-                    line = words[n] + ' ';
-                    y += lineHeight;
-                } else {
-                    line = testLine;
-                }
-            }
-            ctx.fillText(line, x * scale, y * scale);
+        // Helper: Draw Text
+        const drawText = (text, x, y, fontSize, weight) => {
+            ctx.font = `${weight} ${fontSize * scale}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+            ctx.fillText(text, x, y);
+            return (fontSize * 1.4) * scale; // Return line height
         };
 
-        const pad = 20;
-        // Header
-        drawText('Exhibit 2', pad, pad, 14, 'bold');
+        // Header: "Exhibit 2"
+        contentY += drawText('Exhibit 2', contentX, contentY, 12, 'bold');
+        contentY += 8 * scale; // Spacer
 
-        // Title
-        drawText('The Rubber Button', pad, pad + 24, 24, 'bold');
+        // Title: "The Rubber Button"
+        contentY += drawText('The Rubber', contentX, contentY, 20, 'bold');
+        contentY += drawText('Button', contentX, contentY, 20, 'bold');
+        contentY += 12 * scale; // Spacer
 
-        // Description
+        // Description: Wrapped
         const desc = "A study in tension and release. Pull to distort, release to snap.";
-        wrapText(desc, pad, pad + 60, 210, 20, 14);
+        ctx.font = `normal ${14 * scale}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+        const words = desc.split(' ');
+        let line = '';
+        const maxWidth = cw - (pad * 2);
+        const lineHeight = 14 * 1.5 * scale;
 
-        // 4. Create Texture
+        for (let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + ' ';
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && n > 0) {
+                ctx.fillText(line, contentX, contentY);
+                line = words[n] + ' ';
+                contentY += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, contentX, contentY);
+
+        // 5. Create Texture
         const texture = new THREE.CanvasTexture(canvas);
         texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
+        // Fix color space? No, standard is fine for BasicMaterial.
 
-        // 5. Create Mesh (Plane)
-        // Aspect Ratio: 256/180 = 1.42
-        // Physical Size on Pillar: Width = 180? (Pillar is 220 total)
-        const phyW = 180;
-        const phyH = phyW * (height / width); // Maintain aspect
+        // 6. Create Mesh
+        const phyW = 200;
+        const phyH = 200;
 
         const mat = new THREE.MeshBasicMaterial({
             map: texture,
-            transparent: false // Opaque card
+            transparent: true // Needed for transparent shadow area of canvas
         });
 
         const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(phyW, phyH), mat);
 
-        // POS: Front of Pillar (Z=110 + epsilon)
-        // Y: Below the button. Button is at 0/-20-ish?
-        // Pillar Center y = -320. Top y = -20.
-        // Label Y = -220 (visual guess matching 'top: 180px')
-        labelMesh.position.set(0, -220, 111);
-        labelMesh.receiveShadow = true; // Let shadows fall ON the label (cool effect)
+        // Position: 
+        // X = 0 (Center)
+        // Y = -190 (Raised slightly from -220 so it's clearly visible)
+        // Z = 111 (In front of pillar which is w=220, so Front Face is 110)
+        labelMesh.position.set(0, -190, 111);
+        labelMesh.receiveShadow = false; // Don't let world shadows darken the text, keep it readable
 
         this.pivot.add(labelMesh);
     }
