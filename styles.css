@@ -91,16 +91,16 @@ canvas {
 /* --- THE ART FRAME (CSS Styled) --- */
 .art-frame {
     position: relative;
-    /* Responsive Sizing */
-    width: auto;
+    /* Responsive Sizing Strategy:
+       1. Prefer Design Width (450px)
+       2. Constraint: Never wider than screen (92vw)
+       3. Constraint: Never taller than screen/keyboard area (85dvh)
+       4. Aspect Ratio drives the missing dimension
+    */
+    width: min(450px, 92vw);
     height: auto;
-    aspect-ratio: 450 / 600;
-    /* Maintain ratio */
+    aspect-ratio: 3 / 4;
     max-height: 85dvh;
-    /* Never taller than 85% of screen */
-    max-width: 90vw;
-    /* Never wider than 90% of screen */
-    min-height: 300px;
     /* Don't get too tiny */
 
     background: #706c61;
