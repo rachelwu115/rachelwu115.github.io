@@ -101,6 +101,7 @@ export class RubberButton {
         });
         this.rendererConfetti.setSize(w, h);
         this.rendererConfetti.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.rendererConfetti.setClearColor(0x000000, 0); // EXPLICIT: Transparent
 
         window.addEventListener('resize', () => this.onResize());
     }
