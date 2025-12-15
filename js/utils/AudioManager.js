@@ -178,20 +178,19 @@ export class AudioManager {
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
-        // SIMPLE SUSTAIN ENVELOPE (Organ-like / Infinite)
+        // INFINITE SUSTAIN (Organ/Pad style)
         // 1. Attack: Fast (0.05s)
-        // 2. Sustain: Holds volume almost indefinitely (very slow fade to 80% over 10s)
-        // This ensures the note NEVER dies while holding the key.
+        // 2. Sustain: 100% Volume constant. No decay while holding.
         gain.gain.setValueAtTime(0, this.ctx.currentTime);
         gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05);
-        gain.gain.linearRampToValueAtTime(vol * 0.8, this.ctx.currentTime + 10.0);
+        // gain.gain.setValueAtTime(vol, this.ctx.currentTime + 10.0); // Stay Loud
 
         osc.connect(gain);
         gain.connect(this.masterGain);
 
         osc.start();
 
-        this.activeNotes.set(id, { osc, gain });
+        this.activeNotes.set(id, { osc, gain, startTime: this.ctx.currentTime });
         return id;
     }
 
@@ -199,10 +198,16 @@ export class AudioManager {
         const note = this.activeNotes.get(id);
         if (!note) return;
 
-        const { osc, gain } = note;
-        const releaseTime = 1.5; // 1.5s Release (Very Long Linger)
+        const { osc, gain, startTime } = note;
+        const heldDuration = this.ctx.currentTime - startTime;
 
-        // Release Phase: Smooth fade out
+        // ADAPTIVE RELEASE:
+        // If held briefly (Typing) -> Short Release (Crisp)
+        // If held long (Playing) -> Massive Release (Linger)
+        const isTap = heldDuration < 0.3;
+        const releaseTime = isTap ? 0.4 : 3.0;
+
+        // Release Phase
         gain.gain.cancelScheduledValues(this.ctx.currentTime);
         gain.gain.setValueAtTime(gain.gain.value, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + releaseTime);
