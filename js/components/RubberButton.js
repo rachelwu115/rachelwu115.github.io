@@ -427,6 +427,7 @@ export class RubberButton {
         };
 
         const onDown = (e) => {
+            if (e.cancelable) e.preventDefault(); // STOP SCROLLING
             if (this.state.isExploded) return;
             const { x, y } = getNDC(e);
             this.raycaster.setFromCamera({ x, y }, this.camera);
@@ -478,6 +479,8 @@ export class RubberButton {
         };
 
         const onMove = (e) => {
+            if (this.state.isDragging && e.cancelable) e.preventDefault(); // Stop Scroll while dragging
+
             const { x, y } = getNDC(e);
             this.mouse.set(x, y);
             // DEBUG: Trace mouse movement

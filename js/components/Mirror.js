@@ -132,20 +132,34 @@ export class Mirror {
 
     resize() {
         if (!this.canvas) return;
-        this.canvas.width = this.canvas.clientWidth;
-        this.canvas.height = this.canvas.clientHeight;
+
+        // DPI Scaling for Crisp Rendering on Mobile
+        const dpr = window.devicePixelRatio || 1;
+        const rect = this.canvas.getBoundingClientRect();
+
+        this.canvas.width = rect.width * dpr;
+        this.canvas.height = rect.height * dpr;
+
+        // Is this needed? Canvas auto-scales context if size is set.
+        // Wait, context is '2d'. 
+        // We usually need ctx.scale(dpr, dpr) OR just draw bigger.
+        // Our 'update' logic uses pixels.
+        // If we increase canvas size, we must scale our drawing logic OR the context.
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset
+        this.ctx.scale(dpr, dpr);
 
         if (!this.img) return;
 
-        const rawScale = this.canvas.width / this.img.width;
+        const rawScale = rect.width / this.img.width; // Use CSS width (rect) for logic
         const scale = rawScale * APP_CONFIG.VIEWPORT.ZOOM;
 
+        // Logic Layout uses CSS coordinates (virtual pixels)
         this.layout = {
             s: scale,
             w: this.img.width * scale,
             h: this.img.height * scale,
-            x: ((this.canvas.width - (this.img.width * scale)) / 2) + (this.canvas.width * APP_CONFIG.VIEWPORT.OFFSET_X),
-            y: this.canvas.height * APP_CONFIG.VIEWPORT.TOP_OFFSET
+            x: ((rect.width - (this.img.width * scale)) / 2) + (rect.width * APP_CONFIG.VIEWPORT.OFFSET_X),
+            y: rect.height * APP_CONFIG.VIEWPORT.TOP_OFFSET
         };
     }
 

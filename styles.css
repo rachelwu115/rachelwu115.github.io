@@ -26,10 +26,18 @@ body {
     font-family: 'Courier New', Courier, monospace;
     /* Typewriter feel */
     height: 100vh;
+    height: 100dvh;
+    /* Mobile Viewport Fix */
     display: flex;
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    /* Prevent elastic scrolling */
+}
+
+/* Prevent zoom/pan on canvas */
+canvas {
+    touch-action: none;
 }
 
 #particleCanvas {
