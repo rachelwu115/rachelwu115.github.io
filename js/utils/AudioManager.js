@@ -104,86 +104,58 @@ export class AudioManager {
         const t = this.ctx.currentTime;
         const dur = 2.0;
 
-        // 1. GHOST WHISPER SYNTHESIS
-        // Source: White Noise -> Lowpass (to make it Pink/Airy)
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = this.noiseBuffer;
+        // 1. ETHEREAL CHORUS SYNTHESIS
+        // Instead of noise (wind), we use a cluster of detuned Sine waves.
+        // This creates a smooth, "ghostly" harmonic voice without the hiss.
 
-        // Pre-Filter: Soften the harsh white noise into "Air"
-        const airFilter = this.ctx.createBiquadFilter();
-        airFilter.type = 'lowpass';
-        airFilter.frequency.value = 1500; // Muffled air
+        const fundamental = 450; // Start Pitch (Mid-High)
+        const endPitch = 150;    // End Pitch (Low)
 
-        noise.connect(airFilter);
+        // Oscillator 1: Center
+        const osc1 = this.ctx.createOscillator();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(fundamental, t);
+        osc1.frequency.exponentialRampToValueAtTime(endPitch, t + dur);
 
-        // 2. DUAL FORMANT ARTICULATION (The "Mouth")
-        // We filter the AIR (not a tone) to shape it into vowels.
-        // This creates a "Whisper".
+        // Oscillator 2: Detuned Up (+4Hz) -> Creates Chorus/Beating
+        const osc2 = this.ctx.createOscillator();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(fundamental + 4, t);
+        osc2.frequency.exponentialRampToValueAtTime(endPitch + 2, t + dur);
 
-        // F1 (Jaw): 700Hz (Ah) -> 300Hz (Ee)
-        const f1 = this.ctx.createBiquadFilter();
-        f1.type = 'bandpass';
-        f1.Q.value = 3.0;
-        f1.frequency.setValueAtTime(700, t);
-        f1.frequency.exponentialRampToValueAtTime(300, t + dur);
+        // Oscillator 3: Detuned Down (-4Hz)
+        const osc3 = this.ctx.createOscillator();
+        osc3.type = 'sine';
+        osc3.frequency.setValueAtTime(fundamental - 4, t);
+        osc3.frequency.exponentialRampToValueAtTime(endPitch - 2, t + dur);
 
-        // F2 (Tongue): 1200Hz (Ah) -> 2400Hz (Ee)
-        const f2 = this.ctx.createBiquadFilter();
-        f2.type = 'bandpass';
-        f2.Q.value = 4.0;
-        f2.frequency.setValueAtTime(1200, t);
-        f2.frequency.exponentialRampToValueAtTime(2400, t + dur);
+        // Gains (Mix them equally)
+        const gainNode = this.ctx.createGain();
+        gainNode.gain.setValueAtTime(0, t);
+        gainNode.gain.linearRampToValueAtTime(0.4, t + 0.3); // Soft Swell
+        gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
-        // Gains (Massive boost for Subtractive Synthesis)
-        const f1Gain = this.ctx.createGain();
-        f1Gain.gain.value = 8.0;
+        // Connect Loop
+        osc1.connect(gainNode);
+        osc2.connect(gainNode);
+        osc3.connect(gainNode);
 
-        const f2Gain = this.ctx.createGain();
-        f2Gain.gain.value = 12.0; // Highs need more energy to be heard
+        // Output (Master)
+        gainNode.connect(this.masterGain);
 
-        // Envelope (Slow, sad breath)
-        const envGain = this.ctx.createGain();
-        envGain.gain.setValueAtTime(0, t);
-        envGain.gain.linearRampToValueAtTime(0.8, t + 0.5); // Slow inhale
-        envGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-
-        // Routing: Noise -> AirFilter -> Envelope -> Formants
-        airFilter.connect(envGain);
-        envGain.connect(f1);
-        envGain.connect(f2);
-
-        f1.connect(f1Gain);
-        f2.connect(f2Gain);
-
-        // Output
-        f1Gain.connect(this.masterGain);
-        f2Gain.connect(this.masterGain);
-
-        // Echo (Long, sad reverb)
+        // Echo Send (Heavy reverb for ghostliness)
         const echoSend = this.ctx.createGain();
-        echoSend.gain.value = 0.8;
-        f1Gain.connect(echoSend);
-        f2Gain.connect(echoSend);
+        echoSend.gain.value = 0.7;
+        gainNode.connect(echoSend);
         echoSend.connect(this.delayNode);
 
-        // 3. UNDERTONE (Subtle Sad Sine)
-        // Just a tiny tonal element to give it pitch/sadness without sounding like a robot
-        const sub = this.ctx.createOscillator();
-        const subGain = this.ctx.createGain();
-        sub.type = 'sine';
-        sub.frequency.setValueAtTime(150, t); // Low sad note
-        sub.frequency.linearRampToValueAtTime(100, t + dur); // Falling
-        subGain.gain.setValueAtTime(0, t);
-        subGain.gain.linearRampToValueAtTime(0.1, t + 0.5); // Very quiet
-        subGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc1.start();
+        osc2.start();
+        osc3.start();
 
-        sub.connect(subGain);
-        subGain.connect(this.masterGain);
-
-        noise.start();
-        noise.stop(t + dur + 0.5);
-        sub.start();
-        sub.stop(t + dur + 0.5);
+        osc1.stop(t + dur + 0.5);
+        osc2.stop(t + dur + 0.5);
+        osc3.stop(t + dur + 0.5);
     }
 
     /**
