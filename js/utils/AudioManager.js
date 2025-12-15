@@ -12,29 +12,34 @@ export class AudioManager {
         // Noise Buffer for "Breath" sounds
         this.noiseBuffer = this.createNoiseBuffer();
 
-        // Melody: Fur Elise (Iconic Section A Loop ONLY)
+        // Melody: Fur Elise (Full Section A)
         this.melody = [
+            // Phrase 1
             659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
-            // 261.63, 329.63, 440.00, 493.88, // C E A B (Simplified / Loop logic)
-            // Just looping the main theme for recognition
+            // Arpeggio 1
+            261.63, 329.63, 440.00, 493.88, // C E A B
+            // Arpeggio 2
+            329.63, 415.30, 493.88, 523.25, // E G# B C
+            // Phrase 2 (Loop back roughly to A)
+            329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00 // E E(high) D# E D# E B D C A
         ];
         this.melodyIndex = 0;
 
-        // Echo / Delay System (DISABLED per user request "No Echo")
+        // Echo / Delay System (Subtle "Beautiful" Reverb)
         this.delayNode = this.ctx.createDelay();
-        this.delayNode.delayTime.value = 0.0;
+        this.delayNode.delayTime.value = 0.3; // 300ms Echo
 
         this.feedbackGain = this.ctx.createGain();
         this.wetGain = this.ctx.createGain();
 
-        // Echo Routing - DISCONNECTED / MUTED
-        // this.delayNode.connect(this.feedbackGain);
-        // this.feedbackGain.connect(this.delayNode);
-        // this.delayNode.connect(this.wetGain);
-        // this.wetGain.connect(this.masterGain);
+        // Echo Routing
+        this.delayNode.connect(this.feedbackGain);
+        this.feedbackGain.connect(this.delayNode);
+        this.delayNode.connect(this.wetGain);
+        this.wetGain.connect(this.masterGain);
 
-        this.feedbackGain.gain.value = 0;
-        this.wetGain.gain.value = 0;
+        this.feedbackGain.gain.value = 0.3; // Low Feedback (1-2 repeats)
+        this.wetGain.gain.value = 0.15;     // Subtle Mix
 
         // Map to track active oscillators for Sustain (Desktop)
         this.activeNotes = new Map();
@@ -162,8 +167,9 @@ export class AudioManager {
         const freq = this.melody[this.melodyIndex % this.melody.length];
         this.melodyIndex++;
 
-        // TUNED: Crisp, Short, Clear (No Echo)
-        this.playTone(freq, 'sine', 0.4, 0.4);
+        // TUNED: Beautiful, Soft, Slightly Echoey
+        // Using 'triangle' for warmer, bell-like tone compared to sine
+        this.playTone(freq, 'triangle', 0.6, 0.35);
     }
 
     /**
@@ -181,13 +187,19 @@ export class AudioManager {
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
-        // CRISP ENVELOPE (Staccato)
+        // BEAUTIFUL ENVELOPE (Soft Piano)
         gain.gain.setValueAtTime(0, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.01); // Fast Attack
-        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration); // Fast Release
+        gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.03); // Soft Attack (No click)
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration); // Smooth Release
 
         osc.connect(gain);
         gain.connect(this.masterGain);
+
+        // Connect to Echo as well
+        const echoSend = this.ctx.createGain();
+        echoSend.gain.value = 1.0; // Send full signal to wet/dry mix
+        gain.connect(echoSend);
+        echoSend.connect(this.delayNode);
 
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
