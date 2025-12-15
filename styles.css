@@ -252,19 +252,7 @@ body {
     /* Ensure on top of canvas */
 }
 
-/* Layer: Top (Confetti) */
-#confettiCanvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 200;
-    /* Above Label (100) and Button (20) */
-    pointer-events: none;
-    /* Crucial: Let clicks pass through */
-    background: transparent;
-}
+
 
 /* Override for Button Exhibit (Centered on Pillar) */
 .button-label {
