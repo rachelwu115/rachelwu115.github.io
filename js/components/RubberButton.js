@@ -225,8 +225,9 @@ export class RubberButton {
         this.canvas.style.backgroundColor = 'rgba(255,255,255,0.2)';
         setTimeout(() => this.canvas.style.backgroundColor = '', 150);
 
-        audioManager.playTone(400, 'sine', 0.1);
-        audioManager.playTone(600, 'triangle', 0.15);
+        audioManager.playSadSigh();
+        // audioManager.playTone(400, 'sine', 0.1); // REMOVED
+        // audioManager.playTone(600, 'triangle', 0.15); // REMOVED
 
         // origin: Shoot from underneath (Deep inside pillar)
         let center = new THREE.Vector3(0, -60, 0);
@@ -633,7 +634,7 @@ export class RubberButton {
 
         // Trigger beat at the start of the phase
         if (phase < 50 && this.state.beatPhase === 0) {
-            const vol = this.state.isRegenerating ? 0.3 : 0.6; // TUNED: Louder (0.6)
+            const vol = this.state.isRegenerating ? 0.5 : 1.0; // TUNED: Max Volume (1.0)
             // Use 'triangle' wave at 80Hz. 
             // 55Hz sine is sub-bass and often inaudible on laptops/phones.
             // Triangle adds harmonics, making the "thump" richer and easier to hear.

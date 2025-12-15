@@ -37,19 +37,65 @@ export class AudioManager {
         this.wetGain.gain.value = 0.0; // TUNED: No Echo
 
         // Internal Routing (Feedback Loop)
-        // Disconnected for safety to ensure no "double note"
-        // this.delayNode.connect(this.feedbackGain);
-        // this.feedbackGain.connect(this.delayNode);
+        // ENABLED: Standard Delay/Echo loop
+        this.delayNode.connect(this.feedbackGain);
+        this.feedbackGain.connect(this.delayNode);
 
         // Output Routing
-        // this.delayNode.connect(this.wetGain);
+        this.delayNode.connect(this.wetGain);
         this.wetGain.connect(this.masterGain);
+
+        // TUNED: Enable the Echo Bus
+        this.feedbackGain.gain.value = 0.5; // Medium decay
+        this.wetGain.gain.value = 0.4; // Audible echo
     }
 
     resume() {
         if (this.ctx.state === 'suspended') {
             this.ctx.resume();
         }
+    }
+
+    /**
+     * Plays a "Sad Sigh" - Falling pitch with echo.
+     * Mimics a human "Haaaaaah" drop.
+     */
+    playSadSigh() {
+        this.resume();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        // Filter to soften the "robot" edge of the triangle wave
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 800; // Muffle it slightly
+
+        osc.type = 'triangle'; // Closest primitive to a vocal hum
+
+        // Pitch Drop: Start Mid-High, slide to Low
+        const now = this.ctx.currentTime;
+        osc.frequency.setValueAtTime(400, now); // "Ah"
+        osc.frequency.exponentialRampToValueAtTime(150, now + 1.5); // "...oh"
+
+        // Volume Envelope: Slow attack (breath in), Long release (breath out)
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.6, now + 0.2); // Attack
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0); // Release
+
+        osc.connect(filter);
+        filter.connect(gain);
+
+        // Dry Signal (Direct)
+        gain.connect(this.masterGain);
+
+        // Wet Signal (Heavy Echo)
+        const echoSend = this.ctx.createGain();
+        echoSend.gain.value = 0.8; // Strong send to echo
+        gain.connect(echoSend);
+        echoSend.connect(this.delayNode);
+
+        osc.start();
+        osc.stop(now + 2.5);
     }
 
     /**
