@@ -183,10 +183,22 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 20;
+    z-index: 10;
+    /* Bottom Layer (Pillar + Button) */
     outline: none;
     cursor: pointer;
-    /* Removed Glass Case specific transforms */
+}
+
+#confettiCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 30;
+    /* Top Layer (Confetti) */
+    pointer-events: none;
+    /* Let clicks pass through to button */
 }
 
 .glass-case:hover {
@@ -240,7 +252,7 @@ body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     color: #222;
     z-index: 15;
-    /* Ensure BEHIND canvas (z-20) so confetti covers it */
+    /* Layer Order: Canvas(10) < Label(15) < Confetti(30) */
     border: 1px solid #ddd;
     /* Subtle border */
 }
