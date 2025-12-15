@@ -104,91 +104,47 @@ export class AudioManager {
         const t = this.ctx.currentTime;
         const dur = 2.0;
 
-        // 1. VOCAL CORDS (Tone)
+        // 1. Web Speech API (The "Human" Voice)
+        if ('speechSynthesis' in window) {
+            // Cancel any current speech to ensure immediate trigger
+            window.speechSynthesis.cancel();
+
+            const u = new SpeechSynthesisUtterance("Eye");
+            u.pitch = 0.1; // Deep, slow, sad
+            u.rate = 0.4;  // Prolonged sigh
+            u.volume = 1.0;
+            window.speechSynthesis.speak(u);
+        }
+
+        // 2. Ambiance (Simple Sine Drop with Echo)
+        // Fallback or Layering for the "Ghostly" atmosphere
         const osc = this.ctx.createOscillator();
         const oscGain = this.ctx.createGain();
-        osc.type = 'sawtooth'; // TUNED: Sawtooth has rich harmonics needed for F2 (2200Hz)
+        osc.type = 'sine'; // Pure tone back to simpler sine
 
-        // Pitch Drop: Human sigh drops significantly at the end
-        osc.frequency.setValueAtTime(350, t);
-        osc.frequency.exponentialRampToValueAtTime(120, t + dur);
+        // Pitch Drop
+        osc.frequency.setValueAtTime(300, t);
+        osc.frequency.exponentialRampToValueAtTime(100, t + dur);
 
-        // Vocal Volume: Fade in/out
+        // Volume Envelope
         oscGain.gain.setValueAtTime(0, t);
-        oscGain.gain.linearRampToValueAtTime(0.25, t + 0.3); // Lower gain for Sawtooth (it's loud)
+        oscGain.gain.linearRampToValueAtTime(0.5, t + 0.1);
         oscGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
-        // 2. BREATH (Noise)
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = this.noiseBuffer;
-        const noiseGain = this.ctx.createGain();
+        // Routing
+        osc.connect(oscGain);
 
-        // Noise Volume: Breath is softer than voice but needs to be audible
-        noiseGain.gain.setValueAtTime(0, t);
-        noiseGain.gain.linearRampToValueAtTime(0.3, t + 0.2); // Boosted Noise
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        // Dry
+        oscGain.connect(this.masterGain);
 
-        // 3. MOUTH SHAPE (Dual Formant Synthesis for /aɪ/)
-        // "Eye" is a diphthong: /a/ (Ah) -> /ɪ/ (Ih/Ee)
-
-        // F1 (Jaw Openness): Starts Open (750Hz) -> Closes (300Hz)
-        const f1 = this.ctx.createBiquadFilter();
-        f1.type = 'bandpass';
-        f1.Q.value = 2.0; // TUNED: Wider resonance to catch harmonics
-        f1.frequency.setValueAtTime(750, t);
-        f1.frequency.exponentialRampToValueAtTime(300, t + dur);
-
-        // F2 (Tongue Frontness): Starts Back (1100Hz) -> Front (2200Hz)
-        const f2 = this.ctx.createBiquadFilter();
-        f2.type = 'bandpass';
-        f2.Q.value = 2.0; // TUNED: Wider resonance
-        f2.frequency.setValueAtTime(1100, t);
-        f2.frequency.exponentialRampToValueAtTime(2200, t + dur);
-
-        // Parallel Routing
-        // Mix both osc and noise into both formants with specific weights
-        // "Ah" is mostly F1 dominant, "Ee" needs strong F2
-
-        // TUNED: Bandpass filters attenuate signal heavily (Subtractive Synthesis).
-        // We need massive gain boosts to make the filtered bands audible.
-
-        const f1Gain = this.ctx.createGain();
-        f1Gain.gain.value = 5.0; // Boosted 500%
-
-        const f2Gain = this.ctx.createGain();
-        f2Gain.gain.value = 8.0; // Boosted 800% (High frequencies need more energy)
-
-        // SAFETY: Add a quiet Dry path to ensure *something* is heard even if filters fail
-        const dryGain = this.ctx.createGain();
-        dryGain.gain.value = 0.05; // Just a hint of the raw sawtooth
-        oscGain.connect(dryGain);
-        dryGain.connect(this.masterGain);
-
-        // Connect Sources to Filters
-        oscGain.connect(f1);
-        oscGain.connect(f2);
-        noiseGain.connect(f1);
-        noiseGain.connect(f2);
-
-        // Connect Filters to Output Gains
-        f1.connect(f1Gain);
-        f2.connect(f2Gain);
-
-        // Sum and Send to Master
-        f1Gain.connect(this.masterGain);
-        f2Gain.connect(this.masterGain);
-
-        // Echo Send (Ghostly feel)
+        // Echo Send
         const echoSend = this.ctx.createGain();
-        echoSend.gain.value = 0.6;
-        f1Gain.connect(echoSend);
-        f2Gain.connect(echoSend);
+        echoSend.gain.value = 0.5;
+        oscGain.connect(echoSend);
         echoSend.connect(this.delayNode);
 
         osc.start();
         osc.stop(t + dur + 0.5);
-        noise.start();
-        noise.stop(t + dur + 0.5);
     }
 
     /**
