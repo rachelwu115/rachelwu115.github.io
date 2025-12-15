@@ -30,9 +30,35 @@ body {
     /* Mobile Viewport Fix */
     display: flex;
     justify-content: center;
-    align-items: center;
+    /* align-items: center; REMOVED implies Top Alignment on Mobile */
     overflow: hidden;
-    /* Prevent elastic scrolling */
+    /* Prevent elastic scrolling usually, but... */
+}
+
+/* Mobile: Allow scroll if keyboard covers content */
+@media (max-width: 768px) {
+    body {
+        align-items: flex-start;
+        /* Top Align */
+        overflow-y: auto;
+        /* Allow scroll */
+        padding-top: 20px;
+    }
+
+    .exhibit-section {
+        height: auto;
+        /* Let it grow */
+        min-height: 100%;
+        padding-bottom: 300px;
+        /* Space for keyboard */
+    }
+}
+
+/* Desktop: Center Vertically */
+@media (min-width: 769px) {
+    body {
+        align-items: center;
+    }
 }
 
 /* Prevent zoom/pan on canvas */
