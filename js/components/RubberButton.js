@@ -629,8 +629,9 @@ export class RubberButton {
         const positions = this.mesh.geometry.attributes.position.array;
 
         if (!this.state.isDragging) {
-            const force = P.dragOffset.clone().multiplyScalar(-0.05);
-            P.returnVelocity.add(force).multiplyScalar(0.90);
+            // Spring Force: F = -k * x
+            const force = P.dragOffset.clone().multiplyScalar(-this.config.stiffness);
+            P.returnVelocity.add(force).multiplyScalar(this.config.damping);
             P.dragOffset.add(P.returnVelocity);
             if (P.dragOffset.lengthSq() < 0.01 && P.returnVelocity.lengthSq() < 0.01) {
                 P.dragOffset.set(0, 0, 0); P.returnVelocity.set(0, 0, 0);
