@@ -95,18 +95,20 @@ export class Mirror {
                 }, 200);
             });
 
-            // 1. Auto-Focus on Init (Immediate Typing)
-            setTimeout(() => {
-                if (this.input.offsetParent !== null) this.input.focus();
-            }, 100);
+            // Force focus on click of the dialog box itself (UX)
+            const dialog = document.querySelector('.dialog-box');
+            if (dialog) {
+                dialog.addEventListener('click', () => this.input.focus());
+            }
 
-            // 2. Keep Focus (Immersion)
-            // If user clicks background, re-focus input so they don't lose typing state
-            document.addEventListener('click', (e) => {
-                // Don't steal focus from navigation or links
-                const isInteractive = e.target.closest('a, button, .nav-arrow');
-                if (!isInteractive && this.input.offsetParent !== null) {
-                    this.input.focus();
+            // --- NAVIGATION AUTO-FOCUS ---
+            // Listen for Exhibit Switch events (from GalleryNav)
+            window.addEventListener('exhibit-changed', (e) => {
+                if (e.detail.id === 1) {
+                    // Wait for visibility/transition
+                    setTimeout(() => {
+                        this.input.focus();
+                    }, 100);
                 }
             });
 
@@ -116,6 +118,9 @@ export class Mirror {
                 if (char) {
                     this.spawnTear(char);
                     this.spawnGhost(char);
+
+                    // Play Audio (Standard One-Shot)
+                    audioManager.playNextNote();
 
                     // Hide placeholder immediately
                     if (this.placeholder) {

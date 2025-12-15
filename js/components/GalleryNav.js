@@ -13,11 +13,23 @@ export class GalleryNav {
     init() {
         if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.switchExhibit(2));
         if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.switchExhibit(1));
+
+        // KEYBOARD NAVIGATION
+        window.addEventListener('keydown', (e) => {
+            // Only navigate if we aren't typing in a tangible input (though our input is invisible)
+            // But allow Left/Right to switch even if typing?
+            // User Request: "switch between the two pieces for me"
+            if (e.key === 'ArrowRight') this.switchExhibit(2);
+            if (e.key === 'ArrowLeft') this.switchExhibit(1);
+        });
     }
 
     switchExhibit(id) {
         // 1. UPDATE NAVIGATION & NAV STATE
         this.currentExhibit = id;
+
+        // Notify other systems (Decoupled Architecture)
+        window.dispatchEvent(new CustomEvent('exhibit-changed', { detail: { id } }));
 
         // BACKGROUND COLOR: Managed by CSS (Sage Green per User Request)
         document.body.style.background = '';
