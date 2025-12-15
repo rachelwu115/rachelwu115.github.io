@@ -61,7 +61,42 @@ export class AudioManager {
     }
 
     /**
-     * Plays a "Humanized Sad Sigh".
+     * Plays a sharp "pop" sound.
+     * Sine sweep + Short Noise burst.
+     */
+    playPop() {
+        this.resume();
+        const t = this.ctx.currentTime;
+
+        // 1. Pop Tone (Sine Drop)
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.frequency.setValueAtTime(500, t);
+        osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+        gain.gain.setValueAtTime(0.7, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        // 2. Snap (Noise)
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.8, t);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+
+        noise.connect(noiseGain);
+        noiseGain.connect(this.masterGain);
+
+        osc.start();
+        osc.stop(t + 0.1);
+        noise.start();
+        noise.stop(t + 0.1);
+    }
+
+    /**
+     * Plays a "Humanized Sad Sigh" (Ayyyy).
      * Mixes Breath (Noise) + Vocal Cord (Tone) + Formant Filter (Mouth Shape).
      */
     playSadSigh() {
@@ -72,7 +107,7 @@ export class AudioManager {
         // 1. VOCAL CORDS (Tone)
         const osc = this.ctx.createOscillator();
         const oscGain = this.ctx.createGain();
-        osc.type = 'triangle'; // Rich harmonics
+        osc.type = 'triangle';
 
         // Pitch Drop: Human sigh drops significantly at the end
         osc.frequency.setValueAtTime(350, t);
@@ -80,7 +115,7 @@ export class AudioManager {
 
         // Vocal Volume: Fade in/out
         oscGain.gain.setValueAtTime(0, t);
-        oscGain.gain.linearRampToValueAtTime(0.3, t + 0.3); // Soft attack
+        oscGain.gain.linearRampToValueAtTime(0.3, t + 0.3);
         oscGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
         // 2. BREATH (Noise)
@@ -94,11 +129,12 @@ export class AudioManager {
         noiseGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
         // 3. MOUTH SHAPE (Formant Filter)
-        // Bandpass at 700Hz gives an "Ahhh" vowel sound
+        // Glide from 700Hz (Ah) to 1500Hz (Eh/Ay) to create "Ayyy"
         const formant = this.ctx.createBiquadFilter();
         formant.type = 'bandpass';
         formant.frequency.setValueAtTime(700, t);
-        formant.Q.value = 0.8; // Wide mouth
+        formant.frequency.linearRampToValueAtTime(1500, t + dur); // Articulation
+        formant.Q.value = 0.8;
 
         // Routing
         osc.connect(oscGain);
@@ -110,6 +146,7 @@ export class AudioManager {
         formant.connect(this.masterGain);
 
         // Echo Send for "Ghostly" feel
+        // Explicitly connect to delayNode here since playTone is disconnected
         const echoSend = this.ctx.createGain();
         echoSend.gain.value = 0.6;
         formant.connect(echoSend);
@@ -144,8 +181,8 @@ export class AudioManager {
         // Dry Signal
         gain.connect(this.masterGain);
 
-        // Wet Signal (Echo)
-        gain.connect(this.delayNode);
+        // Wet Signal (Echo) -- REMOVED per user request
+        // gain.connect(this.delayNode);
 
         osc.start();
         osc.stop(this.ctx.currentTime + duration);

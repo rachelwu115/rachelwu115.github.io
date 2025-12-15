@@ -225,6 +225,7 @@ export class RubberButton {
         this.canvas.style.backgroundColor = 'rgba(255,255,255,0.2)';
         setTimeout(() => this.canvas.style.backgroundColor = '', 150);
 
+        audioManager.playPop();
         audioManager.playSadSigh();
         // audioManager.playTone(400, 'sine', 0.1); // REMOVED
         // audioManager.playTone(600, 'triangle', 0.15); // REMOVED
