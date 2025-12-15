@@ -160,37 +160,78 @@ canvas {
 }
 
 /* --- NAVIGATION ARROWS --- */
+@keyframes arrowFloat {
+
+    0%,
+    100% {
+        transform: translateY(-50%);
+    }
+
+    50% {
+        transform: translateY(-70%);
+        /* Move up slightly */
+    }
+}
+
 .nav-arrow {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
+    /* transform handled by animation */
     width: 0;
     height: 0;
     border-style: solid;
     cursor: pointer;
-    opacity: 0.6;
+    opacity: 0.8;
+    /* Higher visibility */
     transition: opacity 0.2s, transform 0.2s;
+    /* Keep transition for hover scale if needed */
     z-index: 100;
-    /* High z-index to sit above everything */
+
+    /* "Floating" Shadow */
+    filter: drop-shadow(0 10px 4px rgba(0, 0, 0, 0.4));
+
+    /* "Asking to click" Animation */
+    animation: arrowFloat 2s ease-in-out infinite;
 }
 
 .nav-arrow:hover {
     opacity: 1;
+    animation-play-state: paused;
+    /* Pause on hover to allow click stability */
     transform: translateY(-50%) scale(1.1);
 }
 
 .nav-next {
-    right: 40px;
-    /* Spacing from edge */
+    right: 20px;
+    /* Default (Mobile): Close to edge */
+
     /* Triangle pointing Right */
     border-width: 15px 0 15px 25px;
     border-color: transparent transparent transparent #1a1a1a;
 }
 
 .nav-prev {
-    left: 40px;
+    left: 20px;
+    /* Default (Mobile) */
+
     border-width: 15px 25px 15px 0;
     border-color: transparent #1a1a1a transparent transparent;
+}
+
+/* Desktop: Bring arrows closer to the art */
+@media (min-width: 1024px) {
+    .nav-next {
+        right: auto;
+        left: 50%;
+        margin-left: 300px;
+        /* 225px (half art) + 75px gap */
+    }
+
+    .nav-prev {
+        left: auto;
+        right: 50%;
+        margin-right: 300px;
+    }
 }
 
 /* --- EXHIBIT 2: THE PEDESTAL & MOUNT --- */
