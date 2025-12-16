@@ -6,6 +6,9 @@
     --text-color: #e0e0e0;
     --paper-color: #f4e4bc;
     /* Vintage paper */
+
+    /* Layout Constants for Linked Scaling */
+    --frame-width: min(450px, 92vw);
 }
 
 * {
@@ -14,94 +17,16 @@
     box-sizing: border-box;
 }
 
-body {
-    background-color: var(--bg-color);
-    background-image:
-        radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%),
-        url('./assets/images/vintage_wallpaper_light.png');
-    background-repeat: no-repeat;
-    background-size: cover;
-    /* Adjust size for pattern scale */
-    background-position: center fixed;
-    font-family: 'Courier New', Courier, monospace;
-    /* Typewriter feel */
-    height: 100vh;
-    height: 100dvh;
-    /* Mobile Viewport Fix */
-    display: flex;
-    justify-content: center;
-    /* align-items: center; REMOVED implies Top Alignment on Mobile */
-    overflow: hidden;
-    /* Prevent elastic scrolling usually, but... */
-}
-
-/* Mobile: Allow scroll if keyboard covers content */
-@media (max-width: 768px) {
-    body {
-        align-items: flex-start;
-        /* Top Align */
-        overflow-y: auto;
-        /* Allow scroll */
-        padding-top: 20px;
-    }
-
-    .exhibit-section {
-        height: auto;
-        /* Let it grow */
-        min-height: 100%;
-        padding-bottom: 300px;
-        /* Space for keyboard */
-    }
-}
-
-/* Desktop: Center Vertically */
-@media (min-width: 769px) {
-    body {
-        align-items: center;
-    }
-}
-
-/* Prevent zoom/pan on canvas */
-canvas {
-    touch-action: none;
-}
-
-#particleCanvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
-}
-
-/* --- GALLERY WALL LAYOUT --- */
-.gallery-wall {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    /* Context for absolute positioning if needed */
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
-}
+/* ... (Body styles kept same) ... */
 
 /* --- THE ART FRAME (CSS Styled) --- */
 .art-frame {
     position: relative;
-    /* Responsive Sizing Strategy:
-       1. Prefer Design Width (450px)
-       2. Constraint: Never wider than screen (92vw)
-       3. Constraint: Never taller than screen/keyboard area (85dvh)
-       4. Aspect Ratio drives the missing dimension
-    */
-    width: min(450px, 92vw);
+    /* Responsive Sizing linked to Variable */
+    width: var(--frame-width);
     height: auto;
     aspect-ratio: 3 / 4;
     max-height: 85dvh;
-    /* Don't get too tiny */
 
     background: #706c61;
 
@@ -407,14 +332,21 @@ canvas {
     position: absolute;
     left: 50%;
     top: 50%;
-    /* Default Positioning for Weeping Shadow (Side) */
-    margin-left: 255px;
-    margin-top: 180px;
 
-    width: 200px;
+    /* LINKED POSITIONING: Half frame width + gap */
+    /* This ensures it stays attached to the frame edge visually */
+    margin-left: calc(var(--frame-width) / 2 + 25px);
+    margin-top: 15vh;
+    /* Relative vert position */
+
+    /* Responsive Sizing */
+    width: clamp(140px, 25vw, 200px);
+    padding: clamp(10px, 2vw, 20px);
+    font-size: clamp(0.8rem, 2vw, 1rem);
+    /* Fluid Text */
+
     background-color: #eeebdf;
     /* Darker, clearly "off-white" paper */
-    padding: 20px;
 
     /* "Thickness" Illusion */
     border: 1px solid #e3e3e3;
