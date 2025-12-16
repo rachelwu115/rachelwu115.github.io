@@ -31,7 +31,7 @@ export const APP_CONFIG = {
         beatRate: 1200 // TUNED: Faster heartbeat (50 BPM-ish)
     },
     CONFETTI: {
-        BATCH_SIZE: 650,      // TUNED: Reduced density for clarity
+        BATCH_SIZE: 780,      // TUNED: Increased density (+20%)
         SPAWN_RADIUS: 100.0,  // TUNED: Wider Start
         EXPLOSION_POWER: 50.0, // TUNED: Fast Burst
         VELOCITY_Y_BASE: 0.0,
