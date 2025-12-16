@@ -36,9 +36,9 @@ export const APP_CONFIG = {
         EXPLOSION_POWER: 50.0, // TUNED: Fast Burst (Containable)
         VELOCITY_Y_BASE: 0.0,  // TUNED: No artificial boost
         VELOCITY_Y_VAR: 8.0,
-        GRAVITY: 0.40,        // TUNED: Very Heavy to overcome Drag
-        DRAG: 0.92,           // TUNED: Balanced Air Resistance
-        TERMINAL_VEL: 8.0,    // TUNED: High Max Fall Speed
+        GRAVITY: 0.22,        // TUNED: Snowflake Weight (approx 2.75px/frame)
+        DRAG: 0.92,           // TUNED: Air Resistance
+        TERMINAL_VEL: 3.5,    // TUNED: Soft Cap
         FLUTTER_SPEED: 0.15,
         FLUTTER_AMP: 5.0,
         WOBBLE_SPEED: 0.1,
