@@ -364,6 +364,34 @@
     pointer-events: auto;
 }
 
+/* --- RESPONSIVE LAYOUT (Mobile/Tablet) --- */
+/* Switch from Side-by-Side to Vertical Stack to prevent overflow */
+@media (max-width: 1100px) {
+    .art-frame {
+        max-height: 65dvh;
+        /* Shrink frame to make room below */
+    }
+
+    .museum-label {
+        /* Reset Side Positioning */
+        top: auto;
+        bottom: 5vh;
+        /* Place at bottom */
+        left: 50%;
+        margin-left: 0;
+        margin-top: 0;
+
+        /* Center Horizontally */
+        transform: translateX(-50%);
+
+        /* Layout Adjustments */
+        width: min(300px, 80vw);
+        /* Wider, but capped */
+        text-align: center;
+        padding: 15px;
+    }
+}
+
 
 
 /* Override for Button Exhibit (Centered on Pillar) */
