@@ -35,10 +35,10 @@ export const APP_CONFIG = {
         SPAWN_RADIUS: 100.0,  // TUNED: Wider Start
         EXPLOSION_POWER: 50.0, // TUNED: Fast Burst (Containable)
         VELOCITY_Y_BASE: 0.0,  // TUNED: No artificial boost
-        VELOCITY_Y_VAR: 8.0,   // TUNED: More vertical kick
-        GRAVITY: 0.15,        // TUNED: Heavy weight
-        DRAG: 0.86,           // TUNED: High Air Resistance (Containment)
-        TERMINAL_VEL: 4.0,    // TUNED: Higher Max Speed (was 1.5)
+        VELOCITY_Y_VAR: 8.0,
+        GRAVITY: 0.40,        // TUNED: Very Heavy to overcome Drag
+        DRAG: 0.92,           // TUNED: Balanced Air Resistance
+        TERMINAL_VEL: 8.0,    // TUNED: High Max Fall Speed
         FLUTTER_SPEED: 0.15,
         FLUTTER_AMP: 5.0,
         WOBBLE_SPEED: 0.1,
