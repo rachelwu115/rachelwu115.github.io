@@ -304,18 +304,9 @@ export class Mirror {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         // CLIPPING: Hide Shadowman body below the Dialog Box
-        // This prevents the "floating stump" look in the gap below the UI
-        let clipHeight = this.canvas.height;
-        const dialog = document.querySelector('.dialog-box');
-        if (dialog) {
-            // ROBUST CALCULATION: Use offsetTop relative to parent (Frame)
-            // This avoids viewport/scroll math errors common with getBoundingClientRect
-            const dpr = window.devicePixelRatio || 1;
-            const bottomPx = dialog.offsetTop + dialog.offsetHeight;
-
-            // Subtract small buffer (-5) to ensure cut is hidden BEHIND border
-            clipHeight = (bottomPx - 5) * dpr;
-        }
+        // Use strict percentage based on CSS Layout (Box bottom is at ~90%)
+        // We clip at 85% to be safe and hide the cut behind the box
+        const clipHeight = this.canvas.height * 0.85;
 
         this.ctx.save();
         this.ctx.beginPath();
