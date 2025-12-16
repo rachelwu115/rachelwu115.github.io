@@ -36,9 +36,9 @@ export const APP_CONFIG = {
         EXPLOSION_POWER: 30.0, // TUNED: Wide Burst
         VELOCITY_Y_BASE: 0.0,  // TUNED: No artificial boost
         VELOCITY_Y_VAR: 6.0,
-        GRAVITY: 0.06,        // TUNED: Floaty Fall
+        GRAVITY: 0.14,        // TUNED: Faster Fall (was 0.06)
         DRAG: 0.95,
-        TERMINAL_VEL: 1.5,    // TUNED: Floaty Fall
+        TERMINAL_VEL: 4.0,    // TUNED: Higher Max Speed (was 1.5)
         FLUTTER_SPEED: 0.15,
         FLUTTER_AMP: 5.0,
         WOBBLE_SPEED: 0.1,
