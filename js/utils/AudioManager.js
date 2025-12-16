@@ -14,19 +14,36 @@ export class AudioManager {
 
         // Melody: Fur Elise (Recurring Theme - EXACT ORIGINAL)
         // Melody: Fur Elise (Complete Section A with Resolution)
+        // Melody: Fur Elise (Full Rondo Form: A -> B -> A)
         this.melody = [
-            // Phrase 1
+            // --- SECTION A (Main Theme) ---
             659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
-            // Bridge 1
             261.63, 329.63, 440.00, 493.88, // C E A B
-            // Bridge 2
             329.63, 415.30, 493.88, 523.25, // E G# B C
-            // Phrase 2 (Loop start pickup)
             329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E E D# E D# E B D C A
-            // Bridge 1 (Repeat)
             261.63, 329.63, 440.00, 493.88, // C E A B
-            // Resolution (E C B A) <-- The missing piece
-            329.63, 523.25, 493.88, 440.00
+            329.63, 523.25, 493.88, 440.00, // E C B A (Resolution)
+
+            // --- SECTION B (The Cheerful Part - F Major) ---
+            // F Major Arpeggio: C F A C F
+            261.63, 349.23, 440.00, 523.25, 698.46,
+            // C Major / G7 Arpeggio: C G E G
+            523.25, 392.00, 329.63, 392.00,
+            // A Minor Arpeggio
+            440.00, 698.46, 659.25, 587.33, // A F E D
+
+            // Transition Run (Descending Scale)
+            493.88, 523.25, 587.33, 659.25, // B C D E
+            392.00, 698.46, 659.25, 587.33, // G F E D
+            349.23, 659.25, 587.33, 523.25, // F E D C
+            293.66, 587.33, 523.25, 493.88, // D D C B
+
+            // --- SECTION A (Reprise) ---
+            261.63, 329.63, 440.00, 493.88, // C E A B (Lead in)
+            329.63, 415.30, 493.88, 523.25, // E G# B C
+            329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E...A
+            261.63, 329.63, 440.00, 493.88, // C E A B
+            329.63, 523.25, 493.88, 440.00  // E C B A
         ];
         this.melodyIndex = 0;
 
