@@ -13,11 +13,20 @@ export class AudioManager {
         this.noiseBuffer = this.createNoiseBuffer();
 
         // Melody: Fur Elise (Recurring Theme - EXACT ORIGINAL)
+        // Melody: Fur Elise (Complete Section A with Resolution)
         this.melody = [
+            // Phrase 1
             659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
+            // Bridge 1
             261.63, 329.63, 440.00, 493.88, // C E A B
+            // Bridge 2
             329.63, 415.30, 493.88, 523.25, // E G# B C
-            329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00 // E E(high) D# E D# E B D C A
+            // Phrase 2 (Loop start pickup)
+            329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E E D# E D# E B D C A
+            // Bridge 1 (Repeat)
+            261.63, 329.63, 440.00, 493.88, // C E A B
+            // Resolution (E C B A) <-- The missing piece
+            329.63, 523.25, 493.88, 440.00
         ];
         this.melodyIndex = 0;
 
