@@ -33,14 +33,14 @@ export const APP_CONFIG = {
     CONFETTI: {
         BATCH_SIZE: 650,      // TUNED: Reduced density for clarity
         SPAWN_RADIUS: 100.0,  // TUNED: Wider Start
-        EXPLOSION_POWER: 50.0, // TUNED: Fast Burst (Containable)
-        VELOCITY_Y_BASE: 0.0,  // TUNED: No artificial boost
-        VELOCITY_Y_VAR: 8.0,
-        GRAVITY: 0.22,        // TUNED: Snowflake Weight (approx 2.75px/frame)
-        DRAG: 0.92,           // TUNED: Air Resistance
-        TERMINAL_VEL: 3.5,    // TUNED: Soft Cap
+        EXPLOSION_POWER: 50.0, // TUNED: Fast Burst
+        VELOCITY_Y_BASE: 0.0,
+        VELOCITY_Y_VAR: 12.0,  // TUNED: Chaotic Pop
+        GRAVITY: 0.13,        // TUNED: Paper Weight (Light)
+        DRAG: 0.91,           // TUNED: High Air Resistance
+        TERMINAL_VEL: 2.5,    // TUNED: Gentle Fall Cap
         FLUTTER_SPEED: 0.15,
-        FLUTTER_AMP: 5.0,
+        FLUTTER_AMP: 8.0,     // TUNED: Wide Sway (Leaf falling)
         WOBBLE_SPEED: 0.1,
         REPULSE_RADIUS_SQ: 2000,  // TUNED: Inner Hole
         REPULSE_STRENGTH: 0.5,    // TUNED: Strong Push
