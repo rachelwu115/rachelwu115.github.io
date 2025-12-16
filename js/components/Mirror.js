@@ -303,6 +303,26 @@ export class Mirror {
         if (!this.ctx) return;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // CLIPPING: Hide Shadowman body below the Dialog Box
+        // This prevents the "floating stump" look in the gap below the UI
+        let clipHeight = this.canvas.height;
+        const dialog = document.querySelector('.dialog-box');
+        if (dialog) {
+            const dialogRect = dialog.getBoundingClientRect();
+            const canvasRect = this.canvas.getBoundingClientRect();
+            // Calculate relative Y of dialog bottom
+            // We want to clip everything BELOW the dialog box
+            const bottomRel = (dialogRect.bottom - canvasRect.top);
+            // Convert to canvas pixels (dpr)
+            const dpr = window.devicePixelRatio || 1;
+            clipHeight = bottomRel * dpr;
+        }
+
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(0, 0, this.canvas.width, clipHeight);
+        this.ctx.clip();
+
         // Draw Shadowman (Clean, no effects)
         if (this.img) {
             this.ctx.drawImage(this.img, this.layout.x, this.layout.y, this.layout.w, this.layout.h);
@@ -322,8 +342,11 @@ export class Mirror {
             this.ctx.translate(p.x, p.y);
             this.ctx.rotate(p.angle);
             this.ctx.fillText(p.char, 0, 0);
-            this.ctx.restore();
+            this.ctx.restore(); // Close Eye Context (if any left open, but drawEye handles itself)
         });
+
+        // Restore Main Clipping Context
+        this.ctx.restore();
     }
 
     drawEye(rx, ry) {
