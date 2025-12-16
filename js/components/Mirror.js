@@ -308,17 +308,13 @@ export class Mirror {
         let clipHeight = this.canvas.height;
         const dialog = document.querySelector('.dialog-box');
         if (dialog) {
-            const dialogRect = dialog.getBoundingClientRect();
-            const canvasRect = this.canvas.getBoundingClientRect();
-            // Calculate relative Y of dialog bottom
-            // We want to clip everything BELOW the dialog box
-            const bottomRel = (dialogRect.bottom - canvasRect.top);
-            // Convert to canvas pixels (dpr)
+            // ROBUST CALCULATION: Use offsetTop relative to parent (Frame)
+            // This avoids viewport/scroll math errors common with getBoundingClientRect
             const dpr = window.devicePixelRatio || 1;
-            
-            // AGGRESSIVE CLIPPING: Subtract 10 logical pixels to hide gap artifacts
-            // This ensures the cut happens slightly *inside* the box area
-            clipHeight = (bottomRel - 10) * dpr;
+            const bottomPx = dialog.offsetTop + dialog.offsetHeight;
+
+            // Subtract small buffer (-5) to ensure cut is hidden BEHIND border
+            clipHeight = (bottomPx - 5) * dpr;
         }
 
         this.ctx.save();
