@@ -33,11 +33,11 @@ export const APP_CONFIG = {
     CONFETTI: {
         BATCH_SIZE: 650,      // TUNED: Reduced density for clarity
         SPAWN_RADIUS: 100.0,  // TUNED: Wider Start
-        EXPLOSION_POWER: 60.0, // TUNED: Fast Burst (was 30.0)
+        EXPLOSION_POWER: 50.0, // TUNED: Fast Burst (Containable)
         VELOCITY_Y_BASE: 0.0,  // TUNED: No artificial boost
         VELOCITY_Y_VAR: 8.0,   // TUNED: More vertical kick
-        GRAVITY: 0.14,        // TUNED: Faster Fall (was 0.06)
-        DRAG: 0.95,
+        GRAVITY: 0.15,        // TUNED: Heavy weight
+        DRAG: 0.86,           // TUNED: High Air Resistance (Containment)
         TERMINAL_VEL: 4.0,    // TUNED: Higher Max Speed (was 1.5)
         FLUTTER_SPEED: 0.15,
         FLUTTER_AMP: 5.0,
