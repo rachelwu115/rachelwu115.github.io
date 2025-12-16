@@ -315,7 +315,10 @@ export class Mirror {
             const bottomRel = (dialogRect.bottom - canvasRect.top);
             // Convert to canvas pixels (dpr)
             const dpr = window.devicePixelRatio || 1;
-            clipHeight = bottomRel * dpr;
+            
+            // AGGRESSIVE CLIPPING: Subtract 10 logical pixels to hide gap artifacts
+            // This ensures the cut happens slightly *inside* the box area
+            clipHeight = (bottomRel - 10) * dpr;
         }
 
         this.ctx.save();
