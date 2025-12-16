@@ -306,11 +306,17 @@ export class Mirror {
         // CLIPPING: Hide Shadowman body below the Dialog Box
         // Use strict percentage based on CSS Layout (Box bottom is at ~90%)
         // We clip at 85% to be safe and hide the cut behind the box
-        const clipHeight = this.canvas.height * 0.85;
+
+        // FIX: Must use LOGICAL pixels because ctx is already scaled by DPR
+        const dpr = window.devicePixelRatio || 1;
+        const logicalHeight = this.canvas.height / dpr;
+        const logicalWidth = this.canvas.width / dpr;
+
+        const clipHeight = logicalHeight * 0.85;
 
         this.ctx.save();
         this.ctx.beginPath();
-        this.ctx.rect(0, 0, this.canvas.width, clipHeight);
+        this.ctx.rect(0, 0, logicalWidth, clipHeight);
         this.ctx.clip();
 
         // Draw Shadowman (Clean, no effects)
