@@ -67,11 +67,14 @@ export class Mirror {
         this.resize();
 
         // RESIZE OBSERVER: Actively watch frame size changes (Robust Scaling)
-        // This ensures the canvas redraws instantly when CSS resizes the parent frame
         const frame = document.querySelector('.art-frame');
         if (frame) {
-            const observer = new ResizeObserver(() => this.resize());
-            observer.observe(frame);
+            this.resizeObserver = new ResizeObserver(() => {
+                this.resize();
+                // Force immediate draw to prevent "lag" visual
+                if (this.img) this.draw();
+            });
+            this.resizeObserver.observe(frame);
         }
 
         // Standard Resize Listener (Backup)
