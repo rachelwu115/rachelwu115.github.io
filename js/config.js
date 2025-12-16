@@ -33,7 +33,7 @@ export const APP_CONFIG = {
     CONFETTI: {
         BATCH_SIZE: 780,      // TUNED: Increased density (+20%)
         SPAWN_RADIUS: 100.0,  // TUNED: Wider Start
-        EXPLOSION_POWER: 50.0, // TUNED: Fast Burst
+        EXPLOSION_POWER: 35.0, // TUNED: Tighter Burst (Containment)
         VELOCITY_Y_BASE: 0.0,
         VELOCITY_Y_VAR: 12.0,  // TUNED: Chaotic Pop
         GRAVITY: 0.13,        // TUNED: Paper Weight (Light)
