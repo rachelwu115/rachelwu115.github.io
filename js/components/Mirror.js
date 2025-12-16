@@ -207,6 +207,10 @@ export class Mirror {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.canvas.getBoundingClientRect();
 
+        // Store for Polling Check
+        this.lastClientWidth = this.canvas.clientWidth;
+        this.lastClientHeight = this.canvas.clientHeight;
+
         this.canvas.width = rect.width * dpr;
         this.canvas.height = rect.height * dpr;
 
@@ -254,6 +258,15 @@ export class Mirror {
     }
 
     update() {
+        // ROBUST RESIZE POLLING:
+        // Check if CSS has changed the canvas size significantly
+        // This guarantees layout sync even if events/observers miss
+        if (this.canvas && this.canvas.clientWidth) {
+            if (this.canvas.clientWidth !== this.lastClientWidth || this.canvas.clientHeight !== this.lastClientHeight) {
+                this.resize();
+            }
+        }
+
         // Update Tears
         const chinY = this.layout.y + (APP_CONFIG.PHYSICS.BOUNDARY_Y * this.layout.h);
 
