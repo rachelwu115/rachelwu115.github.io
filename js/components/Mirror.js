@@ -250,6 +250,9 @@ export class Mirror {
             // REVEAL: Layout is stable, show the frame
             const frame = document.querySelector('.art-frame');
             if (frame) frame.classList.add('layout-stabilized');
+        } else {
+            // Hidden (Display None): Remove inline style so CSS fallback takes over (Responsive)
+            document.documentElement.style.removeProperty('--current-frame-width');
         }
     }
 

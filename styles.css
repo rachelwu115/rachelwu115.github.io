@@ -502,23 +502,21 @@ canvas {
 
 /* Override for Button Exhibit (Centered on Pillar) */
 /* Override for Button Exhibit (Centered on Pillar) */
+/* Override for Button Exhibit (Centered on Pillar) */
 .button-label {
     margin-left: 0;
     margin-top: 180px;
     transform: translateX(-50%);
     text-align: left;
     /* Align text left (Weeping Shadow style) */
-    width: 170px;
 
-    /* FIX: Decouple from collapsing variable */
-    min-height: 100px;
-    /* Fixed height */
-    padding: 15px;
-    /* Fixed padding */
-    font-size: 14px;
-    /* Fixed base font */
+    /* PROPORTIONAL SIZING (Matches Shadow Label) */
+    width: calc(var(--current-frame-width) * 0.38);
+    min-height: calc(var(--current-frame-width) * 0.25);
+    padding: calc(var(--current-frame-width) * 0.033);
+    font-size: calc(var(--current-frame-width) * 0.035);
+
     display: block;
-    /* Reset layout if needed */
 
     /* STABILITY MASK: Hide until JS confirms layout */
     opacity: 0;
@@ -531,13 +529,13 @@ canvas {
 
 /* Fix Typography inside Button Label */
 .button-label .label-title {
-    font-size: 16px;
-    margin-bottom: 4px;
-    padding-bottom: 5px;
+    font-size: calc(var(--current-frame-width) * 0.035);
+    margin-bottom: 2px;
+    padding-bottom: 4px;
 }
 
 .button-label .label-desc {
-    font-size: 12px;
+    font-size: calc(var(--current-frame-width) * 0.030);
 }
 
 /* TYPOGRAPHY RESET */
