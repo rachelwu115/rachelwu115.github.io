@@ -44,10 +44,10 @@ body {
     background-image:
         radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%),
         url('./assets/images/vintage_wallpaper_light.png');
-    background-repeat: repeat;
-    /* Repeat pattern */
-    background-size: 500px;
-    /* Specific size for pattern */
+    background-repeat: no-repeat;
+    /* Restored "Old Wallpaper" */
+    background-size: cover;
+    /* Restored single image scaling */
     background-position: center center;
 
     transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
