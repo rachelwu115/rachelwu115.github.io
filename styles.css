@@ -407,6 +407,10 @@ canvas {
     /* PROPORTIONAL SIZING (Unified Scaling) */
     /* Width is ~38% of frame width (Matches Button Label 170px/450px) */
     width: calc(var(--current-frame-width) * 0.38);
+    /* Make it LONGER (Taller) - Aspect Ratio or Min-Height */
+    min-height: calc(var(--current-frame-width) * 0.25);
+    /* ~110px taller */
+
     /* Padding is ~3.3% of frame width */
     padding: calc(var(--current-frame-width) * 0.033);
     /* Font size is ~3.5% of frame width */
@@ -429,6 +433,12 @@ canvas {
     z-index: 100;
     /* Ensure on top of canvas */
     pointer-events: auto;
+
+    /* LAYOUT: Top-Left Text */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    /* Top Align */
 }
 
 /* --- RESPONSIVE LAYOUT (Mobile/Tablet) --- */
@@ -494,8 +504,8 @@ canvas {
 }
 
 .label-desc {
-    font-size: calc(var(--current-frame-width) * 0.025);
-    /* Much smaller, elegant */
+    font-size: calc(var(--current-frame-width) * 0.030);
+    /* Larger but still subtitle */
     color: #444;
     font-weight: 400;
     font-style: italic;
