@@ -17,15 +17,18 @@ export class AudioManager {
         // Melody: Fur Elise (Full Rondo Form: A -> B -> A)
         this.melody = [
             // --- SECTION A (Main Theme) ---
+            // 1. Motif
             659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
+            // 2. Bass Run 1
             261.63, 329.63, 440.00, 493.88, // C E A B
-            293.66, 587.33, 523.25, 493.88, // D D C B
-
-            // --- SECTION A (Reprise) ---
-            261.63, 329.63, 440.00, 493.88, // C E A B (Lead in)
+            // 3. Bass Run 2
             329.63, 415.30, 493.88, 523.25, // E G# B C
-            329.63, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E...A
+            // 4. Motif Reprise
+            329.63, // E (Pickup)
+            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
+            // 5. Bass Run 1
             261.63, 329.63, 440.00, 493.88, // C E A B
+            // 6. Resolution
             329.63, 523.25, 493.88, 440.00  // E C B A
         ];
         this.melodyIndex = 0;
