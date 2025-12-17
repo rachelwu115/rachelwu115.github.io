@@ -81,8 +81,10 @@ export const APP_CONFIG = {
     // -------------------------------------------------------------------------
     // COMPONENT: MAGNETIC BUTTON
     // -------------------------------------------------------------------------
-    MAGNETIC: {
-        AREA_SELECTOR: '.magnetic-area',
-        BUTTON_SELECTOR: '.magnetic-content'
+    EYES: {
+        LEFT: { x: 0.46, y: 0.24 },
+        RIGHT: { x: 0.53, y: 0.24 },
+        WIDTH: 0.045,
+        HEIGHT: 0.025,
     }
 };
