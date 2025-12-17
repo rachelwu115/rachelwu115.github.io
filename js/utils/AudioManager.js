@@ -93,60 +93,32 @@ export class AudioManager {
         }
     }
 
-    // ... (playPop, playTone kept as is for backwards compat/mobile) ...
-
     /**
      * Plays a sharp "pop" sound.
-     * Sine sweep + Short Noise burst.
      */
     playPop() {
         this.resume();
         const t = this.ctx.currentTime;
-
-        // 1. Pop Tone (Sine Drop)
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.frequency.setValueAtTime(500, t);
         osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
         gain.gain.setValueAtTime(0.7, t);
         gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-
         osc.connect(gain);
         gain.connect(this.masterGain);
-
-        // 2. Snap (Noise)
         const noise = this.ctx.createBufferSource();
         noise.buffer = this.noiseBuffer;
         const noiseGain = this.ctx.createGain();
         noiseGain.gain.setValueAtTime(0.8, t);
         noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
-
         noise.connect(noiseGain);
         noiseGain.connect(this.masterGain);
-
-        osc.start();
-        osc.stop(t + 0.1);
-        noise.start();
-        noise.stop(t + 0.1);
+        osc.start(); osc.stop(t + 0.1);
+        noise.start(); noise.stop(t + 0.1);
     }
 
-    /**
-     * Plays a "Humanized Sad Sigh" (Ayyyy).
-     * Mixes Breath (Noise) + Vocal Cord (Tone) + Formant Filter (Mouth Shape).
-     */
     playSadSigh() {
-        this.resume();
-        const t = this.ctx.currentTime;
-        const dur = 2.0;
-
-        // 1. ETHEREAL CHORUS SYNTHESIS
-        // Instead of noise (wind), we use a cluster of detuned Sine waves.
-        // This creates a smooth, "ghostly" harmonic voice without the hiss.
-
-        const fundamental = 450; // Start Pitch (Mid-High)
-        const endPitch = 150;    // End Pitch (Low)
-
-        // Oscillator 1: Center
         const osc1 = this.ctx.createOscillator();
         osc1.type = 'sine';
         osc1.frequency.setValueAtTime(fundamental, t);
