@@ -398,9 +398,10 @@ canvas {
     left: 50%;
     top: 50%;
 
-    /* LINKED POSITIONING: Half frame width + gap */
-    /* This ensures it stays attached to the frame edge visually */
-    margin-left: calc(var(--current-frame-width) / 2 + 25px);
+    /* LINKED POSITIONING: Half frame width + gap (10% of frame) */
+    /* This ensures it stays attached to the frame edge visually but with safe distance */
+    margin-left: calc(var(--current-frame-width) * 0.6);
+    /* 0.5 (half frame) + 0.1 (gap) */
     margin-top: 15vh;
     /* Relative vert position */
 
