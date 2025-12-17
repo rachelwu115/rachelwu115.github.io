@@ -131,6 +131,14 @@ canvas {
     box-sizing: border-box;
     /* Restore interaction since parent is pointer-events: none */
     pointer-events: auto;
+
+    /* STABILITY MASK: Hide until JS confirms layout */
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.art-frame.layout-stabilized {
+    opacity: 1;
 }
 
 /* --- EXHIBIT SWITCHING --- */
@@ -497,6 +505,14 @@ canvas {
     /* Fixed base font */
     display: block;
     /* Reset layout if needed */
+
+    /* STABILITY MASK: Hide until JS confirms layout */
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.button-label.layout-stabilized {
+    opacity: 1;
 }
 
 /* Fix Typography inside Button Label */

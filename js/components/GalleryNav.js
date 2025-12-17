@@ -38,6 +38,12 @@ export class GalleryNav {
 
             this.handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
         }, { passive: true });
+
+        // REVEAL BUTTON LABEL (Fixed layout, just needs to fade in)
+        setTimeout(() => {
+            const btnLabel = document.querySelector('.button-label');
+            if (btnLabel) btnLabel.classList.add('layout-stabilized');
+        }, 100);
     }
 
     handleSwipe(startX, startY, endX, endY) {

@@ -246,6 +246,10 @@ export class Mirror {
         // GUARD: Only update if width > 0 to prevent collapse when hidden (display: none)
         if (rect.width > 0) {
             document.documentElement.style.setProperty('--current-frame-width', `${rect.width}px`);
+
+            // REVEAL: Layout is stable, show the frame
+            const frame = document.querySelector('.art-frame');
+            if (frame) frame.classList.add('layout-stabilized');
         }
     }
 
