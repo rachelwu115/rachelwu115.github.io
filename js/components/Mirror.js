@@ -239,7 +239,10 @@ export class Mirror {
         // --- UNIFIED SCALING BROADCAST ---
         // Set CSS Variable to match actual rendered width (Logical Pixels)
         // This allows CSS 'calc()' to sync Label/Dialog sizes exactly with the frame
-        document.documentElement.style.setProperty('--current-frame-width', `${rect.width}px`);
+        // GUARD: Only update if width > 0 to prevent collapse when hidden (display: none)
+        if (rect.width > 0) {
+            document.documentElement.style.setProperty('--current-frame-width', `${rect.width}px`);
+        }
     }
 
     spawnTear(char) {
