@@ -30,13 +30,8 @@ export class AudioManager {
             'C4', 'E4', 'A4', 'B4',
             'E4', 'C5', 'B4', 'A4',
 
-            // --- SECTION A (Repeat) ---
-            'E5', 'D#5', 'E5', 'D#5', 'E5', 'B4', 'D5', 'C5', 'A4',
-            'C4', 'E4', 'A4', 'B4',
-            'E4', 'G#4', 'B4', 'C5',
-            'E4', 'E5', 'D#5', 'E5', 'D#5', 'E5', 'B4', 'D5', 'C5', 'A4',
-            'C4', 'E4', 'A4', 'B4',
-            'E4', 'C5', 'B4', 'A4',
+            // --- SECTION A (Repeat Removed for Variety) ---
+            // Direct to Transition
             'B4', 'C5', 'D5', 'E5', // Transition to B
 
             // --- SECTION B (F Major / C Major) ---
