@@ -6,7 +6,7 @@ export class AudioManager {
     constructor() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = 0.8; // TUNED: Max Volume (User requested "Even Louder")
+        this.masterGain.gain.value = 0.8; // TUNED: Max Volume
         this.masterGain.connect(this.ctx.destination);
 
         // Noise Buffer for "Breath" sounds
@@ -56,33 +56,28 @@ export class AudioManager {
         ];
         this.melodyIndex = 0;
 
-        // Echo / Delay System (Original Heavy Ethereal Echo)
+        // Echo / Delay System
         this.delayNode = this.ctx.createDelay();
         this.delayNode.delayTime.value = 0.4;
-
         this.feedbackGain = this.ctx.createGain();
         this.wetGain = this.ctx.createGain();
-
-        // Echo Routing
         this.delayNode.connect(this.feedbackGain);
         this.feedbackGain.connect(this.delayNode);
         this.delayNode.connect(this.wetGain);
         this.wetGain.connect(this.masterGain);
+        this.feedbackGain.gain.value = 0.5;
+        this.wetGain.gain.value = 0.4;
 
-        this.feedbackGain.gain.value = 0.5; // High Feedback
-        this.wetGain.gain.value = 0.4;      // Strong Mix
-
-        // Map to track active oscillators for Sustain (Desktop)
         this.activeNotes = new Map();
         this.noteCounter = 0;
     }
 
     createNoiseBuffer() {
-        const bufferSize = this.ctx.sampleRate * 2.0; // 2 seconds
+        const bufferSize = this.ctx.sampleRate * 2.0;
         const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * 0.5; // Soft White Noise
+            data[i] = (Math.random() * 2 - 1) * 0.5;
         }
         return buffer;
     }
@@ -93,9 +88,6 @@ export class AudioManager {
         }
     }
 
-    /**
-     * Plays a sharp "pop" sound.
-     */
     playPop() {
         this.resume();
         const t = this.ctx.currentTime;
@@ -107,6 +99,7 @@ export class AudioManager {
         gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
         osc.connect(gain);
         gain.connect(this.masterGain);
+
         const noise = this.ctx.createBufferSource();
         noise.buffer = this.noiseBuffer;
         const noiseGain = this.ctx.createGain();
@@ -114,62 +107,64 @@ export class AudioManager {
         noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
         noise.connect(noiseGain);
         noiseGain.connect(this.masterGain);
+
         osc.start(); osc.stop(t + 0.1);
         noise.start(); noise.stop(t + 0.1);
     }
 
     playSadSigh() {
+        this.resume();
+        const t = this.ctx.currentTime;
+        const dur = 2.0;
+        const fundamental = 450;
+        const endPitch = 150;
+
+        // Oscillators
         const osc1 = this.ctx.createOscillator();
-        osc1.type = 'sine';
+        const osc2 = this.ctx.createOscillator();
+        const osc3 = this.ctx.createOscillator();
+
+        osc1.type = 'sine'; osc2.type = 'sine'; osc3.type = 'sine';
+
         osc1.frequency.setValueAtTime(fundamental, t);
         osc1.frequency.exponentialRampToValueAtTime(endPitch, t + dur);
 
-        // Oscillator 2: Detuned Up (+4Hz) -> Creates Chorus/Beating
-        const osc2 = this.ctx.createOscillator();
-        osc2.type = 'sine';
         osc2.frequency.setValueAtTime(fundamental + 4, t);
         osc2.frequency.exponentialRampToValueAtTime(endPitch + 2, t + dur);
 
-        // Oscillator 3: Detuned Down (-4Hz)
-        const osc3 = this.ctx.createOscillator();
-        osc3.type = 'sine';
         osc3.frequency.setValueAtTime(fundamental - 4, t);
         osc3.frequency.exponentialRampToValueAtTime(endPitch - 2, t + dur);
 
-        // Gains (Mix them equally)
         const gainNode = this.ctx.createGain();
         gainNode.gain.setValueAtTime(0, t);
-        gainNode.gain.linearRampToValueAtTime(0.4, t + 0.3); // Soft Swell
+        gainNode.gain.linearRampToValueAtTime(0.4, t + 0.3);
         gainNode.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
-        // Connect Loop
         osc1.connect(gainNode);
         osc2.connect(gainNode);
         osc3.connect(gainNode);
 
-        // Output (Master)
         gainNode.connect(this.masterGain);
 
-        // Echo Send (Heavy reverb for ghostliness)
         const echoSend = this.ctx.createGain();
         echoSend.gain.value = 0.7;
         gainNode.connect(echoSend);
         echoSend.connect(this.delayNode);
 
-        osc1.start();
-        osc2.start();
-        osc3.start();
-
-        osc1.stop(t + dur + 0.5);
-        osc2.stop(t + dur + 0.5);
-        osc3.stop(t + dur + 0.5);
+        osc1.start(); osc2.start(); osc3.start();
+        osc1.stop(t + dur + 0.5); osc2.stop(t + dur + 0.5); osc3.stop(t + dur + 0.5);
     }
 
-    // Legacy / Mobile One-Shot
     playNextNote() {
-        const freq = this.melody[this.melodyIndex % this.melody.length];
+        const noteName = this.melody[this.melodyIndex % this.melody.length];
         this.melodyIndex++;
-        // TUNED: Original High Pitch Sine with Long Duration
+
+        let freq = 440;
+        if (this.NOTE_FREQS[noteName]) {
+            freq = this.NOTE_FREQS[noteName];
+        } else if (typeof noteName === 'number') {
+            freq = noteName;
+        }
         this.playTone(freq, 'sine', 0.8, 0.25);
     }
 
@@ -177,31 +172,19 @@ export class AudioManager {
         this.melodyIndex = 0;
     }
 
-    /**
-     * Plays a simple tone.
-     * @param {number} freq Frequency in Hz
-     * @param {string} type Oscillator type ('sine', 'square', etc.)
-     * @param {number} duration Duration in seconds
-     * @param {number} vol Volume (0.0 - 1.0)
-     */
     playTone(freq, type, duration, vol = 0.5) {
         this.resume();
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
-
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
-
         osc.connect(gain);
         gain.connect(this.masterGain);
-
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
     }
 }
 
-// Singleton Instance
 export const audioManager = new AudioManager();
