@@ -117,12 +117,16 @@ export class Mirror {
                 dialog.addEventListener('click', () => this.input.focus());
             }
 
-            // --- NAVIGATION AUTO-FOCUS ---
+            // --- NAVIGATION AUTO-FOCUS & RESIZE FORCE ---
+            // Ensure layout and inputs are ready immediately upon transition
             window.addEventListener('exhibit-changed', (e) => {
                 if (e.detail.id === 1) {
+                    // Force resize immediately to catch dimension changes while hidden
+                    // Use timeout to ensure DOM 'display: block' has applied and layout is measurable
                     setTimeout(() => {
-                        this.input.focus();
-                    }, 100);
+                        this.resize();
+                        if (this.input) this.input.focus();
+                    }, 0);
                 }
             });
 
