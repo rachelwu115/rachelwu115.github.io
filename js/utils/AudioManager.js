@@ -12,24 +12,47 @@ export class AudioManager {
         // Noise Buffer for "Breath" sounds
         this.noiseBuffer = this.createNoiseBuffer();
 
-        // Melody: Fur Elise (Recurring Theme - EXACT ORIGINAL)
-        // Melody: Fur Elise (Complete Section A with Resolution)
-        // Melody: Fur Elise (Full Rondo Form: A -> B -> A)
+        // Note Frequency Map (A4 = 440Hz)
+        this.NOTE_FREQS = {
+            'C3': 130.81, 'C#3': 138.59, 'D3': 146.83, 'D#3': 155.56, 'E3': 164.81, 'F3': 174.61, 'F#3': 185.00, 'G3': 196.00, 'G#3': 207.65, 'A3': 220.00, 'A#3': 233.08, 'B3': 246.94,
+            'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
+            'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25, 'E5': 659.25, 'F5': 698.46, 'F#5': 739.99, 'G5': 783.99, 'G#5': 830.61, 'A5': 880.00, 'A#5': 932.33, 'B5': 987.77,
+            'C6': 1046.50, 'D6': 1174.66, 'E6': 1318.51, 'F6': 1396.91
+        };
+
+        // Fur Elise (Full A-B-A Form)
         this.melody = [
-            // --- SECTION A (Main Theme) ---
-            // 1. Motif
-            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
-            // 2. Bass Run 1
-            261.63, 329.63, 440.00, 493.88, // C E A B
-            // 3. Bass Run 2
-            329.63, 415.30, 493.88, 523.25, // E G# B C
-            // 4. Motif Reprise
-            329.63, // E (Pickup)
-            659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440.00, // E D# E D# E B D C A
-            // 5. Bass Run 1
-            261.63, 329.63, 440.00, 493.88, // C E A B
-            // 6. Resolution
-            329.63, 523.25, 493.88, 440.00  // E C B A
+            // --- SECTION A (Theme) ---
+            'E5', 'D#5', 'E5', 'D#5', 'E5', 'B4', 'D5', 'C5', 'A4',
+            'C4', 'E4', 'A4', 'B4',
+            'E4', 'G#4', 'B4', 'C5',
+            'E4', 'E5', 'D#5', 'E5', 'D#5', 'E5', 'B4', 'D5', 'C5', 'A4',
+            'C4', 'E4', 'A4', 'B4',
+            'E4', 'C5', 'B4', 'A4',
+
+            // --- SECTION A (Repeat) ---
+            'E5', 'D#5', 'E5', 'D#5', 'E5', 'B4', 'D5', 'C5', 'A4',
+            'C4', 'E4', 'A4', 'B4',
+            'E4', 'G#4', 'B4', 'C5',
+            'E4', 'E5', 'D#5', 'E5', 'D#5', 'E5', 'B4', 'D5', 'C5', 'A4',
+            'C4', 'E4', 'A4', 'B4',
+            'E4', 'C5', 'B4', 'A4',
+            'B4', 'C5', 'D5', 'E5', // Transition to B
+
+            // --- SECTION B (F Major / C Major) ---
+            'G4', 'F5', 'E5', 'D5', // F Major Arp-ish
+            'F4', 'E5', 'D5', 'C5',
+            'F4', 'D5', 'C5', 'B4',
+            'G4', 'F#5', 'F5', // Chromatic slide? Simplified B section
+            'E5', 'D#5', 'E5', 'B4', 'E5', 'B4', 'E5', 'B4', // Oscillating transition back to A
+
+            // --- SECTION A (Reprise) ---
+            'E5', 'D#5', 'E5', 'D#5', 'E5', 'B4', 'D5', 'C5', 'A4',
+            'C4', 'E4', 'A4', 'B4',
+            'E4', 'G#4', 'B4', 'C5',
+            'E4', 'E5', 'D#5', 'E5', 'D#5', 'E5', 'B4', 'D5', 'C5', 'A4',
+            'C4', 'E4', 'A4', 'B4',
+            'E4', 'C5', 'B4', 'A4'
         ];
         this.melodyIndex = 0;
 
