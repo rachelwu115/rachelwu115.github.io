@@ -6,7 +6,7 @@ A digital exhibition of interactive web art, exploring themes of hidden emotion 
 
 ## 🏛️ Exhibits
 
-### 1. The Weeping Shadow (`js/components/Mirror.js`)
+### 1. The Shadow (`js/components/Mirror.js`)
 **_"Your secrets are safe with me."_**
 
 This work invites the user to type their secrets into the void. As they type, the text vanishes, and the characters are transformed into tears that fall from the face of a silhouetted figure.
