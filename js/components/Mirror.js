@@ -235,6 +235,11 @@ export class Mirror {
             x: ((rect.width - (this.img.width * scale)) / 2) + (rect.width * APP_CONFIG.VIEWPORT.OFFSET_X),
             y: rect.height * APP_CONFIG.VIEWPORT.TOP_OFFSET
         };
+
+        // --- UNIFIED SCALING BROADCAST ---
+        // Set CSS Variable to match actual rendered width (Logical Pixels)
+        // This allows CSS 'calc()' to sync Label/Dialog sizes exactly with the frame
+        document.documentElement.style.setProperty('--current-frame-width', `${rect.width}px`);
     }
 
     spawnTear(char) {

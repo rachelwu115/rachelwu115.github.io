@@ -400,15 +400,17 @@ canvas {
 
     /* LINKED POSITIONING: Half frame width + gap */
     /* This ensures it stays attached to the frame edge visually */
-    margin-left: calc(var(--frame-width) / 2 + 25px);
+    margin-left: calc(var(--current-frame-width) / 2 + 25px);
     margin-top: 15vh;
     /* Relative vert position */
 
-    /* Responsive Sizing */
-    width: clamp(140px, 25vw, 200px);
-    padding: clamp(10px, 2vw, 20px);
-    font-size: clamp(0.8rem, 2vw, 1rem);
-    /* Fluid Text */
+    /* PROPORTIONAL SIZING (Unified Scaling) */
+    /* Width is ~45% of frame width */
+    width: calc(var(--current-frame-width) * 0.45);
+    /* Padding is ~3% of frame width */
+    padding: calc(var(--current-frame-width) * 0.03);
+    /* Font size is ~3.5% of frame width */
+    font-size: calc(var(--current-frame-width) * 0.035);
 
     background-color: #eeebdf;
     /* Darker, clearly "off-white" paper */
@@ -472,8 +474,8 @@ canvas {
 }
 
 .label-title {
-    font-size: 14px;
-    /* Smaller */
+    font-size: calc(var(--current-frame-width) * 0.05);
+    /* Unified */
     font-weight: 700;
     color: #111;
     margin-bottom: 8px;
@@ -548,8 +550,8 @@ canvas {
     outline: none;
     text-align: center;
     font-family: 'Courier Prime', monospace;
-    /* Fluid Font Size */
-    font-size: clamp(16px, 4cqw, 24px);
+    /* UNIFIED SCALING: Font size is ~5% of frame width */
+    font-size: calc(var(--current-frame-width) * 0.05);
     color: transparent;
     caret-color: transparent;
     z-index: 10;
@@ -599,8 +601,8 @@ canvas {
     display: inline-block;
     color: #3e2723;
     font-family: 'Courier Prime', monospace;
-    font-size: clamp(16px, 4cqw, 24px);
-    /* Fluid */
+    font-size: calc(var(--current-frame-width) * 0.05);
+    /* Unified */
     animation: vanish 0.8s forwards;
     white-space: pre;
 }
@@ -610,8 +612,8 @@ canvas {
     width: 100%;
     text-align: center;
     font-family: 'Courier Prime', monospace;
-    font-size: clamp(16px, 4cqw, 24px);
-    /* Fluid */
+    font-size: calc(var(--current-frame-width) * 0.05);
+    /* Unified */
     color: #3e2723;
     opacity: 0.5;
     pointer-events: none;
