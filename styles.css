@@ -478,59 +478,38 @@ text-align: left;
 line-height: 1.4;
 }
 
-/* 1. Artist Name (Bold) */
-.label-artist {
-    display: block;
-    font-weight: 700;
-    /* Use Unified Styling */
-    font-size: calc(var(--current-frame-width) * 0.045);
-    color: #000;
-    margin-bottom: 2px;
-}
-
-/* 2. Title & Year (Bold Italic) */
-.label-body {
-    margin-bottom: 8px;
-}
-
 .label-title {
+    font-size: calc(var(--current-frame-width) * 0.05);
+    /* Unified */
     font-weight: 700;
-    font-style: italic;
-    font-size: calc(var(--current-frame-width) * 0.045);
-    color: #000;
-    border: none;
-    /* Remove old underline */
-    padding: 0;
-    margin: 0;
-    text-transform: none;
-    /* Keep natural case */
-    letter-spacing: normal;
+    color: #111;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #999;
+    /* The Requested Underline */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
 }
 
-.label-year {
+.label-desc {
+    font-size: 12px;
+    /* Smaller */
+    color: #444;
     font-weight: 400;
-    /* Year usually normal weight or same */
-    font-size: calc(var(--current-frame-width) * 0.045);
-    color: #000;
+    font-style: italic;
+    margin-bottom: 0;
+    line-height: 1.3;
 }
 
-/* 3. Medium (Regular) */
-.label-medium {
-    display: block;
-    font-size: calc(var(--current-frame-width) * 0.035);
-    color: #000;
-    margin-bottom: 15px;
-}
-
-/* 4. Credit / Meta (Small Block) */
 .label-meta {
     display: block;
-    font-size: calc(var(--current-frame-width) * 0.028);
-    color: #333;
+    margin-top: 20px;
+    font-size: 11px;
+    color: #666;
     font-weight: 400;
-    text-transform: none;
-    letter-spacing: normal;
-    line-height: 1.3;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 
