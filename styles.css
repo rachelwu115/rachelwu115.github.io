@@ -8,7 +8,8 @@
     /* Vintage paper */
 
     /* Layout Constants for Linked Scaling */
-    --frame-width: min(450px, 92vw);
+    /* Width constrained by: Max Pixels, Mobile Width, OR Max Height (85dvh * 3/4 = 63.75dvh) */
+    --frame-width: min(450px, 92vw, 63.75dvh);
 
     /* FALLBACK: Initialize to match frame-width so elements don't collapse before JS runs */
     --current-frame-width: var(--frame-width);
