@@ -9,6 +9,9 @@
 
     /* Layout Constants for Linked Scaling */
     --frame-width: min(450px, 92vw);
+
+    /* FALLBACK: Initialize to match frame-width so elements don't collapse before JS runs */
+    --current-frame-width: var(--frame-width);
 }
 
 body {
