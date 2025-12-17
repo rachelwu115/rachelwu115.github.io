@@ -12,7 +12,9 @@
     --frame-width: min(450px, 92vw, 63.75dvh);
 
     /* FALLBACK: Initialize to match frame-width so elements don't collapse before JS runs */
-    --current-frame-width: var(--frame-width);
+    /* NOTE: Mirror.js measures INNER width (Canvas). Frame has 25px border * 2 = 50px. */
+    /* We subtract 50px so the fallback matches the "Inner" width exactly. */
+    --current-frame-width: calc(var(--frame-width) - 50px);
 }
 
 body {
