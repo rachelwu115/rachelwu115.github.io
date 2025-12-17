@@ -135,9 +135,21 @@ export class GalleryNav {
         if (id === 1) {
             if (this.nextBtn) this.nextBtn.style.display = 'block';
             if (this.prevBtn) this.prevBtn.style.display = 'none';
-        } else if (id === 2) {
             if (this.nextBtn) this.nextBtn.style.display = 'none';
             if (this.prevBtn) this.prevBtn.style.display = 'block';
         }
+
+        this.updateWallpaper(id);
+    }
+
+    updateWallpaper(index) {
+        const wallpaper = document.getElementById('wallpaper');
+        if (!wallpaper) return;
+
+        // Simple parallax shift: Move background LEFT as user moves RIGHT (Next)
+        // Index 1 (Start) -> 0vw
+        // Index 2 (Next)  -> -10vw
+        const shiftAmount = (index - 1) * -10;
+        wallpaper.style.transform = `translateX(${shiftAmount}vw)`;
     }
 }

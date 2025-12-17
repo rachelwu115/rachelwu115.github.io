@@ -19,13 +19,8 @@
 
 body {
     background-color: var(--bg-color);
-    background-image:
-        radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%),
-        url('./assets/images/vintage_wallpaper_light.png');
-    background-repeat: no-repeat;
-    background-size: cover;
-    /* Adjust size for pattern scale */
-    background-position: center fixed;
+    /* Background moved to #wallpaper */
+
     font-family: 'Courier New', Courier, monospace;
     /* Typewriter feel */
     height: 100vh;
@@ -33,9 +28,30 @@ body {
     /* Mobile Viewport Fix */
     display: flex;
     justify-content: center;
-    /* align-items: center; REMOVED implies Top Alignment on Mobile */
     overflow: hidden;
     /* Prevent elastic scrolling usually, but... */
+}
+
+#wallpaper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 120vw;
+    /* Wider than screen for slide effect */
+    height: 100vh;
+    z-index: -10;
+
+    background-image:
+        radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%),
+        url('./assets/images/vintage_wallpaper_light.png');
+    background-repeat: repeat;
+    /* Repeat pattern */
+    background-size: 500px;
+    /* Specific size for pattern */
+    background-position: center center;
+
+    transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    will-change: transform;
 }
 
 /* Mobile: Allow scroll if keyboard covers content */
