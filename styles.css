@@ -39,13 +39,20 @@ body {
 }
 
 /* Mobile: Allow scroll if keyboard covers content */
+/* Mobile: Allow scroll if keyboard covers content */
 @media (max-width: 768px) {
     body {
         align-items: flex-start;
         /* Top Align */
-        overflow-y: auto;
-        /* Allow scroll */
+        /* overflow-y: auto; Handled by section now */
+        /* padding-top: 20px; REMOVED - Causes snap */
+    }
+
+    .gallery-wall {
         padding-top: 20px;
+        /* MOVED HERE - Consistent */
+        min-height: 100%;
+        /* Ensure coverage */
     }
 
     .exhibit-section {
@@ -147,13 +154,18 @@ canvas {
 /* --- EXHIBIT SWITCHING (Animation) --- */
 .exhibit-section {
     display: none;
-    position: relative;
-    /* Default: Relative to allow scrolling/flow */
+    position: absolute;
+    /* Was relative. Absolute unifies state with Animation */
+    top: 0;
+    left: 0;
     width: 100%;
     min-height: 100vh;
     /* Ensure full height */
     pointer-events: none;
     /* Let clicks pass through */
+    overflow-y: auto;
+    /* Allow internal scrolling if needed */
+    overflow-x: hidden;
 }
 
 .exhibit-section.active {
