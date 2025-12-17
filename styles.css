@@ -439,6 +439,8 @@ canvas {
     flex-direction: column;
     justify-content: flex-start;
     /* Top Align */
+    align-items: flex-start;
+    /* Left Align */
 }
 
 /* --- RESPONSIVE LAYOUT (Mobile/Tablet) --- */
@@ -494,13 +496,16 @@ canvas {
     /* Smaller, more whitespace */
     font-weight: 700;
     color: #111;
-    margin-bottom: 8px;
-    padding-bottom: 8px;
+    margin-bottom: 2px;
+    padding-bottom: 4px;
+    /* TIGHTENED */
     border-bottom: 1px solid #999;
     /* The Line */
     text-transform: uppercase;
     letter-spacing: 0.5px;
     line-height: 1.2;
+    width: 100%;
+    /* Ensure line goes across if needed, or flex-start handles it */
 }
 
 .label-desc {
