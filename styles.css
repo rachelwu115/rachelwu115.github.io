@@ -474,27 +474,28 @@ canvas {
 }
 
 /* TYPOGRAPHY RESET */
-text-align: left;
-line-height: 1.4;
+.museum-label {
+    text-align: left;
+    line-height: 1.4;
 }
 
 .label-title {
-    font-size: calc(var(--current-frame-width) * 0.05);
-    /* Unified */
+    font-size: calc(var(--current-frame-width) * 0.035);
+    /* Smaller, more whitespace */
     font-weight: 700;
     color: #111;
     margin-bottom: 8px;
     padding-bottom: 8px;
     border-bottom: 1px solid #999;
-    /* The Requested Underline */
+    /* The Line */
     text-transform: uppercase;
     letter-spacing: 0.5px;
     line-height: 1.2;
 }
 
 .label-desc {
-    font-size: 12px;
-    /* Smaller */
+    font-size: calc(var(--current-frame-width) * 0.025);
+    /* Much smaller, elegant */
     color: #444;
     font-weight: 400;
     font-style: italic;
