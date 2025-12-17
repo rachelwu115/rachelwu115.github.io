@@ -405,10 +405,10 @@ canvas {
     /* Relative vert position */
 
     /* PROPORTIONAL SIZING (Unified Scaling) */
-    /* Width is ~45% of frame width */
-    width: calc(var(--current-frame-width) * 0.45);
-    /* Padding is ~3% of frame width */
-    padding: calc(var(--current-frame-width) * 0.03);
+    /* Width is ~38% of frame width (Matches Button Label 170px/450px) */
+    width: calc(var(--current-frame-width) * 0.38);
+    /* Padding is ~3.3% of frame width */
+    padding: calc(var(--current-frame-width) * 0.033);
     /* Font size is ~3.5% of frame width */
     font-size: calc(var(--current-frame-width) * 0.035);
 
