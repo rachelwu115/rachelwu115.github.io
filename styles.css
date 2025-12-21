@@ -509,10 +509,13 @@ canvas {
         transform: translateX(-50%);
 
         /* Layout Adjustments */
-        width: min(300px, 80vw);
-        /* Wider, but capped */
-        text-align: center;
-        padding: 15px;
+        /* Restore "Card" Shape (Narrower) instead of Wide Banner */
+        /* Desktop is 38%. Mobile needs to be wider to be readable, but not 80% */
+        width: calc(var(--current-frame-width) * 0.6);
+
+        text-align: left;
+        /* Match Desktop Alignment */
+        padding: 10px;
     }
 }
 
