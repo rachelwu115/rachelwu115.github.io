@@ -43,7 +43,7 @@ body {
 
     background-image:
         radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.4) 100%),
-        url('./assets/images/vintage_wallpaper_v3.png?fresh=1');
+        url('./assets/images/vintage_wallpaper_final.png');
     background-repeat: no-repeat;
     /* Restored "Old Wallpaper" */
     background-size: cover;
