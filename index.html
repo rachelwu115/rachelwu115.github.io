@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Gallery</title>
 
-    <link rel="stylesheet" href="styles.css?v=final">
+    <link rel="stylesheet" href="styles.css?v=leaves">
     <link rel="preload" as="image" href="./assets/images/shadowman_silhouette.png">
     <!-- Google Fonts for Atmosphere -->
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet">
@@ -28,8 +28,9 @@
             <div class="art-frame">
                 <!-- The Aperture: This masks the original image content -->
                 <canvas id="shadowCanvas"></canvas>
-                <!-- Input Moved Overlay -->
-                <input type="text" id="tearInput" autocomplete="off" spellcheck="false" autofocus>
+                <!-- Hidden Input for Mobile/Desktop Typing -->
+                <input type="text" id="tearInput" class="hidden-input" maxlength="50" autocomplete="off"
+                    autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
 
                 <div class="dialog-box">
                     <div id="ghostContainer"></div>
