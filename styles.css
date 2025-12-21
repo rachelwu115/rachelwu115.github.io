@@ -105,16 +105,18 @@ canvas {
 /* --- GALLERY WALL LAYOUT --- */
 .gallery-wall {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    /* align-items: center; REMOVED to prevent snap */
+    /* justify-content: center; REMOVED */
     position: relative;
-    /* Context for absolute positioning if needed */
     width: 100%;
     height: 100vh;
     overflow: hidden;
 }
 
 .art-frame {
+    /* SAFE CENTERING: margin: auto centers in flex container responsibly */
+    margin: auto;
+
     position: relative;
     /* Responsive Sizing linked to Variable */
     width: var(--frame-width);
