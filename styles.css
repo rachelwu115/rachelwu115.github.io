@@ -491,29 +491,41 @@ canvas {
 /* --- RESPONSIVE LAYOUT (Mobile/Tablet) --- */
 /* Switch from Side-by-Side to Vertical Stack to prevent overflow */
 @media (max-width: 1100px) {
+    .gallery-wall {
+        flex-direction: column;
+        justify-content: center;
+        /* Safe on mobile (overlay scrollbars) */
+        padding-top: 0;
+        /* Let flex handle centering */
+    }
+
     .art-frame {
-        max-height: 65dvh;
-        /* Shrink frame to make room below */
+        max-height: 60dvh;
+        /* Slightly smaller to ensure label fits */
+        margin: 0 auto;
+        /* Horizontal center, Vertical reset */
+        margin-bottom: 20px;
+        /* Gap for label */
     }
 
     .museum-label {
-        /* Reset Side Positioning */
-        /* FIX: Anchor to Top/Center so extra bottom padding doesn't push it off screen */
-        top: 50%;
+        /* STATIC FLOW: Stack below frame naturally */
+        position: relative;
+        top: auto;
         bottom: auto;
+        left: auto;
 
-        /* Approximate position below the frame (Frame is max 65% height, centered) */
-        /* Center + 32vh puts it in the bottom 18% of screen */
-        margin-top: 32vh;
-        margin-left: 0;
+        margin: 0 auto;
+        /* Center horizontally */
+        margin-bottom: 5vh;
+        /* Safe buffer from bottom */
 
-        /* Center Horizontally */
-        transform: translateX(-50%);
+        transform: none;
 
         /* Layout Adjustments */
-        /* Restore "Card" Shape (Narrower) instead of Wide Banner */
-        /* Desktop is 38%. Mobile needs to be wider to be readable, but not 80% */
-        width: calc(var(--current-frame-width) * 0.6);
+        /* Restore "Card" Shape (Narrower) */
+        width: calc(var(--current-frame-width) * 0.7);
+        /* Slightly wider than 60% for readability */
 
         text-align: left;
         /* Match Desktop Alignment */
