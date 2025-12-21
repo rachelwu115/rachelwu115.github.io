@@ -46,9 +46,17 @@ export class Mirror {
 
             if (this.input) this.input.value = "";
 
+            // REVEAL: Layout is now fully stable (Image loaded + Resized)
+            const frame = document.querySelector('.art-frame');
+            if (frame) frame.classList.add('layout-stabilized');
+
         } catch (err) {
             console.error("Mirror Init Failed:", err);
             if (this.input) this.input.value = "ERR: Asset Load Failed";
+
+            // Force reveal even on error so user sees the message
+            const frame = document.querySelector('.art-frame');
+            if (frame) frame.classList.add('layout-stabilized');
         }
     }
 
@@ -246,10 +254,6 @@ export class Mirror {
         // GUARD: Only update if width > 0 to prevent collapse when hidden (display: none)
         if (rect.width > 0) {
             document.documentElement.style.setProperty('--current-frame-width', `${rect.width}px`);
-
-            // REVEAL: Layout is stable, show the frame
-            const frame = document.querySelector('.art-frame');
-            if (frame) frame.classList.add('layout-stabilized');
         } else {
             // Hidden (Display None): Remove inline style so CSS fallback takes over (Responsive)
             document.documentElement.style.removeProperty('--current-frame-width');
