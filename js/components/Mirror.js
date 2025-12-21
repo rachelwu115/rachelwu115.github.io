@@ -112,11 +112,18 @@ export class Mirror {
             });
 
             // 0b. Reset Layout on Keyboard Dismiss (Blur)
+            // 0b. Reset Layout on Keyboard Dismiss (Blur)
             this.input.addEventListener('blur', () => {
-                // If keyboard is gone (viewport large), reset scroll to top
+                // FORCE RESET: When keyboard closes, snap back to top immediately
+                // We use 'auto' (instant) because 'smooth' is often cancelled by the viewport resizing
                 setTimeout(() => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }, 200);
+                    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+                }, 100);
+
+                // Double-tap safety for slow sliding keyboards (iOS)
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+                }, 400);
             });
 
             // Force focus on click of the dialog box itself (UX)
