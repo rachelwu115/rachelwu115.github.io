@@ -498,12 +498,14 @@ canvas {
 
     .museum-label {
         /* Reset Side Positioning */
-        top: auto;
-        bottom: 5vh;
-        /* Place at bottom */
-        left: 50%;
+        /* FIX: Anchor to Top/Center so extra bottom padding doesn't push it off screen */
+        top: 50%;
+        bottom: auto;
+
+        /* Approximate position below the frame (Frame is max 65% height, centered) */
+        /* Center + 32vh puts it in the bottom 18% of screen */
+        margin-top: 32vh;
         margin-left: 0;
-        margin-top: 0;
 
         /* Center Horizontally */
         transform: translateX(-50%);
