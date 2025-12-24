@@ -501,6 +501,10 @@ canvas {
 
     .art-frame {
         max-height: 60dvh;
+        /* CONSTRAINT: Force Width to respect Height limit (Aspect Ratio 3/4) */
+        /* 60dvh * 0.75 = 45dvh. This prevents "squashing" when keyboard rises. */
+        max-width: 45dvh;
+
         /* Slightly smaller to ensure label fits */
         margin: 0 auto;
         /* Horizontal center, Vertical reset */
