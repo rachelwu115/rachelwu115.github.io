@@ -535,6 +535,26 @@ canvas {
         /* Match Desktop Alignment */
         padding: 10px;
     }
+
+    /* FIX: Button Label must stay "On the Pillar" (Absolute Overlay), unlike Shadowman Label */
+    .button-label {
+        position: absolute;
+        /* Override relative stack */
+        top: 50%;
+        left: 50%;
+        bottom: auto;
+
+        /* Position lower to sit on the pillar (Proportional to frame width) */
+        margin-top: calc(var(--current-frame-width) * 0.35);
+        margin-left: 0;
+
+        transform: translateX(-50%);
+        width: calc(var(--current-frame-width) * 0.45);
+        /* Narrower to fit pillar */
+        text-align: center;
+        /* Usually button labels look better centered? User said "like laptop"? Laptop is Left. */
+        text-align: left;
+    }
 }
 
 
