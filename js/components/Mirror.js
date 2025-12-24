@@ -244,7 +244,14 @@ export class Mirror {
         if (!this.img) return;
 
         const rawScale = rect.width / this.img.width; // Use CSS width (rect) for logic
-        const scale = rawScale * APP_CONFIG.VIEWPORT.ZOOM;
+
+        // RESPONSIVE ZOOM ADJUSTMENT:
+        // Mobile screens feel "cramped" with the desktop zoom. We reduce zoom slightly
+        // to show more shoulders/body, matching the desktop composition.
+        const isMobile = window.innerWidth < 768;
+        const zoomModifier = isMobile ? 0.85 : 1.0;
+
+        const scale = rawScale * APP_CONFIG.VIEWPORT.ZOOM * zoomModifier;
 
         // Logic Layout uses CSS coordinates (virtual pixels)
         this.layout = {
